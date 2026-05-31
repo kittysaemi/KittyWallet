@@ -41,8 +41,33 @@
 ## 정책 요약
 
 - icon_id 필수
-- show=true 데이터만 선택 목록에 표시
-- 사용자 커스텀 카테고리 지원
+- 카테고리 종류는 수입/지출로 구분하지 않음
+- 기본 카테고리는 모든 회원에게 동일하게 제공하는 공통 데이터
+- 사용자 등록 카테고리만 사용자별 데이터로 관리
+- show=true 데이터만 신규 거래 선택 목록에 표시
+- 기본 카테고리는 명칭과 아이콘 수정 불가, 숨김 가능
+- 사용자 카테고리는 명칭, 아이콘, 표시 여부 수정 가능
+- 카테고리 물리 삭제 API는 제공하지 않으며, 숨김은 `PUT /api/v1/categories/{id}`에서 `show=false`로 처리
+
+## 기본 카테고리
+
+| 순서 | 카테고리명 |
+| ---: | --- |
+| 1 | 급여 |
+| 2 | 수입 |
+| 3 | 지출 |
+| 4 | 쇼핑 |
+| 5 | 교통비 |
+| 6 | 점심 |
+| 7 | 식비 |
+| 8 | 의료 |
+| 9 | 교육 |
+| 10 | 문화 |
+| 11 | 공과금 |
+| 12 | 구독 |
+| 13 | 기타지출 |
+
+정렬은 등록 순서를 따른다.
 
 # 카테고리 등록 API
 
@@ -56,7 +81,7 @@
 
 ```json
 {
-  "category_name": "식비",
+  "category_name": "반려동물",
   "icon_id": 1,
   "show": true
 }
@@ -67,6 +92,14 @@
 | category_name | string | Y | 카테고리명 |
 | icon_id | number | Y | 아이콘 ID |
 | show | boolean | N | 표시 여부. 기본값 true |
+
+---
+
+## 비즈니스 규칙
+
+- 본 API는 사용자 카테고리만 등록한다.
+- 기본 카테고리는 시드 데이터로만 생성하며 사용자 API로 등록하지 않는다.
+- 카테고리명 중복은 기본 카테고리와 해당 사용자의 사용자 카테고리를 합쳐 검사한다.
 
 ---
 
@@ -122,6 +155,8 @@
         "category_name": "식비",
         "icon_id": 1,
         "show": true,
+        "is_default": true,
+        "editable": false,
         "created_at": "2026-05-30T02:00:00Z",
         "updated_at": "2026-05-30T02:10:00Z"
       }
@@ -137,7 +172,9 @@
 | category_id | number | 카테고리 ID |
 | category_name | string | 카테고리명 |
 | icon_id | number | 카테고리 아이콘 ID |
-| show | boolean | 거래 등록 선택 목록 표시 여부 |
+| show | boolean | 현재 사용자 기준 거래 등록 선택 목록 표시 여부 |
+| is_default | boolean | 기본 카테고리 여부 |
+| editable | boolean | 명칭/아이콘 수정 가능 여부. 기본 카테고리는 false |
 | created_at | string | 생성 시각, UTC ISO-8601 |
 | updated_at | string | 최종 수정 시각, UTC ISO-8601 |
 
@@ -159,8 +196,10 @@
 - 거래 등록 화면은 `GET /api/v1/categories?show=true`를 사용한다.
 - 카테고리 관리 화면은 `show`를 생략해 숨김 카테고리까지 표시한다.
 - 숨김 카테고리는 기존 거래 상세에서는 표시할 수 있으나 신규 거래 선택 목록에는 노출하지 않는다.
+- 기본 카테고리의 show 값은 사용자별 숨김 설정을 반영한 값이다.
+- 기본 카테고리는 관리 화면에서 숨김/표시 변경만 제공하고 명칭/아이콘 수정 UI는 제공하지 않는다.
 
-# 카테고리 수정 API
+# 카테고리 수정/숨김 API
 
 ## Endpoint
 
@@ -180,9 +219,19 @@
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| category_name | string | N | 변경할 카테고리명 |
-| icon_id | number | N | 변경할 아이콘 ID |
+| category_name | string | N | 변경할 카테고리명. 사용자 카테고리만 가능 |
+| icon_id | number | N | 변경할 아이콘 ID. 사용자 카테고리만 가능 |
 | show | boolean | N | 표시 여부. false면 거래 등록 선택 목록에서 제외 |
+
+---
+
+## 비즈니스 규칙
+
+- 기본 카테고리는 `show`만 변경할 수 있다.
+- 기본 카테고리의 `category_name`, `icon_id` 변경 요청은 실패 처리한다.
+- 사용자 카테고리는 `category_name`, `icon_id`, `show`를 변경할 수 있다.
+- 카테고리 숨김은 신규 거래 선택 목록에서만 제외하는 처리이며, 기존 거래에서는 계속 표시한다.
+- `PATCH /api/v1/categories/{id}`는 사용하지 않는다.
 
 ---
 
@@ -208,3 +257,12 @@
 | 400 | VALIDATION_001 | 필수값 누락 또는 형식 오류 |
 | 404 | CATEGORY_002 | 카테고리 없음 |
 | 409 | CATEGORY_003 | 중복 카테고리명 |
+
+---
+
+## 지원하지 않는 API
+
+| API | 처리 기준 |
+|---|---|
+| PATCH /api/v1/categories/{id} | 사용하지 않음. 카테고리 수정은 `PUT /api/v1/categories/{id}` 사용 |
+| DELETE /api/v1/categories/{id} | 제공하지 않음. 카테고리 숨김은 `show=false` 사용 |

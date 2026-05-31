@@ -17,6 +17,7 @@
 * 거래 삭제는 `deleted_yn` 기반 Soft Delete 적용
 * 계좌/카드는 `use_yn`으로 사용 여부 관리
 * 카테고리/아이콘은 `show` 값으로 화면 표시 여부 관리
+* 기본 카테고리와 기본 아이콘은 공통 데이터로 저장하고, 기본 카테고리의 사용자별 숨김 상태는 별도 테이블로 관리
 
 ---
 
@@ -29,6 +30,7 @@ erDiagram
     USER ||--o{ ACCOUNT : owns
     USER ||--o{ CARD : owns
     USER ||--o{ CATEGORY : owns
+    USER ||--o{ CATEGORY_USER_SETTING : configures
     USER ||--o{ ICON : owns
     USER ||--o{ USER_SETTING : owns
     USER ||--o{ SYNC_CLIENT : owns
@@ -36,6 +38,7 @@ erDiagram
     USER ||--o{ REFRESH_TOKEN : owns
 
     CATEGORY ||--o{ TRANSACTION : classifies
+    CATEGORY ||--o{ CATEGORY_USER_SETTING : configured_by
 
     ACCOUNT ||--o{ TRANSACTION : records
     CARD ||--o{ TRANSACTION : records
@@ -102,19 +105,30 @@ erDiagram
 
     CATEGORY {
         BIGINT category_id PK "카테고리 ID"
-        BIGINT user_id FK "사용자 ID"
+        BIGINT user_id FK "사용자 ID. 기본 카테고리는 NULL"
         BIGINT icon_id FK "아이콘 ID"
         VARCHAR category_name "카테고리명"
-        BOOLEAN show "화면 표시 여부"
+        BOOLEAN show "기본 표시 여부"
+        BOOLEAN is_default "기본 카테고리 여부"
+        DATETIME created_at "생성일시"
+        DATETIME updated_at "수정일시"
+    }
+
+    CATEGORY_USER_SETTING {
+        BIGINT category_user_setting_id PK "카테고리 사용자별 설정 ID"
+        BIGINT user_id FK "사용자 ID"
+        BIGINT category_id FK "카테고리 ID"
+        BOOLEAN show "사용자별 표시 여부"
         DATETIME created_at "생성일시"
         DATETIME updated_at "수정일시"
     }
 
     ICON {
         BIGINT icon_id PK "아이콘 ID"
-        BIGINT user_id FK "사용자 ID"
+        BIGINT user_id FK "사용자 ID. 기본 아이콘은 NULL"
         VARCHAR icon_value "아이콘 코드 또는 이모지 값"
         BOOLEAN show "화면 표시 여부"
+        BOOLEAN is_default "기본 아이콘 여부"
         DATETIME created_at "생성일시"
         DATETIME updated_at "수정일시"
     }
@@ -174,12 +188,14 @@ erDiagram
 | USER → TRANSACTION     | 1:N | 한 사용자는 여러 거래 내역을 등록할 수 있다.                    |
 | USER → ACCOUNT         | 1:N | 한 사용자는 여러 계좌를 등록할 수 있다.                       |
 | USER → CARD            | 1:N | 한 사용자는 여러 카드를 등록할 수 있다.                       |
-| USER → CATEGORY        | 1:N | 한 사용자는 여러 카테고리를 등록할 수 있다.                     |
-| USER → ICON            | 1:N | 한 사용자는 여러 아이콘을 등록할 수 있다.                      |
+| USER → CATEGORY        | 1:N | 한 사용자는 여러 사용자 카테고리를 등록할 수 있다. 기본 카테고리는 user_id가 NULL인 공통 데이터이다. |
+| USER → CATEGORY_USER_SETTING | 1:N | 한 사용자는 기본 카테고리의 표시 여부를 사용자별로 설정할 수 있다. |
+| USER → ICON            | 1:N | 한 사용자는 여러 사용자 아이콘을 등록할 수 있다. 기본 아이콘은 user_id가 NULL인 공통 데이터이다. |
 | USER → USER_SETTING    | 1:N | 한 사용자는 여러 설정 값을 저장할 수 있다.                      |
 | USER → SYNC_CLIENT     | 1:N | 한 사용자는 여러 동기화 클라이언트 또는 기기를 가질 수 있다.        |
 | USER → SYNC_HISTORY    | 1:N | 한 사용자는 여러 동기화 이력을 가진다.                          |
 | TRANSACTION → CATEGORY | N:1 | 하나의 거래 내역은 하나의 카테고리에 연결된다.                    |
+| CATEGORY → CATEGORY_USER_SETTING | 1:N | 기본 카테고리는 사용자별 표시 설정을 가질 수 있다. |
 | TRANSACTION → ACCOUNT  | N:1 | 계좌 거래는 `wallet_type = ACCOUNT`이고 `wallet_id = account_id` 기준으로 계좌를 참조한다. |
 | TRANSACTION → CARD     | N:1 | 카드 거래는 `wallet_type = CARD`이고 `wallet_id = card_id` 기준으로 카드를 참조한다.       |
 | TRANSACTION → SYNC_CLIENT | N:1 | 오프라인 생성 거래는 서버 반영 시 클라이언트 식별자를 참조한다. |
@@ -226,7 +242,8 @@ erDiagram
 | TRANSACTION   | deleted_yn | 거래 삭제 시 `true`로 변경한다.             |
 | ACCOUNT       | use_yn     | 계좌 미사용 처리 시 `false`로 변경한다.        |
 | CARD          | use_yn     | 카드 미사용 처리 시 `false`로 변경한다.        |
-| CATEGORY      | show       | 카테고리 선택 목록 제외 시 `false`로 변경한다. |
+| CATEGORY      | show       | 사용자 카테고리 선택 목록 제외 시 `false`로 변경한다. 기본 카테고리의 기본 표시값이다. |
+| CATEGORY_USER_SETTING | show | 기본 카테고리의 사용자별 선택 목록 표시 여부를 관리한다. |
 | ICON          | show       | 아이콘 선택 목록 제외 시 `false`로 변경한다.  |
 | REFRESH_TOKEN | revoked_at | 폐기 시 `revoked_at`을 현재 일시로 설정한다. 로그아웃, 비밀번호 재설정, 회원탈퇴 시 해당 사용자의 모든 토큰을 폐기한다. |
 
@@ -254,6 +271,9 @@ erDiagram
 | SYNC_CLIENT | `(user_id, client_id)` unique |
 | TRANSACTION | `(user_id, sync_client_id, client_temp_id)` unique. 단 `client_temp_id`가 null인 온라인 거래는 제외 |
 | SYNC_HISTORY | `sync_client_id`, `client_temp_id`, `sync_action`, `server_applied_at` 기준 조회 인덱스 |
+| CATEGORY | 기본 카테고리 `(category_name, is_default)` unique, 사용자 카테고리 `(user_id, category_name)` unique |
+| CATEGORY_USER_SETTING | `(user_id, category_id)` unique |
+| ICON | 기본 아이콘 `(icon_value, is_default)` unique, 사용자 아이콘 `(user_id, icon_value)` unique |
 
 동기화 대상은 MVP 기준 거래만 포함한다.
 
