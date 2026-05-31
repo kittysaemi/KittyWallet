@@ -76,6 +76,9 @@ jobs:
       - name: Lint backend
         run: npm run lint -w @kittywallet/backend
 
+      - name: Generate Prisma client
+        run: npm run prisma:generate -w @kittywallet/backend
+
       - name: Type check backend
         run: npm run type-check -w @kittywallet/backend
 
