@@ -44,7 +44,8 @@ GitHub Issue를 처리하는 작업은 항상 다음 순서를 따른다.
 12. PR 본문에는 상위 Issue와 처리한 서브이슈를 모두 연결한다.
 13. PR 생성 후 merge 전까지 Project Status는 `In Progress`로 유지한다.
 14. PR merge 또는 Issue close 완료 후 Project Status를 `Done`으로 변경한다.
-15. 작업자가 완료한 작업 범위, 완료 조건, 서브이슈 체크박스는 실제 구현, 테스트, 검증, PR 연결이 거짓 없이 완료된 항목만 GitHub Issue 본문에서 갱신한다.
+15. Issue 완료 조건에 검사 실패 시 merge 금지 또는 필수 CI check가 포함된 경우 GitHub 브랜치 보호 규칙과 필수 상태 체크 설정을 확인한다.
+16. 작업자가 완료한 작업 범위, 완료 조건, 서브이슈 체크박스는 실제 구현, 테스트, 검증, PR 연결이 거짓 없이 완료된 항목만 GitHub Issue 본문에서 갱신한다.
 
 Issue 완료 여부, 선행 관계, 서브이슈 상태는 로컬 추정이나 문서가 아니라 항상 GitHub Issue 상태를 기준으로 판단한다.
 
