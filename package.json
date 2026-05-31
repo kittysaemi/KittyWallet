@@ -1,0 +1,34 @@
+{
+  "name": "kittywallet",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=20 <21"
+  },
+  "workspaces": [
+    "packages/shared-types",
+    "packages/shared-api",
+    "packages/shared-utils",
+    "apps/backend",
+    "apps/frontend"
+  ],
+  "scripts": {
+    "build:packages": "npm run build -w @kittywallet/shared-types && npm run build -w @kittywallet/shared-api && npm run build -w @kittywallet/shared-utils",
+    "dev": "npm run build:packages && npm run dev --workspaces --if-present",
+    "dev:backend": "npm run build:packages && npm run dev -w @kittywallet/backend",
+    "dev:frontend": "npm run build:packages && npm run dev -w @kittywallet/frontend",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "format": "prettier --check . --ignore-unknown",
+    "type-check": "npm run build:packages && npm run type-check --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "docker:dev": "docker compose up --build"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.33.0",
+    "@typescript-eslint/parser": "^8.33.0",
+    "eslint": "^9.28.0",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.3"
+  }
+}

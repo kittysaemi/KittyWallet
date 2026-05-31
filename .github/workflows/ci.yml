@@ -1,0 +1,124 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - develop
+      - "feature/**"
+      - "fix/**"
+      - "docs/**"
+      - "codex/**"
+      - "Claude/**"
+      - "release/**"
+      - "hotfix/**"
+
+jobs:
+  packages:
+    name: Shared packages
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Lint shared packages
+        run: |
+          npm run lint -w @kittywallet/shared-types
+          npm run lint -w @kittywallet/shared-api
+          npm run lint -w @kittywallet/shared-utils
+
+      - name: Type check shared packages
+        run: |
+          npm run type-check -w @kittywallet/shared-types
+          npm run type-check -w @kittywallet/shared-api
+          npm run type-check -w @kittywallet/shared-utils
+
+      - name: Test shared packages
+        run: |
+          npm run test -w @kittywallet/shared-types
+          npm run test -w @kittywallet/shared-api
+          npm run test -w @kittywallet/shared-utils
+
+      - name: Build shared packages
+        run: npm run build:packages
+
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build shared packages
+        run: npm run build:packages
+
+      - name: Lint backend
+        run: npm run lint -w @kittywallet/backend
+
+      - name: Type check backend
+        run: npm run type-check -w @kittywallet/backend
+
+      - name: Test backend
+        run: npm run test -w @kittywallet/backend
+
+      - name: Build backend
+        run: npm run build -w @kittywallet/backend
+
+      - name: Docker build backend
+        run: docker build -t kittywallet-api:ci -f apps/backend/Dockerfile .
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build shared packages
+        run: npm run build:packages
+
+      - name: Lint frontend
+        run: npm run lint -w @kittywallet/frontend
+
+      - name: Type check frontend
+        run: npm run type-check -w @kittywallet/frontend
+
+      - name: Test frontend
+        run: npm run test -w @kittywallet/frontend
+
+      - name: Build frontend
+        run: npm run build -w @kittywallet/frontend
+
+      - name: Docker build frontend
+        run: docker build -t kittywallet-web:ci -f apps/frontend/Dockerfile .
