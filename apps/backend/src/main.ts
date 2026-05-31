@@ -1,6 +1,5 @@
-import { NestFactory, Reflector } from "@nestjs/core";
+import { NestFactory } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const cookieParser = require("cookie-parser") as typeof import("cookie-parser");
 import { AppModule } from "./app.module";
 import { HttpExceptionFilter } from "./common/filters/http-exception.filter";
