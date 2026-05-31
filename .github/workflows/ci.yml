@@ -38,6 +38,9 @@ jobs:
           npm run lint -w @kittywallet/shared-api
           npm run lint -w @kittywallet/shared-utils
 
+      - name: Build shared packages
+        run: npm run build:packages
+
       - name: Type check shared packages
         run: |
           npm run type-check -w @kittywallet/shared-types
@@ -49,9 +52,6 @@ jobs:
           npm run test -w @kittywallet/shared-types
           npm run test -w @kittywallet/shared-api
           npm run test -w @kittywallet/shared-utils
-
-      - name: Build shared packages
-        run: npm run build:packages
 
   backend:
     name: Backend
