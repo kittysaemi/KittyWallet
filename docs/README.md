@@ -31,20 +31,50 @@
 
 ---
 
+# 문서 탐색 시작점
+
+작업 시작 시 다음 순서로 문서를 확인한다.
+
+1. `../AGENTS.md`
+2. `00_project/문서인덱스.md`
+3. 작업 유형별 필수 문서
+4. 관련 정책/API/ERD/화면/상태 문서
+
+문서 추가, 이동, 폐기 기준은 `00_project/문서관리규칙.md`를 따른다.
+
+---
+
 # 문서 우선순위
 
 문서 충돌 발생 시 아래 우선순위를 따른다.
 
-1. 정책 정의 문서
-2. 상태 정의 문서
-3. 예외 처리 정의 문서
-4. API 명세 문서
-5. 데이터 구조 / ERD
-6. 화면 정의 문서
-7. 사용자 플로우
-8. 서비스 기획 문서
+1. 정책 문서
+2. API 문서
+3. 데이터 문서
+4. 화면/상태 문서
+5. 아키텍처 문서
+6. 테스트/배포 문서
 
 정책 문서와 화면 정의가 충돌할 경우 정책 문서를 우선한다.
+
+---
+
+# 작업별 빠른 참조
+
+| 작업 유형 | 먼저 볼 문서 | 함께 볼 문서 |
+|---|---|---|
+| 신규 기능 구현 | `01_service-planning/MVP범위.md` | `04_business-policy/정책정의.md`, `03_screen-spec/화면정의.md` |
+| 화면 구현 | `03_screen-spec/화면정의.md` | `03_screen-spec/상태정의.md`, `10_design-system/컴포넌트정의.md` |
+| API 구현 | `06_api-spec/공통응답규격.md` | 해당 API 문서, `08_backend-architecture/유스케이스정의.md` |
+| DB/Prisma 작업 | `05_data-design/ERD.md` | `05_data-design/데이터구조정의.md`, `08_backend-architecture/Repository정책.md` |
+| 거래 기능 | `04_business-policy/거래정책.md` | `06_api-spec/거래API.md`, `08_backend-architecture/트랜잭션정책.md` |
+| 계좌 기능 | `04_business-policy/계좌정책.md` | `06_api-spec/계좌API.md`, `05_data-design/ERD.md` |
+| 카드 기능 | `04_business-policy/카드정책.md` | `06_api-spec/카드API.md`, `05_data-design/ERD.md` |
+| 카테고리 기능 | `04_business-policy/카테고리정책.md` | `06_api-spec/카테고리API.md`, `05_data-design/ERD.md` |
+| 인증 기능 | `04_business-policy/로그인정책.md` | `06_api-spec/인증API.md`, `08_backend-architecture/인증인가구조.md` |
+| PWA/오프라인 | `04_business-policy/오프라인정책.md` | `04_business-policy/동기화정책.md`, `09_pwa/동기화구조.md` |
+| 테스트 작성 | `11_testing/테스트케이스정의.md` | `11_testing/E2E시나리오.md`, `11_testing/오류테스트정의.md` |
+| 배포/운영 | `12_deployment/배포정책.md` | `12_deployment/배포절차.md`, `12_deployment/운영체크리스트.md` |
 
 ---
 
@@ -203,7 +233,7 @@ Task:
 
 /docs
 
-* 00_project-overview
+* 00_project
 * 01_service-planning
 * 02_information-architecture
 * 03_screen-spec

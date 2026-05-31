@@ -6,6 +6,17 @@
 
 ---
 
+# 저장소
+
+| 항목 | 내용 |
+| --- | --- |
+| 원격 저장소 | https://github.com/kittysaemi/KittyWallet |
+| 로컬 저장소 | `C:\Users\saemi\source\KittyWallet` |
+
+본 저장소의 구현 기준은 `AGENTS.md`와 `docs/00_project/문서인덱스.md`를 최우선으로 따릅니다.
+
+---
+
 # 프로젝트 목표
 
 * 모바일 중심 가계부 서비스 제공
@@ -77,12 +88,19 @@
 
 ## Frontend
 
-| 항목            | 기술                  |
-| ------------- | ------------------- |
-| Language      | JavaScript (ES6+)   |
-| UI            | HTML5 / CSS3        |
-| Icons         | Lucide Icons        |
-| Charts        | Chart.js            |
+| 항목 | 기술 |
+| --- | --- |
+| Framework | React |
+| Language | TypeScript |
+| Build Tool | Vite |
+| Styling | Tailwind CSS |
+| Routing | React Router |
+| Client State | Zustand |
+| Server State | React Query |
+| API Client | Axios |
+| Validation | Zod |
+| Icons | Lucide Icons |
+| Charts | Chart.js |
 | App Packaging | Capacitor (Planned) |
 
 ## Backend
@@ -90,11 +108,20 @@
 | 항목             | 기술            |
 | -------------- | ------------- |
 | Runtime        | Node.js 20    |
-| Framework      | Express.js    |
+| Framework      | NestJS        |
 | ORM            | Prisma        |
 | Database       | PostgreSQL 16 |
 | Authentication | JWT           |
 | Encryption     | bcryptjs      |
+
+## PWA
+
+| 항목 | 기술 |
+| --- | --- |
+| PWA 구성 | Vite PWA Plugin |
+| 캐시/오프라인 | Service Worker |
+| 로컬 저장 | IndexedDB |
+| 동기화 | Sync Queue |
 
 ## Infrastructure
 
@@ -120,7 +147,7 @@
 
 ```text
 /docs
- ├── 00_project-overview
+ ├── 00_project
  ├── 01_service-planning
  ├── 02_information-architecture
  ├── 03_screen-spec
@@ -157,6 +184,17 @@
 # 개발 원칙
 
 본 프로젝트는 다음 원칙을 기준으로 개발합니다.
+
+## 문서 우선 개발
+
+모든 구현은 문서 기준을 먼저 확인한 뒤 진행합니다.
+
+작업 시작 시 참조 순서:
+
+1. `AGENTS.md`
+2. `docs/00_project/문서인덱스.md`
+3. 작업 유형별 필수 문서
+4. 관련 정책/API/ERD/화면/상태 문서
 
 ## 정책 기반 개발
 
@@ -203,7 +241,9 @@ Happy Path만 구현하지 않습니다.
 
 ## 작업 기준
 
-모든 작업은 다음 문서를 기준으로 진행합니다.
+모든 작업은 `docs/00_project/문서인덱스.md`의 빠른 참조 경로를 기준으로 필요한 문서를 확인한 뒤 진행합니다.
+
+필수 기준 문서:
 
 * 정책 정의
 * 상태 정의
@@ -211,6 +251,18 @@ Happy Path만 구현하지 않습니다.
 * API 명세
 * 데이터 구조 정의
 * ERD
+
+작업 유형별 대표 참조:
+
+| 작업 유형 | 먼저 볼 문서 | 함께 볼 문서 |
+| --- | --- | --- |
+| 신규 기능 구현 | `docs/01_service-planning/MVP범위.md` | `docs/04_business-policy/정책정의.md`, `docs/03_screen-spec/화면정의.md` |
+| 화면 구현 | `docs/03_screen-spec/화면정의.md` | `docs/03_screen-spec/상태정의.md`, `docs/10_design-system/컴포넌트정의.md` |
+| API 구현 | `docs/06_api-spec/공통응답규격.md` | 해당 API 문서, `docs/08_backend-architecture/유스케이스정의.md` |
+| DB/Prisma 작업 | `docs/05_data-design/ERD.md` | `docs/05_data-design/데이터구조정의.md`, `docs/08_backend-architecture/Repository정책.md` |
+| PWA/오프라인 작업 | `docs/04_business-policy/오프라인정책.md` | `docs/09_pwa/동기화구조.md`, `docs/09_pwa/IndexedDB정의.md` |
+| 테스트 작성 | `docs/11_testing/테스트케이스정의.md` | `docs/11_testing/E2E시나리오.md`, `docs/11_testing/오류테스트정의.md` |
+| 배포/운영 | `docs/12_deployment/배포정책.md` | `docs/12_deployment/배포절차.md`, `docs/12_deployment/운영체크리스트.md` |
 
 ## 금지 사항
 
@@ -239,6 +291,8 @@ Issue 생성
 ---
 
 # 현재 개발 상태
+
+현재 프로젝트 문서 기준으로는 HTML/CSS/JavaScript 기반 localStorage 프로토타입에서 출발하여, React/TypeScript/Vite 프론트엔드와 NestJS/Prisma/PostgreSQL 백엔드 기반 API 구조로 확장하는 것을 목표로 합니다.
 
 ## 완료
 
