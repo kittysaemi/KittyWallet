@@ -6,14 +6,20 @@ interface AuthData {
   user: User;
 }
 
+interface SignupData {
+  userId: number;
+  email: string;
+  nickname: string;
+}
+
 export const authApi = {
   login: async (data: LoginRequest): Promise<ApiResponse<AuthData>> => {
     const response = await apiClient.post<ApiResponse<AuthData>>('/auth/login', data);
     return response.data;
   },
 
-  signup: async (data: SignupRequest): Promise<ApiResponse<AuthData>> => {
-    const response = await apiClient.post<ApiResponse<AuthData>>('/auth/signup', data);
+  signup: async (data: SignupRequest): Promise<ApiResponse<SignupData>> => {
+    const response = await apiClient.post<ApiResponse<SignupData>>('/auth/signup', data);
     return response.data;
   },
 

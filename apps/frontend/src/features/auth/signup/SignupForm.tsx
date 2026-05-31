@@ -82,6 +82,7 @@ export const SignupForm: React.FC = () => {
     signupMutation.mutate({
       email: formData.email,
       password: formData.password,
+      password_confirm: formData.passwordConfirm,
       nickname: formData.nickname,
     });
   };

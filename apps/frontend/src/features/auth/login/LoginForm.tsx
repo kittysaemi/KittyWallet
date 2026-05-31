@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { AxiosError } from 'axios';
 import { Input } from '../../../shared/ui/Input';
@@ -22,6 +22,8 @@ const ERROR_MESSAGES: Record<string, string> = {
 export const LoginForm: React.FC = () => {
   const [formData, setFormData] = useState<LoginFormData>({ email: '', password: '' });
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof LoginFormData, string>>>({});
+  const [searchParams] = useSearchParams();
+  const isExpired = searchParams.get('expired') === '1';
 
   const loginMutation = useLogin();
 
@@ -78,6 +80,11 @@ export const LoginForm: React.FC = () => {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+      {isExpired && (
+        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          인증이 만료되었습니다. 다시 로그인해주세요.
+        </p>
+      )}
       <Input
         label="이메일"
         type="email"

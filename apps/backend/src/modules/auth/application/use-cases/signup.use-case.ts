@@ -16,6 +16,10 @@ export class SignupUseCase {
   ) {}
 
   async execute(command: SignupCommand): Promise<SignupResult> {
+    if (command.password !== command.passwordConfirm) {
+      throw new BusinessException('AUTH_005');
+    }
+
     const existingUser = await this.userRepository.findByEmail(command.email);
     if (existingUser) {
       throw new BusinessException('AUTH_001');

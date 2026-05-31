@@ -1,14 +1,15 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../entities/auth/store/authStore';
 import LoginPage from '../../pages/login';
 import SignupPage from '../../pages/signup';
 
-// 인증된 사용자만 접근 가능 (비인증 시 /login으로 리다이렉트)
+// 인증된 사용자만 접근 가능 (비인증 시 /login으로 리다이렉트, 원래 URL 기억)
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const location = useLocation();
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
   return <>{children}</>;
 };

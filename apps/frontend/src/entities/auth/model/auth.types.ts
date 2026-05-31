@@ -33,5 +33,6 @@ export interface LoginRequest {
 export interface SignupRequest {
   email: string;
   password: string;
+  password_confirm: string;
   nickname: string;
 }

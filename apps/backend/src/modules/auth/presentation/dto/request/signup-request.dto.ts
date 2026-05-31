@@ -10,7 +10,11 @@ export class SignupRequestDto {
   password!: string;
 
   @IsString()
-  @MinLength(2)
-  @MaxLength(50)
+  @MinLength(1)
+  password_confirm!: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(30)
   nickname!: string;
 }

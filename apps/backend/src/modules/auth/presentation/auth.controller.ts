@@ -46,7 +46,7 @@ export class AuthController {
   @Post('signup')
   async signup(@Body() dto: SignupRequestDto): Promise<SignupResponseDto> {
     const result = await this.signupUseCase.execute(
-      new SignupCommand(dto.email, dto.password, dto.nickname),
+      new SignupCommand(dto.email, dto.password, dto.password_confirm, dto.nickname),
     );
     const response = new SignupResponseDto();
     response.userId = result.userId;
