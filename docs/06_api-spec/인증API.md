@@ -238,12 +238,14 @@ Authorization: Bearer {access_token}
 
 ---
 
-## 처리 정책
+## 처리 정책 (Rotation 적용)
 
 - Refresh Token은 cookie로 전달되므로 request body에 포함하지 않는다.
 - Access Token 만료 시 프론트엔드 공통 API Client에서 1회 재발급을 시도한다.
 - 재발급 실패 시 인증 상태를 초기화하고 로그인 화면으로 이동한다.
-- Refresh Token 회전 정책을 적용하는 경우 새 Refresh Token은 `Set-Cookie`로 갱신 발급하며, API 문서를 먼저 개정한다.
+- **Refresh Token Rotation**: 재발급 시 기존 Refresh Token을 폐기하고 새 Refresh Token을 `Set-Cookie`로 함께 발급한다.
+- Access Token 만료 시간: **2시간**
+- Refresh Token 만료 시간: **30일**
 
 ---
 
