@@ -5,12 +5,14 @@ erDiagram
     USER ||--o{ ACCOUNT : owns
     USER ||--o{ CARD : owns
     USER ||--o{ CATEGORY : owns
+    USER ||--o{ CATEGORY_USER_SETTING : configures
     USER ||--o{ ICON : owns
     USER ||--o{ USER_SETTING : owns
     USER ||--o{ SYNC_CLIENT : owns
     USER ||--o{ SYNC_HISTORY : owns
 
     CATEGORY ||--o{ TRANSACTION : classifies
+    CATEGORY ||--o{ CATEGORY_USER_SETTING : configured_by
 
     ACCOUNT ||--o{ TRANSACTION : records
     CARD ||--o{ TRANSACTION : records
@@ -67,17 +69,28 @@ erDiagram
 
     CATEGORY {
         BIGINT category_id PK "카테고리 ID"
-        BIGINT user_id FK "사용자 ID"
+        BIGINT user_id FK "사용자 ID. 기본 카테고리는 NULL"
         BIGINT icon_id FK "아이콘 ID"
         VARCHAR category_name "카테고리명"
-        BOOLEAN show "화면 표시 여부"
+        BOOLEAN show "기본 표시 여부"
+        BOOLEAN is_default "기본 카테고리 여부"
+    }
+
+    CATEGORY_USER_SETTING {
+        BIGINT category_user_setting_id PK "카테고리 사용자별 설정 ID"
+        BIGINT user_id FK "사용자 ID"
+        BIGINT category_id FK "카테고리 ID"
+        BOOLEAN show "사용자별 표시 여부"
+        DATETIME created_at "생성일시"
+        DATETIME updated_at "수정일시"
     }
 
     ICON {
         BIGINT icon_id PK "아이콘 ID"
-        BIGINT user_id FK "사용자 ID"
+        BIGINT user_id FK "사용자 ID. 기본 아이콘은 NULL"
         VARCHAR icon_value "아이콘 코드 또는 이모지 값"
         BOOLEAN show "화면 표시 여부"
+        BOOLEAN is_default "기본 아이콘 여부"
     }
 
     USER_SETTING {
