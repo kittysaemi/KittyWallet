@@ -38,10 +38,12 @@ Issue 상태 확인은 항상 GitHub Issue 기준으로 수행하며, 로컬 브
 
 GitHub Project 보드를 사용하는 Issue는 작업 진행 상태를 Project Status로 함께 관리한다.
 
-* Issue 작업을 실제로 시작할 때 Project Status를 `In Progress`로 변경한다.
+* Issue 작업을 실제로 시작할 때 GitHub Project 등록 여부를 확인한다.
+* Issue가 Project에 등록되어 있지 않으면 먼저 Project에 추가한 뒤 Project Status를 `In Progress`로 변경한다.
 * PR 생성 후에도 아직 merge 전이면 Project Status는 `In Progress`로 유지한다.
 * PR merge 또는 Issue close 완료 시 Project Status를 `Done`으로 변경한다.
 * 선행 Issue가 완료되지 않아 작업을 중단하는 경우 Project Status를 임의 변경하지 않는다.
+* 도구 권한 또는 GitHub API 제한으로 Project 등록이나 Status 변경이 불가능한 경우, 작업자는 가능한 범위까지 진행한 뒤 변경하지 못한 이유와 필요한 수동 조치를 사용자에게 보고한다.
 
 Project Status는 Issue의 `open`/`closed` 상태와 별개이므로, Issue 본문이나 PR만 수정하고 Project Status 갱신을 생략하지 않는다.
 
@@ -368,7 +370,7 @@ GitHub Issue 작업 시 AI는 다음을 추가로 준수한다.
 * GitHub Issue에서 선행 Issue와 서브이슈 상태를 확인한다.
 * 선행 Issue가 완료되지 않았으면 구현하지 않고 사용자에게 보고한다.
 * 개발 범위의 서브이슈가 있으면 가능한 한 서브이슈를 먼저 처리한다.
-* 작업 시작 시 Project Status를 `In Progress`로 변경하고, PR merge 또는 Issue close 후 `Done`으로 변경한다.
+* 작업 시작 시 Project 등록 여부를 확인하고 Project Status를 `In Progress`로 변경하며, PR merge 또는 Issue close 후 `Done`으로 변경한다.
 * 검증 성공 전에는 커밋, push, PR 생성을 하지 않는다.
 * 검증과 PR 생성 후 완료된 Issue 체크박스를 갱신한다.
 * 개발에만 필요한 로컬 도구, 빌드 산출물, 캐시, 환경 파일은 커밋하지 않는다.
