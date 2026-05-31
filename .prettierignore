@@ -1,0 +1,7 @@
+AGENTS.md
+README.md
+docs/
+node_modules/
+dist/
+coverage/
+.tools/
