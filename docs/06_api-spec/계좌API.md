@@ -45,6 +45,7 @@
 - use_yn 기반 사용 여부 관리
 - icon_id 필수
 - 사용자별 계좌 분리
+- 계좌 삭제 API는 제공하지 않으며, `PUT /api/v1/accounts/{id}`에서 `use_yn=false`로 비활성화한다
 
 ---
 
@@ -119,7 +120,7 @@
 
 ---
 
-# 계좌 수정 API
+# 계좌 수정/비활성화 API
 
 ## Endpoint
 
@@ -145,6 +146,16 @@
 
 ---
 
+## 비활성화 처리
+
+계좌 삭제는 지원하지 않는다. 계좌 사용 중지는 본 API에 `use_yn=false`를 전달해 처리한다.
+
+비활성화된 계좌는 거래 등록 선택 목록에서 제외하지만, 기존 거래 내역과 잔액 계산 기준은 유지한다. 연결 거래 유무와 관계없이 물리 삭제 또는 `DELETE /api/v1/accounts/{id}` API는 제공하지 않는다.
+
+`PATCH /api/v1/accounts/{id}`는 계좌 수정 API로 사용하지 않는다.
+
+---
+
 ## Response
 
 ```json
@@ -167,6 +178,15 @@
 | 400 | VALIDATION_001 | 수정 가능한 필드가 없거나 형식 오류 |
 | 404 | ACCOUNT_002 | 계좌 없음 |
 | 409 | ACCOUNT_001 | 중복 계좌명 |
+
+---
+
+## 지원하지 않는 API
+
+| API | 처리 기준 |
+|---|---|
+| PATCH /api/v1/accounts/{id} | 사용하지 않음. 계좌 수정은 `PUT /api/v1/accounts/{id}` 사용 |
+| DELETE /api/v1/accounts/{id} | 제공하지 않음. 계좌 사용 중지는 `use_yn=false` 비활성화 사용 |
 
 # 계좌 목록 API
 
