@@ -1,0 +1,125 @@
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { z } from 'zod';
+import { AxiosError } from 'axios';
+import { Input } from '../../../shared/ui/Input';
+import { Button } from '../../../shared/ui/Button';
+import { useLogin } from './useLogin';
+import { ApiError } from '../../../entities/auth/model/auth.types';
+
+const loginSchema = z.object({
+  email: z.string().email('올바른 이메일 형식이 아닙니다.'),
+  password: z.string().min(1, '비밀번호를 입력해주세요.'),
+});
+
+type LoginFormData = z.infer<typeof loginSchema>;
+
+const ERROR_MESSAGES: Record<string, string> = {
+  AUTH_002: '이메일 또는 비밀번호가 올바르지 않습니다.',
+  AUTH_003: '비활성 계정입니다.',
+};
+
+export const LoginForm: React.FC = () => {
+  const [formData, setFormData] = useState<LoginFormData>({ email: '', password: '' });
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof LoginFormData, string>>>({});
+
+  const loginMutation = useLogin();
+
+  const getServerError = (): string | null => {
+    if (!loginMutation.error) return null;
+    const axiosError = loginMutation.error as AxiosError<ApiError>;
+    const code = axiosError.response?.data?.error?.code;
+    if (code && ERROR_MESSAGES[code]) return ERROR_MESSAGES[code];
+    if (axiosError.response?.data?.error?.message) return axiosError.response.data.error.message;
+
+    // API가 success:false를 200으로 반환하는 경우 처리
+    const mutationData = loginMutation.data;
+    if (mutationData && !mutationData.success && mutationData.error) {
+      const errCode = mutationData.error.code;
+      return ERROR_MESSAGES[errCode] || mutationData.error.message;
+    }
+    return '로그인에 실패했습니다. 다시 시도해주세요.';
+  };
+
+  // success:false 응답 처리
+  const getResponseError = (): string | null => {
+    const mutationData = loginMutation.data;
+    if (mutationData && !mutationData.success && mutationData.error) {
+      const errCode = mutationData.error.code;
+      return ERROR_MESSAGES[errCode] || mutationData.error.message;
+    }
+    return null;
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (fieldErrors[name as keyof LoginFormData]) {
+      setFieldErrors((prev) => ({ ...prev, [name]: undefined }));
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const result = loginSchema.safeParse(formData);
+    if (!result.success) {
+      const errors: Partial<Record<keyof LoginFormData, string>> = {};
+      result.error.errors.forEach((err) => {
+        const field = err.path[0] as keyof LoginFormData;
+        if (!errors[field]) errors[field] = err.message;
+      });
+      setFieldErrors(errors);
+      return;
+    }
+    loginMutation.mutate(formData);
+  };
+
+  const serverError = getServerError() || getResponseError();
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+      <Input
+        label="이메일"
+        type="email"
+        name="email"
+        value={formData.email}
+        onChange={handleChange}
+        placeholder="example@email.com"
+        error={fieldErrors.email}
+        autoComplete="email"
+      />
+      <Input
+        label="비밀번호"
+        type="password"
+        name="password"
+        value={formData.password}
+        onChange={handleChange}
+        placeholder="비밀번호를 입력하세요"
+        error={fieldErrors.password}
+        autoComplete="current-password"
+      />
+
+      {serverError && (
+        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+          {serverError}
+        </p>
+      )}
+
+      <Button
+        type="submit"
+        fullWidth
+        isLoading={loginMutation.isPending}
+        className="mt-2"
+      >
+        로그인
+      </Button>
+
+      <p className="text-center text-sm text-gray-600">
+        계정이 없으신가요?{' '}
+        <Link to="/signup" className="text-indigo-600 hover:text-indigo-700 font-medium">
+          회원가입
+        </Link>
+      </p>
+    </form>
+  );
+};
