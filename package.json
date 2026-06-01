@@ -22,9 +22,11 @@
     "format": "prettier --check . --ignore-unknown",
     "type-check": "npm run build:packages && npm run type-check --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
+    "test:e2e": "playwright test",
     "docker:dev": "docker compose up --build"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@typescript-eslint/eslint-plugin": "^8.33.0",
     "@typescript-eslint/parser": "^8.33.0",
     "eslint": "^9.28.0",
