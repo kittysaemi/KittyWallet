@@ -5,6 +5,7 @@ import { PrismaModule } from "./database/prisma.module";
 import { HealthModule } from "./modules/health/health.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { IconsModule } from "./modules/icons/icons.module";
+import { CategoriesModule } from "./modules/categories/categories.module";
 import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
 import { ApiResponseInterceptor } from "./common/interceptors/api-response.interceptor";
 
@@ -16,7 +17,8 @@ import { ApiResponseInterceptor } from "./common/interceptors/api-response.inter
     PrismaModule,
     HealthModule,
     AuthModule,
-    IconsModule
+    IconsModule,
+    CategoriesModule
   ],
   providers: [
     {
