@@ -30,6 +30,7 @@ model User {
   categories           Category[]
   categoryUserSettings CategoryUserSetting[]
   accounts             Account[]
+  cards                Card[]
 
   @@map("USER")
 }
@@ -79,6 +80,7 @@ model Icon {
   iconDictionary IconDictionary @relation(fields: [iconDictionaryId], references: [iconDictionaryId])
   categories     Category[]
   accounts       Account[]
+  cards          Card[]
 
   @@unique([userId, iconDictionaryId], map: "ICON_user_id_icon_dictionary_id_key")
   @@index([iconDictionaryId])
@@ -147,4 +149,22 @@ model Account {
   @@index([userId])
   @@index([useYn])
   @@map("ACCOUNT")
+}
+
+model Card {
+  cardId    BigInt   @id @default(autoincrement()) @map("card_id")
+  userId    BigInt   @map("user_id")
+  iconId    BigInt   @map("icon_id")
+  cardName  String   @map("card_name") @db.VarChar(50)
+  useYn     Boolean  @default(true) @map("use_yn")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [userId])
+  icon Icon @relation(fields: [iconId], references: [iconId])
+
+  @@unique([userId, cardName], map: "CARD_user_id_card_name_key")
+  @@index([userId])
+  @@index([useYn])
+  @@map("CARD")
 }
