@@ -15,11 +15,13 @@ const AccountCard: React.FC<{
   account: AccountItem;
   icon: IconItem | undefined;
   onClick: () => void;
-}> = ({ account, icon, onClick }) => (
+}> = ({ account, icon, onClick }) => {
+  const inactive = !account.use_yn;
+  return (
   <button
     type="button"
     onClick={onClick}
-    className={`${cardClass} flex w-full items-center gap-4 p-4 text-left transition hover:bg-[var(--color-bg-secondary)] active:bg-[var(--color-bg-secondary)]`}
+    className={`${cardClass} flex w-full items-center gap-4 p-4 text-left transition hover:bg-[var(--color-bg-secondary)] active:bg-[var(--color-bg-secondary)] ${inactive ? "opacity-50 grayscale" : ""}`}
   >
     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-bg-secondary)]">
       {icon ? (
@@ -33,11 +35,6 @@ const AccountCard: React.FC<{
         <span className="truncate font-semibold text-[var(--color-text-primary)]">
           {account.account_name}
         </span>
-        {!account.use_yn && (
-          <span className="shrink-0 rounded-full bg-[var(--color-bg-secondary)] px-2 py-0.5 text-xs text-[var(--color-text-secondary)]">
-            비활성
-          </span>
-        )}
       </div>
       {account.current_balance !== null && (
         <p className="mt-0.5 text-sm text-[var(--color-text-secondary)]">
@@ -47,7 +44,8 @@ const AccountCard: React.FC<{
     </div>
     <span className="shrink-0 text-[var(--color-text-caption)]">›</span>
   </button>
-);
+  );
+};
 
 const AccountListSkeleton: React.FC = () => (
   <div className="flex flex-col gap-3" aria-label="계좌 목록을 불러오는 중입니다.">

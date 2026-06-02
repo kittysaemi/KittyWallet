@@ -2,6 +2,8 @@ import React from "react";
 import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { useAuthStore } from "../../entities/auth/store/authStore";
 import AccountsPage from "../../pages/accounts";
+import AccountNewPage from "../../pages/accounts/new";
+import AccountEditPage from "../../pages/accounts/edit";
 import IconsPage from "../../pages/icons";
 import LoginPage from "../../pages/login";
 import SignupPage from "../../pages/signup";
@@ -95,6 +97,22 @@ export const AppRouter: React.FC = () => (
       element={
         <ProtectedRoute>
           <AccountsPage />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/accounts/new"
+      element={
+        <ProtectedRoute>
+          <AccountNewPage />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/accounts/:id/edit"
+      element={
+        <ProtectedRoute>
+          <AccountEditPage />
         </ProtectedRoute>
       }
     />
