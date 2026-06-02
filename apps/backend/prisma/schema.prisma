@@ -25,8 +25,10 @@ model User {
   createdAt           DateTime   @default(now()) @map("created_at")
   updatedAt           DateTime   @updatedAt @map("updated_at")
 
-  refreshTokens RefreshToken[]
-  icons         Icon[]
+  refreshTokens        RefreshToken[]
+  icons                Icon[]
+  categories           Category[]
+  categoryUserSettings CategoryUserSetting[]
 
   @@map("USER")
 }
@@ -74,6 +76,7 @@ model Icon {
 
   user           User?          @relation(fields: [userId], references: [userId])
   iconDictionary IconDictionary @relation(fields: [iconDictionaryId], references: [iconDictionaryId])
+  categories     Category[]
 
   @@unique([userId, iconDictionaryId], map: "ICON_user_id_icon_dictionary_id_key")
   @@index([iconDictionaryId])
@@ -81,4 +84,45 @@ model Icon {
   @@index([show])
   @@index([isDefault])
   @@map("ICON")
+}
+
+model Category {
+  categoryId   BigInt   @id @default(autoincrement()) @map("category_id")
+  userId       BigInt?  @map("user_id")
+  iconId       BigInt   @map("icon_id")
+  categoryName String   @map("category_name")
+  show         Boolean  @default(true)
+  isDefault    Boolean  @default(false) @map("is_default")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user                 User?                 @relation(fields: [userId], references: [userId], onDelete: SetNull)
+  icon                 Icon                  @relation(fields: [iconId], references: [iconId])
+  categoryUserSettings CategoryUserSetting[]
+
+  @@unique([userId, categoryName], map: "CATEGORY_user_id_category_name_key")
+  @@index([userId])
+  @@index([iconId])
+  @@index([categoryName])
+  @@index([show])
+  @@index([isDefault])
+  @@map("CATEGORY")
+}
+
+model CategoryUserSetting {
+  categoryUserSettingId BigInt   @id @default(autoincrement()) @map("category_user_setting_id")
+  userId                BigInt   @map("user_id")
+  categoryId            BigInt   @map("category_id")
+  show                  Boolean  @default(true)
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  user     User     @relation(fields: [userId], references: [userId])
+  category Category @relation(fields: [categoryId], references: [categoryId])
+
+  @@unique([userId, categoryId], map: "CATEGORY_USER_SETTING_user_id_category_id_key")
+  @@index([userId])
+  @@index([categoryId])
+  @@index([show])
+  @@map("CATEGORY_USER_SETTING")
 }
