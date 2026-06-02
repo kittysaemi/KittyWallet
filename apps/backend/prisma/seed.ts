@@ -19,7 +19,25 @@ const defaultIcons = [
 
 const toIconCode = (providerKey: string): string => `icon-${providerKey}`;
 
+const defaultCategories = [
+  { categoryName: "급여", providerKey: "circle-dollar-sign" },
+  { categoryName: "수입", providerKey: "circle-dollar-sign" },
+  { categoryName: "지출", providerKey: "tag" },
+  { categoryName: "쇼핑", providerKey: "shopping-bag" },
+  { categoryName: "교통비", providerKey: "bus" },
+  { categoryName: "점심", providerKey: "utensils" },
+  { categoryName: "식비", providerKey: "utensils" },
+  { categoryName: "의료", providerKey: "heart-pulse" },
+  { categoryName: "교육", providerKey: "graduation-cap" },
+  { categoryName: "문화", providerKey: "music" },
+  { categoryName: "공과금", providerKey: "receipt" },
+  { categoryName: "구독", providerKey: "repeat" },
+  { categoryName: "기타지출", providerKey: "tag" }
+];
+
 async function main(): Promise<void> {
+  const defaultIconIds = new Map<string, bigint>();
+
   for (const providerKey of defaultIcons) {
     const dictionary = await prisma.iconDictionary.upsert({
       where: {
@@ -48,16 +66,49 @@ async function main(): Promise<void> {
     });
 
     if (existing) {
-      await prisma.icon.update({
+      const icon = await prisma.icon.update({
         where: { iconId: existing.iconId },
         data: { show: true }
+      });
+      defaultIconIds.set(providerKey, icon.iconId);
+      continue;
+    }
+
+    const icon = await prisma.icon.create({
+      data: {
+        iconDictionary: { connect: { iconDictionaryId: dictionary.iconDictionaryId } },
+        isDefault: true,
+        show: true
+      }
+    });
+    defaultIconIds.set(providerKey, icon.iconId);
+  }
+
+  for (const category of defaultCategories) {
+    const iconId = defaultIconIds.get(category.providerKey);
+    if (!iconId) {
+      throw new Error(`Default icon is missing: ${category.providerKey}`);
+    }
+
+    const existing = await prisma.category.findFirst({
+      where: {
+        categoryName: category.categoryName,
+        isDefault: true
+      }
+    });
+
+    if (existing) {
+      await prisma.category.update({
+        where: { categoryId: existing.categoryId },
+        data: { iconId, show: true }
       });
       continue;
     }
 
-    await prisma.icon.create({
+    await prisma.category.create({
       data: {
-        iconDictionary: { connect: { iconDictionaryId: dictionary.iconDictionaryId } },
+        categoryName: category.categoryName,
+        iconId,
         isDefault: true,
         show: true
       }
