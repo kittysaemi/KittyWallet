@@ -5,6 +5,8 @@ import AccountsPage from "../../pages/accounts";
 import AccountNewPage from "../../pages/accounts/new";
 import AccountEditPage from "../../pages/accounts/edit";
 import CategoriesPage from "../../pages/categories";
+import CategoryNewPage from "../../pages/categories/new";
+import CategoryIconSelectPage from "../../pages/categories/icon";
 import IconsPage from "../../pages/icons";
 import LoginPage from "../../pages/login";
 import SignupPage from "../../pages/signup";
@@ -136,6 +138,22 @@ export const AppRouter: React.FC = () => (
       element={
         <ProtectedRoute>
           <CategoriesPage />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/categories/new"
+      element={
+        <ProtectedRoute>
+          <CategoryNewPage />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/categories/:id/icon"
+      element={
+        <ProtectedRoute>
+          <CategoryIconSelectPage />
         </ProtectedRoute>
       }
     />

@@ -3,7 +3,7 @@ import { IsBoolean, IsInt, IsOptional, IsString, MaxLength, Min } from "class-va
 export class UpdateCategoryRequestDto {
   @IsOptional()
   @IsString()
-  @MaxLength(50)
+  @MaxLength(15)
   category_name?: string;
 
   @IsOptional()
