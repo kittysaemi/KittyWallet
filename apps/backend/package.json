@@ -8,6 +8,7 @@
     "start:dev": "nest start --watch",
     "build": "prisma generate --schema prisma/schema.prisma && nest build",
     "prisma:generate": "prisma generate --schema prisma/schema.prisma",
+    "prisma:seed": "prisma db seed --schema prisma/schema.prisma",
     "start": "node dist/main.js",
     "lint": "eslint src --ext .ts",
     "type-check": "tsc -p tsconfig.json --noEmit",
@@ -29,10 +30,14 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "cookie-parser": "^1.4.7",
+    "lucide-static": "^1.17.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.4.9",

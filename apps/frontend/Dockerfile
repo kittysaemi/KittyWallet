@@ -17,5 +17,6 @@ RUN npm run build -w @kittywallet/frontend
 
 FROM nginx:1.27-alpine AS runtime
 COPY --from=build /app/apps/frontend/dist /usr/share/nginx/html
+COPY apps/frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80

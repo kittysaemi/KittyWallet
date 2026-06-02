@@ -1,5 +1,5 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { useAuthStore } from '../../entities/auth/store/authStore';
+import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
+import { useAuthStore } from "../../entities/auth/store/authStore";
 
 interface RefreshResponse {
   success: boolean;
@@ -22,9 +22,9 @@ const processQueue = (error: unknown, token: string | null = null) => {
 };
 
 export const apiClient = axios.create({
-  baseURL: '/api/v1',
+  baseURL: "/api/v1",
   withCredentials: true,
-  headers: { 'Content-Type': 'application/json' },
+  headers: { "Content-Type": "application/json" }
 });
 
 apiClient.interceptors.request.use(
@@ -35,15 +35,19 @@ apiClient.interceptors.request.use(
     }
     return config;
   },
-  (error) => Promise.reject(error),
+  (error) => Promise.reject(error)
 );
 
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const isAuthEndpoint =
+      originalRequest.url?.includes("/auth/refresh") ||
+      originalRequest.url?.includes("/auth/login") ||
+      originalRequest.url?.includes("/auth/signup");
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -60,27 +64,29 @@ apiClient.interceptors.response.use(
 
       try {
         const response = await axios.post<RefreshResponse>(
-          '/api/v1/auth/refresh',
+          "/api/v1/auth/refresh",
           {},
-          { withCredentials: true },
+          { withCredentials: true }
         );
 
         if (response.data.success && response.data.data) {
           const { access_token } = response.data.data;
           const { user } = useAuthStore.getState();
           if (user) {
-            useAuthStore.getState().setAuth(access_token, { user_id: user.userId, nickname: user.nickname });
+            useAuthStore
+              .getState()
+              .setAuth(access_token, { user_id: user.userId, nickname: user.nickname });
           }
           processQueue(null, access_token);
           originalRequest.headers.Authorization = `Bearer ${access_token}`;
           return apiClient(originalRequest);
         } else {
-          throw new Error('Refresh failed');
+          throw new Error("Refresh failed");
         }
       } catch (refreshError) {
         processQueue(refreshError, null);
         useAuthStore.getState().clearAuth();
-        window.location.href = '/login?expired=1';
+        window.location.href = "/login?expired=1";
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
@@ -88,5 +94,5 @@ apiClient.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  },
+  }
 );

@@ -165,8 +165,8 @@ Request DTO
 | 카드 | UpdateCardRequestDto | CardResponseDto | card_name, icon_id, use_yn |
 | 카테고리 | CreateCategoryRequestDto | CategoryIdResponseDto | category_name, icon_id, show |
 | 카테고리 | UpdateCategoryRequestDto | CategoryResponseDto | category_name, icon_id, show |
-| 아이콘 | CreateIconRequestDto | IconIdResponseDto | icon_name, icon_value, show |
-| 아이콘 | UpdateIconRequestDto | IconResponseDto | icon_name, icon_value, show |
+| 아이콘 | CreateIconRequestDto | IconIdResponseDto | icon_code, show |
+| 아이콘 | UpdateIconRequestDto | IconResponseDto | show |
 | 아이콘 | IconListQueryDto | IconListResponseDto | show 필터 |
 | 설정 | UpdateSettingsRequestDto | SettingsResponseDto | USER_SETTING upsert |
 | 설정 | SettingsQueryDto | SettingsResponseDto | key 단건 또는 전체 조회 |

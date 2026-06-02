@@ -1,8 +1,10 @@
-import React from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { useAuthStore } from '../../entities/auth/store/authStore';
-import LoginPage from '../../pages/login';
-import SignupPage from '../../pages/signup';
+import React from "react";
+import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { useAuthStore } from "../../entities/auth/store/authStore";
+import IconsPage from "../../pages/icons";
+import LoginPage from "../../pages/login";
+import SignupPage from "../../pages/signup";
+import { Button } from "../../shared/ui/Button";
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -26,19 +28,24 @@ const DashboardPage: React.FC = () => {
   const clearAuth = useAuthStore((state) => state.clearAuth);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md text-center">
-        <h1 className="mb-4 text-3xl font-bold text-indigo-600">KittyWallet</h1>
-        <p className="mb-2 text-lg text-gray-700">
-          안녕하세요, <span className="font-semibold">{user?.nickname}</span>님!
+    <div className="flex min-h-screen items-center justify-center bg-[var(--color-bg-primary)] px-4 py-6">
+      <div className="w-full max-w-[480px] rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] p-6 text-center shadow-[0_4px_16px_var(--color-card-shadow)]">
+        <h1 className="mb-4 text-3xl font-bold text-[var(--color-text-primary)]">KittyWallet</h1>
+        <p className="mb-2 text-lg text-[var(--color-text-primary)]">
+          안녕하세요, <span className="font-semibold">{user?.nickname}</span>님
         </p>
-        <p className="mb-8 text-sm text-gray-500">대시보드 준비 중입니다.</p>
-        <button
-          onClick={clearAuth}
-          className="rounded-lg bg-gray-200 px-4 py-2 text-sm text-gray-700 transition hover:bg-gray-300"
-        >
+        <p className="mb-8 text-sm text-[var(--color-text-secondary)]">대시보드 준비 중입니다.</p>
+        <div className="mb-3">
+          <Link
+            to="/icons"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-text-primary)] transition hover:bg-[var(--color-primary-hover)]"
+          >
+            아이콘 관리
+          </Link>
+        </div>
+        <Button type="button" variant="secondary" onClick={clearAuth}>
           로그아웃
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -46,7 +53,7 @@ const DashboardPage: React.FC = () => {
 
 const RootRedirect: React.FC = () => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  return <Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />;
+  return <Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />;
 };
 
 export const AppRouter: React.FC = () => (
@@ -73,6 +80,14 @@ export const AppRouter: React.FC = () => (
       element={
         <ProtectedRoute>
           <DashboardPage />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/icons"
+      element={
+        <ProtectedRoute>
+          <IconsPage />
         </ProtectedRoute>
       }
     />

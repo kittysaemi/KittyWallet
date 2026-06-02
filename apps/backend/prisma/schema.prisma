@@ -14,20 +14,37 @@ enum UserStatus {
 }
 
 model User {
-  userId              BigInt         @id @default(autoincrement()) @map("user_id")
-  email               String         @unique
+  userId              BigInt     @id @default(autoincrement()) @map("user_id")
+  email               String     @unique
   password            String
   nickname            String
-  status              UserStatus     @default(ACTIVE)
-  resetToken          String?        @map("reset_token")
-  resetTokenExpiresAt DateTime?      @map("reset_token_expires_at")
-  withdrawnAt         DateTime?      @map("withdrawn_at")
-  createdAt           DateTime       @default(now()) @map("created_at")
-  updatedAt           DateTime       @updatedAt @map("updated_at")
+  status              UserStatus @default(ACTIVE)
+  resetToken          String?    @map("reset_token")
+  resetTokenExpiresAt DateTime?  @map("reset_token_expires_at")
+  withdrawnAt         DateTime?  @map("withdrawn_at")
+  createdAt           DateTime   @default(now()) @map("created_at")
+  updatedAt           DateTime   @updatedAt @map("updated_at")
 
-  refreshTokens       RefreshToken[]
+  refreshTokens RefreshToken[]
+  icons         Icon[]
 
   @@map("USER")
+}
+
+model IconDictionary {
+  iconDictionaryId BigInt   @id @default(autoincrement()) @map("icon_dictionary_id")
+  iconCode         String   @unique @map("icon_code")
+  providerType     String   @map("provider_type")
+  providerKey      String   @map("provider_key")
+  searchKeywords   String[] @default([]) @map("search_keywords")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  icons Icon[]
+
+  @@unique([providerType, providerKey], map: "ICON_DICTIONARY_provider_type_provider_key_key")
+  @@index([providerType])
+  @@map("ICON_DICTIONARY")
 }
 
 model RefreshToken {
@@ -41,7 +58,27 @@ model RefreshToken {
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
-  user           User      @relation(fields: [userId], references: [userId])
+  user User @relation(fields: [userId], references: [userId])
 
   @@map("REFRESH_TOKEN")
+}
+
+model Icon {
+  iconId           BigInt   @id @default(autoincrement()) @map("icon_id")
+  userId           BigInt?  @map("user_id")
+  iconDictionaryId BigInt   @map("icon_dictionary_id")
+  show             Boolean  @default(true)
+  isDefault        Boolean  @default(false) @map("is_default")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  user           User?          @relation(fields: [userId], references: [userId])
+  iconDictionary IconDictionary @relation(fields: [iconDictionaryId], references: [iconDictionaryId])
+
+  @@unique([userId, iconDictionaryId], map: "ICON_user_id_icon_dictionary_id_key")
+  @@index([iconDictionaryId])
+  @@index([userId])
+  @@index([show])
+  @@index([isDefault])
+  @@map("ICON")
 }

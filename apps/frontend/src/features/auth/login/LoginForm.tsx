@@ -1,29 +1,29 @@
-import React, { useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { z } from 'zod';
-import { AxiosError } from 'axios';
-import { Input } from '../../../shared/ui/Input';
-import { Button } from '../../../shared/ui/Button';
-import { useLogin } from './useLogin';
-import type { ApiError } from '../../../entities/auth/model/auth.types';
+import React, { useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { AxiosError } from "axios";
+import { z } from "zod";
+import type { ApiError } from "../../../entities/auth/model/auth.types";
+import { Button } from "../../../shared/ui/Button";
+import { Input } from "../../../shared/ui/Input";
+import { useLogin } from "./useLogin";
 
 const loginSchema = z.object({
-  email: z.string().email('올바른 이메일 형식이 아닙니다.'),
-  password: z.string().min(1, '비밀번호를 입력해주세요.'),
+  email: z.string().email("올바른 이메일 형식이 아닙니다."),
+  password: z.string().min(1, "비밀번호를 입력해주세요.")
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
 const ERROR_MESSAGES: Record<string, string> = {
-  AUTH_002: '이메일 또는 비밀번호가 올바르지 않습니다.',
-  AUTH_003: '비활성 계정입니다.',
+  AUTH_002: "이메일 또는 비밀번호가 올바르지 않습니다.",
+  AUTH_003: "비활성 계정입니다."
 };
 
 export const LoginForm: React.FC = () => {
-  const [formData, setFormData] = useState<LoginFormData>({ email: '', password: '' });
+  const [formData, setFormData] = useState<LoginFormData>({ email: "", password: "" });
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof LoginFormData, string>>>({});
   const [searchParams] = useSearchParams();
-  const isExpired = searchParams.get('expired') === '1';
+  const isExpired = searchParams.get("expired") === "1";
 
   const loginMutation = useLogin();
 
@@ -33,25 +33,25 @@ export const LoginForm: React.FC = () => {
     const code = axiosError.response?.data?.error?.code;
     if (code && ERROR_MESSAGES[code]) return ERROR_MESSAGES[code];
     if (axiosError.response?.data?.error?.message) return axiosError.response.data.error.message;
-    return '로그인에 실패했습니다. 다시 시도해주세요.';
+    return "로그인에 실패했습니다. 다시 시도해주세요.";
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (fieldErrors[name as keyof LoginFormData]) {
       setFieldErrors((prev) => ({ ...prev, [name]: undefined }));
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
     const result = loginSchema.safeParse(formData);
     if (!result.success) {
       const errors: Partial<Record<keyof LoginFormData, string>> = {};
-      result.error.errors.forEach((err) => {
-        const field = err.path[0] as keyof LoginFormData;
-        if (!errors[field]) errors[field] = err.message;
+      result.error.errors.forEach((error) => {
+        const field = error.path[0] as keyof LoginFormData;
+        if (!errors[field]) errors[field] = error.message;
       });
       setFieldErrors(errors);
       return;
@@ -64,7 +64,7 @@ export const LoginForm: React.FC = () => {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
       {isExpired && (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+        <p className="rounded-xl border border-[var(--color-warning)] bg-[var(--color-warning-soft)] px-3 py-2 text-sm text-[var(--color-text-primary)]">
           인증이 만료되었습니다. 다시 로그인해주세요.
         </p>
       )}
@@ -84,21 +84,24 @@ export const LoginForm: React.FC = () => {
         name="password"
         value={formData.password}
         onChange={handleChange}
-        placeholder="비밀번호를 입력하세요"
+        placeholder="비밀번호를 입력해주세요."
         error={fieldErrors.password}
         autoComplete="current-password"
       />
       {serverError && (
-        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+        <p className="rounded-xl border border-[var(--color-danger)] bg-[var(--color-danger-soft)] px-3 py-2 text-sm text-[var(--color-text-primary)]">
           {serverError}
         </p>
       )}
       <Button type="submit" fullWidth isLoading={loginMutation.isPending} className="mt-2">
         로그인
       </Button>
-      <p className="text-center text-sm text-gray-600">
-        계정이 없으신가요?{' '}
-        <Link to="/signup" className="font-medium text-indigo-600 hover:text-indigo-700">
+      <p className="text-center text-sm text-[var(--color-text-secondary)]">
+        계정이 없으신가요?{" "}
+        <Link
+          to="/signup"
+          className="font-semibold text-[var(--color-text-primary)] underline decoration-[var(--color-primary)] underline-offset-4"
+        >
           회원가입
         </Link>
       </p>
