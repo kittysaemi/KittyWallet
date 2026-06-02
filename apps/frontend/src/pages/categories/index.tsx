@@ -1,6 +1,8 @@
 import React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Eye, EyeOff, Pencil, Plus, RotateCw } from "lucide-react";
+import { Eye, EyeOff, Plus, RotateCw } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { z } from "zod";
 import { categoryApi } from "../../entities/category/api/categoryApi";
 import type { CategoryItem } from "../../entities/category/model/category.types";
 import { iconApi } from "../../entities/icon/api/iconApi";
@@ -17,6 +19,12 @@ const mergeIcons = (visibleIcons: IconItem[], hiddenIcons: IconItem[]) =>
       (icon, index, icons) => icons.findIndex((item) => item.icon_id === icon.icon_id) === index
     )
     .sort((left, right) => left.icon_id - right.icon_id);
+
+const categoryNameSchema = z
+  .string()
+  .trim()
+  .min(1, "카테고리명을 입력해주세요.")
+  .max(15, "카테고리명은 한글 기준 15자 이하여야 합니다.");
 
 const CategoryListSkeleton: React.FC = () => (
   <div className="flex flex-col gap-3" aria-label="카테고리 목록을 불러오는 중입니다.">
@@ -78,88 +86,137 @@ interface CategoryRowProps {
   category: CategoryItem;
   icon?: IconItem;
   disabled: boolean;
+  editingNameId: number | null;
+  editingName: string;
+  error?: string;
+  onStartNameEdit: (category: CategoryItem) => void;
+  onNameChange: (value: string) => void;
+  onNameCancel: () => void;
+  onNameSave: (category: CategoryItem) => void;
+  onIconEdit: (category: CategoryItem) => void;
   onToggleShow: (category: CategoryItem) => void;
 }
 
-const CategoryRow: React.FC<CategoryRowProps> = ({ category, icon, disabled, onToggleShow }) => (
-  <li className={cardClass}>
-    <div className="flex items-center gap-3">
-      <div
-        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border ${
-          category.show
-            ? "border-[var(--color-border-primary)] bg-[var(--color-primary-soft)] text-[var(--color-text-primary)]"
-            : "border-[var(--gray-200)] bg-[var(--gray-100)] text-[var(--gray-500)]"
-        }`}
-      >
-        {icon ? (
-          <IconRenderer providerType={icon.provider_type} providerKey={icon.provider_key} size={26} />
-        ) : (
-          <span className="text-sm font-semibold" aria-hidden="true">
-            {category.category_name.charAt(0)}
-          </span>
-        )}
-      </div>
+const CategoryRow: React.FC<CategoryRowProps> = ({
+  category,
+  icon,
+  disabled,
+  editingNameId,
+  editingName,
+  error,
+  onStartNameEdit,
+  onNameChange,
+  onNameCancel,
+  onNameSave,
+  onIconEdit,
+  onToggleShow
+}) => {
+  const canEditDetails = category.editable && category.show;
+  const isEditingName = editingNameId === category.category_id;
 
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <p
-            className={`truncate text-base font-semibold ${
-              category.show ? "text-[var(--color-text-primary)]" : "text-[var(--gray-500)]"
-            }`}
-          >
-            {category.category_name}
-          </p>
-          {category.is_default && (
-            <span
-              className={`rounded-full px-2 py-1 text-xs font-medium ${
-                category.show
-                  ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)]"
-                  : "bg-[var(--gray-100)] text-[var(--gray-500)]"
-              }`}
-            >
-              기본
-            </span>
-          )}
-        </div>
-      </div>
-
-      <div className="flex shrink-0 items-center gap-2">
-        {category.editable && (
-          <button
-            type="button"
-            aria-label={`${category.category_name} 수정`}
-            disabled
-            title="카테고리 수정 화면은 다음 작업에서 구현됩니다."
-            className="flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--color-border-secondary)] bg-[var(--color-bg-secondary)] text-[var(--color-text-disabled)] disabled:cursor-not-allowed"
-          >
-            <Pencil size={18} aria-hidden="true" />
-          </button>
-        )}
+  return (
+    <li className={cardClass}>
+      <div className="flex items-center gap-3">
         <button
           type="button"
-          aria-label={`${category.category_name} ${category.show ? "숨기기" : "표시하기"}`}
-          aria-pressed={category.show}
-          disabled={disabled}
-          onClick={() => onToggleShow(category)}
-          className={`flex h-11 w-11 items-center justify-center rounded-xl border transition disabled:cursor-not-allowed disabled:opacity-60 ${
+          aria-label={`${category.category_name} 아이콘 변경`}
+          disabled={!canEditDetails || disabled}
+          onClick={() => onIconEdit(category)}
+          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border transition disabled:cursor-not-allowed ${
             category.show
-              ? "border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-primary-soft)]"
-              : "border-[var(--gray-200)] bg-[var(--gray-100)] text-[var(--gray-600)] hover:bg-[var(--color-bg-secondary)]"
-          }`}
+              ? "border-[var(--color-border-primary)] bg-[var(--color-primary-soft)] text-[var(--color-text-primary)]"
+              : "border-[var(--gray-200)] bg-[var(--gray-100)] text-[var(--gray-500)]"
+          } ${canEditDetails ? "hover:bg-[var(--color-bg-secondary)]" : ""}`}
         >
-          {category.show ? (
-            <Eye size={18} aria-hidden="true" />
+          {icon ? (
+            <IconRenderer
+              providerType={icon.provider_type}
+              providerKey={icon.provider_key}
+              size={26}
+            />
           ) : (
-            <EyeOff size={18} aria-hidden="true" />
+            <span className="text-sm font-semibold" aria-hidden="true">
+              {category.category_name.charAt(0)}
+            </span>
           )}
         </button>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            {isEditingName ? (
+              <input
+                aria-label={`${category.category_name} 이름 수정`}
+                value={editingName}
+                onChange={(event) => onNameChange(event.target.value)}
+                onBlur={() => onNameSave(category)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") onNameSave(category);
+                  if (event.key === "Escape") onNameCancel();
+                }}
+                disabled={disabled}
+                autoFocus
+                className="min-h-10 min-w-0 flex-1 rounded-xl border border-[var(--color-primary)] bg-[var(--color-bg-input)] px-3 py-2 text-base font-semibold text-[var(--color-text-primary)] outline-none ring-2 ring-[var(--color-primary-soft)]"
+                maxLength={15}
+              />
+            ) : (
+              <button
+                type="button"
+                aria-label={`${category.category_name} 이름 변경`}
+                disabled={!canEditDetails || disabled}
+                onClick={() => onStartNameEdit(category)}
+                className={`min-w-0 truncate text-left text-base font-semibold disabled:cursor-not-allowed ${
+                  category.show ? "text-[var(--color-text-primary)]" : "text-[var(--gray-500)]"
+                } ${canEditDetails ? "underline-offset-4 hover:underline" : ""}`}
+              >
+                {category.category_name}
+              </button>
+            )}
+            {category.is_default && (
+              <span
+                className={`rounded-full px-2 py-1 text-xs font-medium ${
+                  category.show
+                    ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)]"
+                    : "bg-[var(--gray-100)] text-[var(--gray-500)]"
+                }`}
+              >
+                기본
+              </span>
+            )}
+          </div>
+          {error && <p className="mt-1 text-xs text-[var(--color-danger)]">{error}</p>}
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            aria-label={`${category.category_name} ${category.show ? "숨기기" : "표시하기"}`}
+            aria-pressed={category.show}
+            disabled={disabled}
+            onClick={() => onToggleShow(category)}
+            className={`flex h-11 w-11 items-center justify-center rounded-xl border transition disabled:cursor-not-allowed disabled:opacity-60 ${
+              category.show
+                ? "border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-primary-soft)]"
+                : "border-[var(--gray-200)] bg-[var(--gray-100)] text-[var(--gray-600)] hover:bg-[var(--color-bg-secondary)]"
+            }`}
+          >
+            {category.show ? (
+              <Eye size={18} aria-hidden="true" />
+            ) : (
+              <EyeOff size={18} aria-hidden="true" />
+            )}
+          </button>
+        </div>
       </div>
-    </div>
-  </li>
-);
+    </li>
+  );
+};
 
 const CategoriesPage: React.FC = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const [editingNameId, setEditingNameId] = React.useState<number | null>(null);
+  const [editingName, setEditingName] = React.useState("");
+  const [nameErrors, setNameErrors] = React.useState<Record<number, string>>({});
 
   const categoriesQuery = useQuery({
     queryKey: ["categories", "manage"],
@@ -169,7 +226,10 @@ const CategoriesPage: React.FC = () => {
   const iconsQuery = useQuery({
     queryKey: ["icons", "category-manage"],
     queryFn: async () => {
-      const [visible, hidden] = await Promise.all([iconApi.getIcons(true), iconApi.getIcons(false)]);
+      const [visible, hidden] = await Promise.all([
+        iconApi.getIcons(true),
+        iconApi.getIcons(false)
+      ]);
       if (!visible.success || !visible.data) return visible;
       if (!hidden.success || !hidden.data) return hidden;
 
@@ -190,9 +250,18 @@ const CategoriesPage: React.FC = () => {
   };
 
   const updateMutation = useMutation({
-    mutationFn: ({ categoryId, show }: { categoryId: number; show: boolean }) =>
-      categoryApi.updateCategory(categoryId, { show }),
-    onSuccess: refreshCategories
+    mutationFn: ({
+      categoryId,
+      data
+    }: {
+      categoryId: number;
+      data: Parameters<typeof categoryApi.updateCategory>[1];
+    }) => categoryApi.updateCategory(categoryId, data),
+    onSuccess: async () => {
+      setEditingNameId(null);
+      setEditingName("");
+      await refreshCategories();
+    }
   });
 
   const isLoading = categoriesQuery.isLoading || iconsQuery.isLoading;
@@ -210,6 +279,34 @@ const CategoriesPage: React.FC = () => {
     void iconsQuery.refetch();
   };
 
+  const startNameEdit = (category: CategoryItem) => {
+    if (!category.editable || !category.show || updateMutation.isPending) return;
+    setNameErrors((prev) => ({ ...prev, [category.category_id]: "" }));
+    setEditingNameId(category.category_id);
+    setEditingName(category.category_name);
+  };
+
+  const saveName = (category: CategoryItem) => {
+    if (editingNameId !== category.category_id) return;
+    const parsed = categoryNameSchema.safeParse(editingName);
+    if (!parsed.success) {
+      setNameErrors((prev) => ({
+        ...prev,
+        [category.category_id]: parsed.error.errors[0]?.message ?? "입력값을 확인해주세요."
+      }));
+      return;
+    }
+    if (parsed.data === category.category_name) {
+      setEditingNameId(null);
+      setEditingName("");
+      return;
+    }
+    updateMutation.mutate({
+      categoryId: category.category_id,
+      data: { category_name: parsed.data }
+    });
+  };
+
   return (
     <div className="min-h-screen bg-[var(--color-bg-primary)] px-4 py-6">
       <div className="mx-auto flex w-full max-w-[480px] flex-col gap-5">
@@ -223,9 +320,8 @@ const CategoriesPage: React.FC = () => {
           <button
             type="button"
             aria-label="카테고리 등록"
-            disabled
-            title="카테고리 등록 화면은 다음 작업에서 구현됩니다."
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--color-primary)] text-[var(--color-text-primary)] opacity-50"
+            onClick={() => navigate("/categories/new")}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--color-primary)] text-[var(--color-text-primary)] transition hover:bg-[var(--color-primary-hover)]"
           >
             <Plus size={20} aria-hidden="true" />
           </button>
@@ -242,8 +338,22 @@ const CategoriesPage: React.FC = () => {
                 category={category}
                 icon={iconsById.get(category.icon_id)}
                 disabled={updateMutation.isPending}
+                editingNameId={editingNameId}
+                editingName={editingName}
+                error={nameErrors[category.category_id]}
+                onStartNameEdit={startNameEdit}
+                onNameChange={setEditingName}
+                onNameCancel={() => {
+                  setEditingNameId(null);
+                  setEditingName("");
+                }}
+                onNameSave={saveName}
+                onIconEdit={(item) => navigate(`/categories/${item.category_id}/icon`)}
                 onToggleShow={(item) =>
-                  updateMutation.mutate({ categoryId: item.category_id, show: !item.show })
+                  updateMutation.mutate({
+                    categoryId: item.category_id,
+                    data: { show: !item.show }
+                  })
                 }
               />
             ))}

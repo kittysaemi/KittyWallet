@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import CategoriesPage from ".";
 import { categoryApi } from "../../entities/category/api/categoryApi";
 import { iconApi } from "../../entities/icon/api/iconApi";
@@ -8,6 +9,7 @@ import { iconApi } from "../../entities/icon/api/iconApi";
 vi.mock("../../entities/category/api/categoryApi", () => ({
   categoryApi: {
     getCategories: vi.fn(),
+    createCategory: vi.fn(),
     updateCategory: vi.fn()
   }
 }));
@@ -30,7 +32,15 @@ const createWrapper = () => {
   });
 
   const Wrapper: React.FC<React.PropsWithChildren> = ({ children }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={["/categories"]}>
+        <Routes>
+          <Route path="/categories" element={children} />
+          <Route path="/categories/new" element={<div>카테고리 등록 화면</div>} />
+          <Route path="/categories/:id/icon" element={<div>아이콘 선택 화면</div>} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>
   );
 
   return Wrapper;
@@ -55,6 +65,16 @@ const successCategories = {
         category_name: "반려동물",
         icon_id: 11,
         show: false,
+        is_default: false,
+        editable: true,
+        created_at: "2026-06-02T00:00:00Z",
+        updated_at: "2026-06-02T00:00:00Z"
+      },
+      {
+        category_id: 3,
+        category_name: "취미",
+        icon_id: 10,
+        show: true,
         is_default: false,
         editable: true,
         created_at: "2026-06-02T00:00:00Z",
@@ -117,10 +137,70 @@ describe("CategoriesPage", () => {
     expect(screen.getByLabelText("카테고리 목록을 불러오는 중입니다.")).toBeInTheDocument();
     expect(await screen.findByText("식비")).toBeInTheDocument();
     expect(screen.getByText("반려동물")).toBeInTheDocument();
+    expect(screen.getByText("취미")).toBeInTheDocument();
     expect(screen.getByText("기본")).toBeInTheDocument();
     expect(screen.queryByText("숨김")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "식비 숨기기" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "반려동물 표시하기" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "카테고리 등록" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "식비 이름 변경" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "반려동물 이름 변경" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "취미 이름 변경" })).toBeEnabled();
+  });
+
+  it("moves to create screen from add action", async () => {
+    mockedCategoryApi.getCategories.mockResolvedValue(successCategories);
+    mockedIconApi.getIcons.mockResolvedValueOnce(visibleIcons).mockResolvedValueOnce(hiddenIcons);
+
+    render(<CategoriesPage />, { wrapper: createWrapper() });
+
+    await userEvent.click(await screen.findByRole("button", { name: "카테고리 등록" }));
+    expect(screen.getByText("카테고리 등록 화면")).toBeInTheDocument();
+  });
+
+  it("edits active category name inline", async () => {
+    mockedCategoryApi.getCategories.mockResolvedValue(successCategories);
+    mockedCategoryApi.updateCategory.mockResolvedValue({
+      success: true,
+      data: { category_id: 3, show: true },
+      error: null
+    });
+    mockedIconApi.getIcons.mockResolvedValueOnce(visibleIcons).mockResolvedValueOnce(hiddenIcons);
+
+    render(<CategoriesPage />, { wrapper: createWrapper() });
+
+    await userEvent.click(await screen.findByRole("button", { name: "취미 이름 변경" }));
+    const input = screen.getByLabelText("취미 이름 수정");
+    await userEvent.clear(input);
+    await userEvent.type(input, "여가{enter}");
+
+    await waitFor(() =>
+      expect(mockedCategoryApi.updateCategory).toHaveBeenCalledWith(3, { category_name: "여가" })
+    );
+  });
+
+  it("limits inline category name editing to 15 Korean characters", async () => {
+    mockedCategoryApi.getCategories.mockResolvedValue(successCategories);
+    mockedIconApi.getIcons.mockResolvedValueOnce(visibleIcons).mockResolvedValueOnce(hiddenIcons);
+
+    render(<CategoriesPage />, { wrapper: createWrapper() });
+
+    await userEvent.click(await screen.findByRole("button", { name: "취미 이름 변경" }));
+
+    expect(screen.getByLabelText("취미 이름 수정")).toHaveAttribute("maxLength", "15");
+  });
+
+  it("opens icon selection only from active editable category icon", async () => {
+    mockedCategoryApi.getCategories.mockResolvedValue(successCategories);
+    mockedIconApi.getIcons.mockResolvedValueOnce(visibleIcons).mockResolvedValueOnce(hiddenIcons);
+
+    render(<CategoriesPage />, { wrapper: createWrapper() });
+
+    expect(await screen.findByRole("button", { name: "취미 아이콘 변경" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "반려동물 아이콘 변경" })).toBeDisabled();
+    await userEvent.click(screen.getByRole("button", { name: "취미 아이콘 변경" }));
+
+    expect(screen.getByText("아이콘 선택 화면")).toBeInTheDocument();
   });
 
   it("renders empty state when there are no categories", async () => {

@@ -13,6 +13,12 @@ export interface CategoryListData {
   items: CategoryItem[];
 }
 
+export interface CreateCategoryRequest {
+  category_name: string;
+  icon_id: number;
+  show?: boolean;
+}
+
 export interface UpdateCategoryRequest {
   category_name?: string;
   icon_id?: number;
