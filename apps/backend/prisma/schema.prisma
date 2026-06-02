@@ -29,6 +29,7 @@ model User {
   icons                Icon[]
   categories           Category[]
   categoryUserSettings CategoryUserSetting[]
+  accounts             Account[]
 
   @@map("USER")
 }
@@ -77,6 +78,7 @@ model Icon {
   user           User?          @relation(fields: [userId], references: [userId])
   iconDictionary IconDictionary @relation(fields: [iconDictionaryId], references: [iconDictionaryId])
   categories     Category[]
+  accounts       Account[]
 
   @@unique([userId, iconDictionaryId], map: "ICON_user_id_icon_dictionary_id_key")
   @@index([iconDictionaryId])
@@ -125,4 +127,24 @@ model CategoryUserSetting {
   @@index([categoryId])
   @@index([show])
   @@map("CATEGORY_USER_SETTING")
+}
+
+model Account {
+  accountId      BigInt   @id @default(autoincrement()) @map("account_id")
+  userId         BigInt   @map("user_id")
+  iconId         BigInt   @map("icon_id")
+  accountName    String   @map("account_name") @db.VarChar(50)
+  initialBalance Decimal  @map("initial_balance") @db.Decimal(15, 0)
+  currentBalance Decimal  @map("current_balance") @db.Decimal(15, 0)
+  useYn          Boolean  @default(true) @map("use_yn")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [userId])
+  icon Icon @relation(fields: [iconId], references: [iconId])
+
+  @@unique([userId, accountName], map: "ACCOUNT_user_id_account_name_key")
+  @@index([userId])
+  @@index([useYn])
+  @@map("ACCOUNT")
 }
