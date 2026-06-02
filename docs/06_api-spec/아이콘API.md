@@ -38,13 +38,15 @@ MVP 기본 아이콘은 현재 provider의 key를 기준으로 사전 매핑과 
 | 3 | icon-credit-card | lucide | credit-card | 카드 |
 | 4 | icon-shopping-bag | lucide | shopping-bag | 쇼핑 |
 | 5 | icon-bus | lucide | bus | 교통비 |
-| 6 | icon-utensils | lucide | utensils | 식비/점심 |
+| 6 | icon-utensils | lucide | utensils | 식비 |
 | 7 | icon-heart-pulse | lucide | heart-pulse | 의료 |
 | 8 | icon-graduation-cap | lucide | graduation-cap | 교육 |
 | 9 | icon-music | lucide | music | 문화 |
 | 10 | icon-receipt | lucide | receipt | 공과금 |
 | 11 | icon-repeat | lucide | repeat | 구독 |
-| 12 | icon-circle-dollar-sign | lucide | circle-dollar-sign | 급여/수입 |
+| 12 | icon-circle-dollar-sign | lucide | circle-dollar-sign | 급여 |
+| 13 | icon-banknote-arrow-up | lucide | banknote-arrow-up | 수입 |
+| 14 | icon-sandwich | lucide | sandwich | 점심 |
 
 # 아이콘 목록 API
 

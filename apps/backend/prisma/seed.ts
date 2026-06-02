@@ -14,18 +14,20 @@ const defaultIcons = [
   "music",
   "receipt",
   "repeat",
-  "circle-dollar-sign"
+  "circle-dollar-sign",
+  "banknote-arrow-up",
+  "sandwich"
 ];
 
 const toIconCode = (providerKey: string): string => `icon-${providerKey}`;
 
 const defaultCategories = [
   { categoryName: "급여", providerKey: "circle-dollar-sign" },
-  { categoryName: "수입", providerKey: "circle-dollar-sign" },
+  { categoryName: "수입", providerKey: "banknote-arrow-up" },
   { categoryName: "지출", providerKey: "tag" },
   { categoryName: "쇼핑", providerKey: "shopping-bag" },
   { categoryName: "교통비", providerKey: "bus" },
-  { categoryName: "점심", providerKey: "utensils" },
+  { categoryName: "점심", providerKey: "sandwich" },
   { categoryName: "식비", providerKey: "utensils" },
   { categoryName: "의료", providerKey: "heart-pulse" },
   { categoryName: "교육", providerKey: "graduation-cap" },

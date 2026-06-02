@@ -1,6 +1,7 @@
 import React from "react";
 import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { useAuthStore } from "../../entities/auth/store/authStore";
+import CategoriesPage from "../../pages/categories";
 import IconsPage from "../../pages/icons";
 import LoginPage from "../../pages/login";
 import SignupPage from "../../pages/signup";
@@ -36,12 +37,20 @@ const DashboardPage: React.FC = () => {
         </p>
         <p className="mb-8 text-sm text-[var(--color-text-secondary)]">대시보드 준비 중입니다.</p>
         <div className="mb-3">
-          <Link
-            to="/icons"
-            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-text-primary)] transition hover:bg-[var(--color-primary-hover)]"
-          >
-            아이콘 관리
-          </Link>
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+            <Link
+              to="/categories"
+              className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-text-primary)] transition hover:bg-[var(--color-primary-hover)]"
+            >
+              카테고리 관리
+            </Link>
+            <Link
+              to="/icons"
+              className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] px-4 py-2 text-sm font-semibold text-[var(--color-text-secondary)] transition hover:bg-[var(--color-primary-soft)]"
+            >
+              아이콘 관리
+            </Link>
+          </div>
         </div>
         <Button type="button" variant="secondary" onClick={clearAuth}>
           로그아웃
@@ -88,6 +97,14 @@ export const AppRouter: React.FC = () => (
       element={
         <ProtectedRoute>
           <IconsPage />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/categories"
+      element={
+        <ProtectedRoute>
+          <CategoriesPage />
         </ProtectedRoute>
       }
     />
