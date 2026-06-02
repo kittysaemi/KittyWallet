@@ -32,6 +32,7 @@ erDiagram
     USER ||--o{ CATEGORY : owns
     USER ||--o{ CATEGORY_USER_SETTING : configures
     USER ||--o{ ICON : owns
+    ICON_DICTIONARY ||--o{ ICON : maps
     USER ||--o{ USER_SETTING : owns
     USER ||--o{ SYNC_CLIENT : owns
     USER ||--o{ SYNC_HISTORY : owns
@@ -49,6 +50,16 @@ erDiagram
     ICON ||--o{ ACCOUNT : uses
     ICON ||--o{ CARD : uses
     ICON ||--o{ CATEGORY : uses
+
+    ICON_DICTIONARY {
+        BIGINT icon_dictionary_id PK "아이콘 사전 ID"
+        VARCHAR icon_code "서비스 내부 아이콘 코드"
+        VARCHAR provider_type "외부 Provider 유형"
+        VARCHAR provider_key "Provider 내부 식별자"
+        VARCHAR[] search_keywords "검색어/별칭"
+        DATETIME created_at
+        DATETIME updated_at
+    }
 
     USER {
         BIGINT user_id PK "사용자 고유 ID"
@@ -126,7 +137,7 @@ erDiagram
     ICON {
         BIGINT icon_id PK "아이콘 ID"
         BIGINT user_id FK "사용자 ID. 기본 아이콘은 NULL"
-        VARCHAR icon_value "아이콘 코드 또는 이모지 값"
+        BIGINT icon_dictionary_id FK "아이콘 사전 ID"
         BOOLEAN show "화면 표시 여부"
         BOOLEAN is_default "기본 아이콘 여부"
         DATETIME created_at "생성일시"
@@ -273,7 +284,8 @@ erDiagram
 | SYNC_HISTORY | `sync_client_id`, `client_temp_id`, `sync_action`, `server_applied_at` 기준 조회 인덱스 |
 | CATEGORY | 기본 카테고리 `(category_name, is_default)` unique, 사용자 카테고리 `(user_id, category_name)` unique |
 | CATEGORY_USER_SETTING | `(user_id, category_id)` unique |
-| ICON | 기본 아이콘 `(icon_value, is_default)` unique, 사용자 아이콘 `(user_id, icon_value)` unique |
+| ICON_DICTIONARY | `icon_code` unique, `(provider_type, provider_key)` unique |
+| ICON | 사용자 아이콘 `(user_id, icon_dictionary_id)` unique. 기본 아이콘은 시드 로직에서 중복을 방지 |
 
 동기화 대상은 MVP 기준 거래만 포함한다.
 

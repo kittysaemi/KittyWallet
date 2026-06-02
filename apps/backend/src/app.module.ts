@@ -1,10 +1,12 @@
 import { Module } from "@nestjs/common";
-import { APP_GUARD } from "@nestjs/core";
+import { APP_GUARD, APP_INTERCEPTOR } from "@nestjs/core";
 import { ConfigModule } from "@nestjs/config";
 import { PrismaModule } from "./database/prisma.module";
 import { HealthModule } from "./modules/health/health.module";
 import { AuthModule } from "./modules/auth/auth.module";
+import { IconsModule } from "./modules/icons/icons.module";
 import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
+import { ApiResponseInterceptor } from "./common/interceptors/api-response.interceptor";
 
 @Module({
   imports: [
@@ -14,12 +16,17 @@ import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
     PrismaModule,
     HealthModule,
     AuthModule,
+    IconsModule
   ],
   providers: [
     {
       provide: APP_GUARD,
-      useClass: JwtAuthGuard,
+      useClass: JwtAuthGuard
     },
-  ],
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: ApiResponseInterceptor
+    }
+  ]
 })
 export class AppModule {}
