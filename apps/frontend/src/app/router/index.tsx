@@ -4,6 +4,7 @@ import { useAuthStore } from "../../entities/auth/store/authStore";
 import AccountsPage from "../../pages/accounts";
 import AccountNewPage from "../../pages/accounts/new";
 import AccountEditPage from "../../pages/accounts/edit";
+import CategoriesPage from "../../pages/categories";
 import IconsPage from "../../pages/icons";
 import LoginPage from "../../pages/login";
 import SignupPage from "../../pages/signup";
@@ -38,7 +39,7 @@ const DashboardPage: React.FC = () => {
           안녕하세요, <span className="font-semibold">{user?.nickname}</span>님
         </p>
         <p className="mb-8 text-sm text-[var(--color-text-secondary)]">대시보드 준비 중입니다.</p>
-        <div className="mb-3 flex flex-col gap-2">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:justify-center">
           <Link
             to="/accounts"
             className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-text-primary)] transition hover:bg-[var(--color-primary-hover)]"
@@ -46,8 +47,14 @@ const DashboardPage: React.FC = () => {
             계좌 관리
           </Link>
           <Link
+            to="/categories"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] px-4 py-2 text-sm font-semibold text-[var(--color-text-secondary)] transition hover:bg-[var(--color-primary-soft)]"
+          >
+            카테고리 관리
+          </Link>
+          <Link
             to="/icons"
-            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-text-primary)] transition hover:bg-[var(--color-primary-hover)]"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] px-4 py-2 text-sm font-semibold text-[var(--color-text-secondary)] transition hover:bg-[var(--color-primary-soft)]"
           >
             아이콘 관리
           </Link>
@@ -121,6 +128,14 @@ export const AppRouter: React.FC = () => (
       element={
         <ProtectedRoute>
           <IconsPage />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/categories"
+      element={
+        <ProtectedRoute>
+          <CategoriesPage />
         </ProtectedRoute>
       }
     />
