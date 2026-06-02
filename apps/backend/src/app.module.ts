@@ -6,6 +6,7 @@ import { HealthModule } from "./modules/health/health.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { IconsModule } from "./modules/icons/icons.module";
 import { CategoriesModule } from "./modules/categories/categories.module";
+import { AccountsModule } from "./modules/accounts/accounts.module";
 import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
 import { ApiResponseInterceptor } from "./common/interceptors/api-response.interceptor";
 
@@ -18,7 +19,8 @@ import { ApiResponseInterceptor } from "./common/interceptors/api-response.inter
     HealthModule,
     AuthModule,
     IconsModule,
-    CategoriesModule
+    CategoriesModule,
+    AccountsModule
   ],
   providers: [
     {
