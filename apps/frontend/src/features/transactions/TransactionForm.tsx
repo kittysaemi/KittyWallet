@@ -4,6 +4,7 @@ import { AxiosError } from "axios";
 import { ChevronDown, Circle } from "lucide-react";
 import { z } from "zod";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
+import type { TransactionItem } from "../../entities/transaction/model/transaction.types";
 import { accountApi } from "../../entities/account/api/accountApi";
 import { cardApi } from "../../entities/card/api/cardApi";
 import { categoryApi } from "../../entities/category/api/categoryApi";
@@ -191,18 +192,31 @@ const IconDropdown: React.FC<IconDropdownProps> = ({
 // 메인 폼
 interface TransactionFormProps {
   onSuccess: () => void;
+  initialData?: TransactionItem;
+  transactionId?: number;
 }
 
-export const TransactionForm: React.FC<TransactionFormProps> = ({ onSuccess }) => {
+export const TransactionForm: React.FC<TransactionFormProps> = ({
+  onSuccess,
+  initialData,
+  transactionId
+}) => {
+  const isEditMode = !!transactionId;
   const queryClient = useQueryClient();
 
-  const [txType, setTxType] = React.useState<"INCOME" | "EXPENSE">("EXPENSE");
-  const [walletId, setWalletId] = React.useState<number>(0);
-  const [walletType, setWalletType] = React.useState<"ACCOUNT" | "CARD">("ACCOUNT");
-  const [categoryId, setCategoryId] = React.useState<number>(0);
-  const [amountStr, setAmountStr] = React.useState<string>("");
-  const [date, setDate] = React.useState<string>(today);
-  const [memo, setMemo] = React.useState<string>("");
+  const [txType, setTxType] = React.useState<"INCOME" | "EXPENSE">(
+    initialData?.transaction_type ?? "EXPENSE"
+  );
+  const [walletId, setWalletId] = React.useState<number>(initialData?.wallet_id ?? 0);
+  const [walletType, setWalletType] = React.useState<"ACCOUNT" | "CARD">(
+    initialData?.wallet_type ?? "ACCOUNT"
+  );
+  const [categoryId, setCategoryId] = React.useState<number>(initialData?.category_id ?? 0);
+  const [amountStr, setAmountStr] = React.useState<string>(
+    initialData ? initialData.amount.toLocaleString("ko-KR") : ""
+  );
+  const [date, setDate] = React.useState<string>(initialData?.transaction_date ?? today);
+  const [memo, setMemo] = React.useState<string>(initialData?.memo ?? "");
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [apiError, setApiError] = React.useState<string>("");
 
@@ -264,7 +278,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSuccess }) =
     [categoriesQuery.data]
   );
 
-  const mutation = useMutation({
+  const createMutation = useMutation({
     mutationFn: transactionApi.createTransaction,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["transactions"] });
@@ -278,6 +292,24 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSuccess }) =
       setApiError(code && API_ERRORS[code] ? API_ERRORS[code] : "거래 등록에 실패했습니다.");
     }
   });
+
+  const updateMutation = useMutation({
+    mutationFn: (data: Parameters<typeof transactionApi.updateTransaction>[1]) =>
+      transactionApi.updateTransaction(transactionId!, data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      onSuccess();
+    },
+    onError: (err: unknown) => {
+      const code =
+        err instanceof AxiosError
+          ? (err.response?.data as { error?: { code?: string } })?.error?.code
+          : undefined;
+      setApiError(code && API_ERRORS[code] ? API_ERRORS[code] : "거래 수정에 실패했습니다.");
+    }
+  });
+
+  const mutation = isEditMode ? updateMutation : createMutation;
 
   function handleTxTypeChange(type: "INCOME" | "EXPENSE") {
     setTxType(type);
@@ -324,7 +356,19 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSuccess }) =
     }
 
     setErrors({});
-    mutation.mutate(parsed.data);
+    if (isEditMode) {
+      updateMutation.mutate({
+        transaction_type: parsed.data.transaction_type,
+        wallet_type: parsed.data.wallet_type,
+        wallet_id: parsed.data.wallet_id,
+        category_id: parsed.data.category_id,
+        amount: parsed.data.amount,
+        memo: parsed.data.memo ?? null,
+        transaction_date: parsed.data.transaction_date
+      });
+    } else {
+      createMutation.mutate(parsed.data);
+    }
   }
 
   const isSaving = mutation.isPending;
@@ -451,7 +495,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSuccess }) =
       )}
 
       <Button type="submit" disabled={isSaving} className="mt-2">
-        {isSaving ? "저장 중..." : "거래 등록"}
+        {isSaving ? "저장 중..." : isEditMode ? "수정 완료" : "거래 등록"}
       </Button>
     </form>
   );

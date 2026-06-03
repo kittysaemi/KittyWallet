@@ -38,6 +38,32 @@ export interface CreateTransactionResult {
   synced_at: string | null;
 }
 
+export interface UpdateTransactionRequest {
+  wallet_type?: "ACCOUNT" | "CARD";
+  wallet_id?: number;
+  category_id?: number;
+  transaction_type?: "INCOME" | "EXPENSE";
+  amount?: number;
+  memo?: string | null;
+  transaction_date?: string;
+}
+
+export interface UpdateTransactionResult {
+  transaction_id: number;
+  wallet_type: string;
+  wallet_id: number;
+  transaction_type: string;
+  amount: number;
+  transaction_date: string;
+  updated_at: string;
+}
+
+export interface DeleteTransactionResult {
+  transaction_id: number;
+  deleted_yn: boolean;
+  updated_at: string;
+}
+
 export interface TransactionListParams {
   start_date?: string;
   end_date?: string;

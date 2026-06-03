@@ -3,9 +3,12 @@ import type {
   ApiResponse,
   CreateTransactionRequest,
   CreateTransactionResult,
+  DeleteTransactionResult,
   TransactionItem,
   TransactionListData,
-  TransactionListParams
+  TransactionListParams,
+  UpdateTransactionRequest,
+  UpdateTransactionResult
 } from "../model/transaction.types";
 
 export const transactionApi = {
@@ -35,6 +38,24 @@ export const transactionApi = {
     data: CreateTransactionRequest
   ): Promise<ApiResponse<CreateTransactionResult>> => {
     const res = await apiClient.post<ApiResponse<CreateTransactionResult>>("/transactions", data);
+    return res.data;
+  },
+
+  updateTransaction: async (
+    id: number,
+    data: UpdateTransactionRequest
+  ): Promise<ApiResponse<UpdateTransactionResult>> => {
+    const res = await apiClient.put<ApiResponse<UpdateTransactionResult>>(
+      `/transactions/${id}`,
+      data
+    );
+    return res.data;
+  },
+
+  deleteTransaction: async (id: number): Promise<ApiResponse<DeleteTransactionResult>> => {
+    const res = await apiClient.delete<ApiResponse<DeleteTransactionResult>>(
+      `/transactions/${id}`
+    );
     return res.data;
   }
 };

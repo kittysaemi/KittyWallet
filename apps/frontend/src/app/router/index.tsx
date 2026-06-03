@@ -4,6 +4,7 @@ import { useAuthStore } from "../../entities/auth/store/authStore";
 import AccountsPage from "../../pages/accounts";
 import TransactionsPage from "../../pages/transactions";
 import TransactionNewPage from "../../pages/transactions/new";
+import TransactionEditPage from "../../pages/transactions/edit";
 import CardsPage from "../../pages/cards";
 import CategoriesPage from "../../pages/categories";
 import IconsPage from "../../pages/icons";
@@ -157,6 +158,14 @@ export const AppRouter: React.FC = () => (
       element={
         <ProtectedRoute>
           <TransactionNewPage />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/transactions/:id/edit"
+      element={
+        <ProtectedRoute>
+          <TransactionEditPage />
         </ProtectedRoute>
       }
     />
