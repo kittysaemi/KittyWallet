@@ -4,6 +4,10 @@ import { ChevronLeft, ChevronRight, Plus, RefreshCw, WifiOff } from "lucide-reac
 import { Link } from "react-router-dom";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import type { TransactionItem } from "../../entities/transaction/model/transaction.types";
+import { categoryApi } from "../../entities/category/api/categoryApi";
+import { iconApi } from "../../entities/icon/api/iconApi";
+import type { IconItem } from "../../entities/icon/model/icon.types";
+import { IconRenderer } from "../../shared/ui/IconRenderer";
 
 const cardClass =
   "rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] shadow-[0_4px_16px_var(--color-card-shadow)]";
@@ -50,31 +54,47 @@ const TransactionSkeleton: React.FC = () => (
   </div>
 );
 
-const TransactionCard: React.FC<{ item: TransactionItem }> = ({ item }) => (
-  <div className={`${cardClass} flex items-center gap-3 p-4`}>
-    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-bg-secondary)] text-sm font-medium text-[var(--color-text-secondary)]">
-      {item.category_name.slice(0, 1)}
-    </div>
-    <div className="min-w-0 flex-1">
-      <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">
+interface TransactionCardProps {
+  item: TransactionItem;
+  iconMap: Map<number, IconItem>;
+  categoryIconMap: Map<number, number>;
+}
+
+const TransactionCard: React.FC<TransactionCardProps> = ({ item, iconMap, categoryIconMap }) => {
+  const iconId = categoryIconMap.get(item.category_id);
+  const icon = iconId ? iconMap.get(iconId) : undefined;
+
+  return (
+    <div className={`${cardClass} flex items-center gap-3 p-4`}>
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-bg-secondary)]">
+        {icon ? (
+          <IconRenderer
+            providerType={icon.provider_type}
+            providerKey={icon.provider_key}
+            size={20}
+            className="text-[var(--color-text-primary)]"
+          />
+        ) : (
+          <span className="text-sm font-medium text-[var(--color-text-secondary)]">
+            {item.category_name.slice(0, 1)}
+          </span>
+        )}
+      </div>
+      <p className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--color-text-primary)]">
         {item.category_name}
       </p>
-      <p className="truncate text-xs text-[var(--color-text-secondary)]">
-        {item.wallet_name} · {item.wallet_type === "ACCOUNT" ? "계좌" : "카드"}
-        {item.memo ? ` · ${item.memo}` : ""}
+      <p
+        className={`shrink-0 text-sm font-semibold ${
+          item.transaction_type === "INCOME"
+            ? "text-[var(--color-success,#22c55e)]"
+            : "text-[var(--color-text-primary)]"
+        }`}
+      >
+        {formatAmount(item.amount, item.transaction_type)}
       </p>
     </div>
-    <p
-      className={`shrink-0 text-sm font-semibold ${
-        item.transaction_type === "INCOME"
-          ? "text-[var(--color-success,#22c55e)]"
-          : "text-[var(--color-text-primary)]"
-      }`}
-    >
-      {formatAmount(item.amount, item.transaction_type)}
-    </p>
-  </div>
-);
+  );
+};
 
 const TransactionsPage: React.FC = () => {
   const now = new Date();
@@ -92,6 +112,30 @@ const TransactionsPage: React.FC = () => {
     staleTime: 30 * 1000,
     retry: isOffline ? false : 2
   });
+
+  const categoriesQuery = useQuery({
+    queryKey: ["categories", "active"],
+    queryFn: () => categoryApi.getCategories(true),
+    staleTime: 5 * 60 * 1000
+  });
+
+  const iconsQuery = useQuery({
+    queryKey: ["icons", "select"],
+    queryFn: () => iconApi.getIcons(true),
+    staleTime: 10 * 60 * 1000
+  });
+
+  const iconMap = React.useMemo(() => {
+    const map = new Map<number, IconItem>();
+    iconsQuery.data?.data?.items.forEach((icon) => map.set(icon.icon_id, icon));
+    return map;
+  }, [iconsQuery.data]);
+
+  const categoryIconMap = React.useMemo(() => {
+    const map = new Map<number, number>();
+    categoriesQuery.data?.data?.items.forEach((cat) => map.set(cat.category_id, cat.icon_id));
+    return map;
+  }, [categoriesQuery.data]);
 
   const items = query.data?.data?.items ?? [];
   const totalCount = query.data?.data?.total_count ?? 0;
@@ -209,7 +253,12 @@ const TransactionsPage: React.FC = () => {
                 </p>
                 <div className="flex flex-col gap-2">
                   {txList.map((tx) => (
-                    <TransactionCard key={tx.transaction_id} item={tx} />
+                    <TransactionCard
+                      key={tx.transaction_id}
+                      item={tx}
+                      iconMap={iconMap}
+                      categoryIconMap={categoryIconMap}
+                    />
                   ))}
                 </div>
               </div>
