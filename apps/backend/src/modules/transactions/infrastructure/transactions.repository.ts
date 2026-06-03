@@ -44,7 +44,7 @@ export class TransactionsRepository {
       userId: condition.userId,
       deletedYn: false,
       ...(dateFilter ? { transactionDate: dateFilter } : {}),
-      ...(condition.keyword ? { memo: { contains: condition.keyword } } : {}),
+      ...(condition.keyword ? { memo: { contains: condition.keyword, mode: "insensitive" } } : {}),
       ...(condition.walletType ? { walletType: condition.walletType } : {}),
       ...(condition.walletId ? { walletId: condition.walletId } : {}),
       ...(condition.categoryId ? { categoryId: condition.categoryId } : {}),
