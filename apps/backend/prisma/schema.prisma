@@ -31,6 +31,9 @@ model User {
   categoryUserSettings CategoryUserSetting[]
   accounts             Account[]
   cards                Card[]
+  transactions         Transaction[]
+  syncClients          SyncClient[]
+  syncHistories        SyncHistory[]
 
   @@map("USER")
 }
@@ -103,6 +106,7 @@ model Category {
   user                 User?                 @relation(fields: [userId], references: [userId], onDelete: SetNull)
   icon                 Icon                  @relation(fields: [iconId], references: [iconId])
   categoryUserSettings CategoryUserSetting[]
+  transactions         Transaction[]
 
   @@unique([userId, categoryName], map: "CATEGORY_user_id_category_name_key")
   @@index([userId])
@@ -167,4 +171,108 @@ model Card {
   @@index([userId])
   @@index([useYn])
   @@map("CARD")
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum WalletType {
+  ACCOUNT
+  CARD
+}
+
+enum SyncAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+enum SyncResult {
+  SUCCESS
+  FAILED
+  CONFLICT
+}
+
+model SyncClient {
+  syncClientId BigInt    @id @default(autoincrement()) @map("sync_client_id")
+  userId       BigInt    @map("user_id")
+  clientId     String    @map("client_id")
+  deviceName   String?   @map("device_name")
+  platform     String?
+  lastSyncedAt DateTime? @map("last_synced_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  user          User          @relation(fields: [userId], references: [userId])
+  transactions  Transaction[]
+  syncHistories SyncHistory[]
+
+  @@unique([userId, clientId], map: "SYNC_CLIENT_user_id_client_id_key")
+  @@index([userId])
+  @@index([clientId])
+  @@index([lastSyncedAt])
+  @@map("SYNC_CLIENT")
+}
+
+model Transaction {
+  transactionId   BigInt          @id @default(autoincrement()) @map("transaction_id")
+  userId          BigInt          @map("user_id")
+  categoryId      BigInt          @map("category_id")
+  walletId        BigInt          @map("wallet_id")
+  syncClientId    BigInt?         @map("sync_client_id")
+  clientTempId    String?         @map("client_temp_id")
+  transactionType TransactionType @map("transaction_type")
+  walletType      WalletType      @map("wallet_type")
+  amount          Decimal         @db.Decimal(15, 0)
+  transactionDate DateTime        @map("transaction_date") @db.Date
+  memo            String?         @db.VarChar(200)
+  deletedYn       Boolean         @default(false) @map("deleted_yn")
+  syncedAt        DateTime?       @map("synced_at")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  user          User         @relation(fields: [userId], references: [userId])
+  category      Category     @relation(fields: [categoryId], references: [categoryId])
+  syncClient    SyncClient?  @relation(fields: [syncClientId], references: [syncClientId])
+  syncHistories SyncHistory[]
+
+  @@unique([userId, syncClientId, clientTempId], map: "TRANSACTION_user_id_sync_client_id_client_temp_id_key")
+  @@index([userId])
+  @@index([transactionDate])
+  @@index([categoryId])
+  @@index([walletId])
+  @@index([walletType])
+  @@index([transactionType])
+  @@index([clientTempId])
+  @@index([syncClientId])
+  @@index([syncedAt])
+  @@index([deletedYn])
+  @@map("TRANSACTION")
+}
+
+model SyncHistory {
+  syncHistoryId   BigInt     @id @default(autoincrement()) @map("sync_history_id")
+  userId          BigInt     @map("user_id")
+  syncClientId    BigInt     @map("sync_client_id")
+  transactionId   BigInt?    @map("transaction_id")
+  clientTempId    String?    @map("client_temp_id")
+  syncAction      SyncAction @map("sync_action")
+  syncResult      SyncResult @map("sync_result")
+  errorMessage    String?    @map("error_message")
+  serverAppliedAt DateTime?  @map("server_applied_at")
+  createdAt       DateTime   @default(now()) @map("created_at")
+
+  user        User         @relation(fields: [userId], references: [userId])
+  syncClient  SyncClient   @relation(fields: [syncClientId], references: [syncClientId])
+  transaction Transaction? @relation(fields: [transactionId], references: [transactionId])
+
+  @@index([userId])
+  @@index([syncClientId])
+  @@index([transactionId])
+  @@index([clientTempId])
+  @@index([syncResult])
+  @@index([serverAppliedAt])
+  @@map("SYNC_HISTORY")
 }
