@@ -1,7 +1,7 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Plus, RefreshCw, WifiOff } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import type { TransactionItem } from "../../entities/transaction/model/transaction.types";
 import { categoryApi } from "../../entities/category/api/categoryApi";
@@ -61,11 +61,18 @@ interface TransactionCardProps {
 }
 
 const TransactionCard: React.FC<TransactionCardProps> = ({ item, iconMap, categoryIconMap }) => {
+  const navigate = useNavigate();
   const iconId = categoryIconMap.get(item.category_id);
   const icon = iconId ? iconMap.get(iconId) : undefined;
 
   return (
-    <div className={`${cardClass} flex items-center gap-3 p-4`}>
+    <div
+      className={`${cardClass} flex cursor-pointer items-center gap-3 p-4 transition hover:bg-[var(--color-bg-secondary)]`}
+      onClick={() => navigate(`/transactions/${item.transaction_id}/edit`)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => e.key === "Enter" && navigate(`/transactions/${item.transaction_id}/edit`)}
+    >
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-bg-secondary)]">
         {icon ? (
           <IconRenderer
