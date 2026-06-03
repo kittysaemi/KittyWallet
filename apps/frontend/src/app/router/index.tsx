@@ -3,6 +3,7 @@ import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { useAuthStore } from "../../entities/auth/store/authStore";
 import AccountsPage from "../../pages/accounts";
 import TransactionsPage from "../../pages/transactions";
+import TransactionNewPage from "../../pages/transactions/new";
 import CardsPage from "../../pages/cards";
 import CategoriesPage from "../../pages/categories";
 import IconsPage from "../../pages/icons";
@@ -148,6 +149,14 @@ export const AppRouter: React.FC = () => (
       element={
         <ProtectedRoute>
           <TransactionsPage />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/transactions/new"
+      element={
+        <ProtectedRoute>
+          <TransactionNewPage />
         </ProtectedRoute>
       }
     />

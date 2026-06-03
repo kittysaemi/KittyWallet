@@ -1,6 +1,8 @@
 import { apiClient } from "../../../shared/api/apiClient";
 import type {
   ApiResponse,
+  CreateTransactionRequest,
+  CreateTransactionResult,
   TransactionItem,
   TransactionListData,
   TransactionListParams
@@ -26,6 +28,13 @@ export const transactionApi = {
 
   getTransaction: async (id: number): Promise<ApiResponse<TransactionItem>> => {
     const res = await apiClient.get<ApiResponse<TransactionItem>>(`/transactions/${id}`);
+    return res.data;
+  },
+
+  createTransaction: async (
+    data: CreateTransactionRequest
+  ): Promise<ApiResponse<CreateTransactionResult>> => {
+    const res = await apiClient.post<ApiResponse<CreateTransactionResult>>("/transactions", data);
     return res.data;
   }
 };
