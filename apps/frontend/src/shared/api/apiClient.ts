@@ -13,6 +13,12 @@ let failedQueue: Array<{
   reject: (error: unknown) => void;
 }> = [];
 
+export const authExpiredRedirect = {
+  redirect() {
+    window.location.href = "/login?expired=1";
+  }
+};
+
 const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue.forEach((prom) => {
     if (error) prom.reject(error);
@@ -86,7 +92,7 @@ apiClient.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null);
         useAuthStore.getState().clearAuth();
-        window.location.href = "/login?expired=1";
+        authExpiredRedirect.redirect();
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
