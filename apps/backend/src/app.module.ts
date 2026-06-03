@@ -8,6 +8,7 @@ import { IconsModule } from "./modules/icons/icons.module";
 import { CategoriesModule } from "./modules/categories/categories.module";
 import { AccountsModule } from "./modules/accounts/accounts.module";
 import { CardsModule } from "./modules/cards/cards.module";
+import { TransactionsModule } from "./modules/transactions/transactions.module";
 import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
 import { ApiResponseInterceptor } from "./common/interceptors/api-response.interceptor";
 
@@ -22,7 +23,8 @@ import { ApiResponseInterceptor } from "./common/interceptors/api-response.inter
     IconsModule,
     CategoriesModule,
     AccountsModule,
-    CardsModule
+    CardsModule,
+    TransactionsModule
   ],
   providers: [
     {
