@@ -166,4 +166,42 @@ export class TransactionsRepository {
       return transaction;
     });
   }
+
+  updateWithBalances(
+    transactionId: bigint,
+    updateData: Prisma.TransactionUpdateInput,
+    balanceChanges: Array<{ accountId: bigint; delta: number }>
+  ): Promise<Transaction> {
+    return this.prisma.$transaction(async (tx) => {
+      const transaction = await tx.transaction.update({
+        where: { transactionId },
+        data: updateData
+      });
+      for (const change of balanceChanges) {
+        await tx.account.update({
+          where: { accountId: change.accountId },
+          data: { currentBalance: { increment: change.delta } }
+        });
+      }
+      return transaction;
+    });
+  }
+
+  softDeleteWithBalance(
+    transactionId: bigint,
+    balanceChange?: { accountId: bigint; delta: number }
+  ): Promise<Transaction> {
+    return this.prisma.$transaction(async (tx) => {
+      if (balanceChange) {
+        await tx.account.update({
+          where: { accountId: balanceChange.accountId },
+          data: { currentBalance: { increment: balanceChange.delta } }
+        });
+      }
+      return tx.transaction.update({
+        where: { transactionId },
+        data: { deletedYn: true }
+      });
+    });
+  }
 }

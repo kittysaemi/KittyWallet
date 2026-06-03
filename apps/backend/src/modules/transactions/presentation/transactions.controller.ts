@@ -1,7 +1,8 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Query } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, Query } from "@nestjs/common";
 import { CurrentUser, JwtPayload } from "../../../common/decorators/current-user.decorator";
 import { TransactionsService } from "../application/transactions.service";
 import { CreateTransactionRequestDto } from "./dto/request/create-transaction-request.dto";
+import { UpdateTransactionRequestDto } from "./dto/request/update-transaction-request.dto";
 import { TransactionListQueryDto } from "./dto/request/transaction-list-query.dto";
 import { TransactionRecentQueryDto } from "./dto/request/transaction-recent-query.dto";
 
@@ -50,6 +51,30 @@ export class TransactionsController {
   @Get(":id")
   getTransaction(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
     return this.transactionsService.getTransaction(BigInt(id), BigInt(user.sub));
+  }
+
+  @Put(":id")
+  updateTransaction(
+    @CurrentUser() user: JwtPayload,
+    @Param("id") id: string,
+    @Body() dto: UpdateTransactionRequestDto
+  ) {
+    return this.transactionsService.updateTransaction({
+      transactionId: BigInt(id),
+      userId: BigInt(user.sub),
+      walletType: dto.wallet_type,
+      walletId: dto.wallet_id,
+      categoryId: dto.category_id,
+      transactionType: dto.transaction_type,
+      amount: dto.amount,
+      memo: dto.memo,
+      transactionDate: dto.transaction_date
+    });
+  }
+
+  @Delete(":id")
+  deleteTransaction(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
+    return this.transactionsService.deleteTransaction(BigInt(id), BigInt(user.sub));
   }
 
   @Post()

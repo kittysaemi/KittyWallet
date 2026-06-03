@@ -7,6 +7,34 @@ import {
   TransactionsRepository
 } from "../infrastructure/transactions.repository";
 
+export interface UpdateTransactionResult {
+  transaction_id: number;
+  wallet_type: string;
+  wallet_id: number;
+  transaction_type: string;
+  amount: number;
+  transaction_date: string;
+  updated_at: string;
+}
+
+export interface DeleteTransactionResult {
+  transaction_id: number;
+  deleted_yn: boolean;
+  updated_at: string;
+}
+
+interface UpdateTransactionCommand {
+  transactionId: bigint;
+  userId: bigint;
+  walletType?: string;
+  walletId?: number;
+  categoryId?: number;
+  transactionType?: string;
+  amount?: number;
+  memo?: string | null;
+  transactionDate?: string;
+}
+
 interface GetTransactionsCommand {
   userId: bigint;
   startDate?: string;
@@ -56,6 +84,186 @@ export interface CreateTransactionResult {
 @Injectable()
 export class TransactionsService {
   constructor(private readonly transactionsRepository: TransactionsRepository) {}
+
+  async updateTransaction(command: UpdateTransactionCommand): Promise<UpdateTransactionResult> {
+    const existing = await this.transactionsRepository.findById(
+      command.transactionId,
+      command.userId
+    );
+    if (!existing) {
+      throw new AppException("TX_005", "거래 내역을 찾을 수 없습니다.", HttpStatus.NOT_FOUND);
+    }
+
+    const hasUpdate =
+      command.walletType !== undefined ||
+      command.walletId !== undefined ||
+      command.categoryId !== undefined ||
+      command.transactionType !== undefined ||
+      command.amount !== undefined ||
+      command.memo !== undefined ||
+      command.transactionDate !== undefined;
+    if (!hasUpdate) {
+      throw new AppException(
+        "VALIDATION_001",
+        "수정 가능한 필드가 없습니다.",
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    const effWalletType = (command.walletType ?? existing.walletType) as "ACCOUNT" | "CARD";
+    const effWalletId = command.walletId ? BigInt(command.walletId) : existing.walletId;
+    const effTransactionType = (command.transactionType ?? existing.transactionType) as
+      | "INCOME"
+      | "EXPENSE";
+    const effAmount = command.amount ?? existing.amount.toNumber();
+    const effDate = command.transactionDate
+      ? new Date(command.transactionDate)
+      : existing.transactionDate;
+
+    if (effTransactionType === "INCOME" && effWalletType === "CARD") {
+      throw new AppException(
+        "TX_007",
+        "카드로 수입 거래를 저장할 수 없습니다.",
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    const todayStr = new Date().toISOString().split("T")[0];
+    if (command.transactionDate && command.transactionDate > todayStr) {
+      throw new AppException(
+        "TX_001",
+        "미래 날짜는 등록할 수 없습니다.",
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    if (command.categoryId !== undefined) {
+      const category = await this.transactionsRepository.findCategory(
+        BigInt(command.categoryId),
+        command.userId
+      );
+      if (!category) {
+        throw new AppException(
+          "CATEGORY_002",
+          "카테고리를 찾을 수 없습니다.",
+          HttpStatus.NOT_FOUND
+        );
+      }
+    }
+
+    if (effWalletType === "ACCOUNT") {
+      const account = await this.transactionsRepository.findAccount(effWalletId, command.userId);
+      if (!account) {
+        throw new AppException("TX_003", "존재하지 않는 계좌입니다.", HttpStatus.NOT_FOUND);
+      }
+    } else if (effWalletType === "CARD") {
+      const card = await this.transactionsRepository.findCard(effWalletId, command.userId);
+      if (!card) {
+        throw new AppException("TX_004", "존재하지 않는 카드입니다.", HttpStatus.NOT_FOUND);
+      }
+    }
+
+    const balanceChanges: Array<{ accountId: bigint; delta: number }> = [];
+    const oldWalletType = existing.walletType as "ACCOUNT" | "CARD";
+    const oldWalletId = existing.walletId;
+    const oldAmount = existing.amount.toNumber();
+    const oldTransactionType = existing.transactionType as "INCOME" | "EXPENSE";
+
+    if (oldWalletType === "ACCOUNT") {
+      const restoreDelta = oldTransactionType === "INCOME" ? -oldAmount : oldAmount;
+      const existingEntry = balanceChanges.find((c) => c.accountId === oldWalletId);
+      if (existingEntry) {
+        existingEntry.delta += restoreDelta;
+      } else {
+        balanceChanges.push({ accountId: oldWalletId, delta: restoreDelta });
+      }
+    }
+
+    if (effWalletType === "ACCOUNT") {
+      const applyDelta = effTransactionType === "INCOME" ? effAmount : -effAmount;
+      const existingEntry = balanceChanges.find((c) => c.accountId === effWalletId);
+      if (existingEntry) {
+        existingEntry.delta += applyDelta;
+      } else {
+        balanceChanges.push({ accountId: effWalletId, delta: applyDelta });
+      }
+
+      for (const change of balanceChanges.filter((c) => c.accountId === effWalletId)) {
+        const account = await this.transactionsRepository.findAccount(
+          effWalletId,
+          command.userId
+        );
+        if (!account) break;
+        if (account.currentBalance.toNumber() + change.delta < 0) {
+          throw new AppException(
+            "ACCOUNT_004",
+            "잔액이 부족합니다. 지출 금액이 현재 잔액을 초과합니다.",
+            HttpStatus.BAD_REQUEST
+          );
+        }
+      }
+    }
+
+    const updateData: Prisma.TransactionUpdateInput = {
+      ...(effWalletType !== existing.walletType ? { walletType: effWalletType } : {}),
+      ...(effWalletId !== existing.walletId ? { walletId: effWalletId } : {}),
+      ...(command.categoryId !== undefined
+        ? { category: { connect: { categoryId: BigInt(command.categoryId) } } }
+        : {}),
+      ...(effTransactionType !== existing.transactionType
+        ? { transactionType: effTransactionType }
+        : {}),
+      ...(command.amount !== undefined ? { amount: command.amount } : {}),
+      ...(command.memo !== undefined ? { memo: command.memo } : {}),
+      ...(command.transactionDate !== undefined ? { transactionDate: effDate } : {})
+    };
+
+    const updated = await this.transactionsRepository.updateWithBalances(
+      command.transactionId,
+      updateData,
+      balanceChanges
+    );
+
+    return {
+      transaction_id: Number(updated.transactionId),
+      wallet_type: updated.walletType,
+      wallet_id: Number(updated.walletId),
+      transaction_type: updated.transactionType,
+      amount: updated.amount.toNumber(),
+      transaction_date: updated.transactionDate.toISOString().split("T")[0],
+      updated_at: updated.updatedAt.toISOString()
+    };
+  }
+
+  async deleteTransaction(
+    transactionId: bigint,
+    userId: bigint
+  ): Promise<DeleteTransactionResult> {
+    const existing = await this.transactionsRepository.findById(transactionId, userId);
+    if (!existing) {
+      throw new AppException("TX_005", "거래 내역을 찾을 수 없습니다.", HttpStatus.NOT_FOUND);
+    }
+
+    let balanceChange: { accountId: bigint; delta: number } | undefined;
+    if (existing.walletType === "ACCOUNT") {
+      const restoreDelta =
+        existing.transactionType === "INCOME"
+          ? -existing.amount.toNumber()
+          : existing.amount.toNumber();
+      balanceChange = { accountId: existing.walletId, delta: restoreDelta };
+    }
+
+    const deleted = await this.transactionsRepository.softDeleteWithBalance(
+      transactionId,
+      balanceChange
+    );
+
+    return {
+      transaction_id: Number(deleted.transactionId),
+      deleted_yn: true,
+      updated_at: deleted.updatedAt.toISOString()
+    };
+  }
 
   async getTransactions(
     command: GetTransactionsCommand
