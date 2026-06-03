@@ -2,7 +2,7 @@ import { IsBoolean, IsInt, IsOptional, IsString, MaxLength, Min } from "class-va
 
 export class CreateCardRequestDto {
   @IsString()
-  @MaxLength(50)
+  @MaxLength(15)
   card_name!: string;
 
   @IsInt()

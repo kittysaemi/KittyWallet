@@ -14,7 +14,7 @@ const createSchema = z.object({
   account_name: z
     .string()
     .min(1, "계좌명을 입력해주세요.")
-    .max(50, "계좌명은 50자 이하여야 합니다."),
+    .max(15, "계좌명은 한글 기준 15자 이하여야 합니다."),
   initial_balance: z
     .number({ invalid_type_error: "금액을 입력해주세요." })
     .int("정수를 입력해주세요.")
@@ -26,7 +26,7 @@ const editSchema = z.object({
   account_name: z
     .string()
     .min(1, "계좌명을 입력해주세요.")
-    .max(50, "계좌명은 50자 이하여야 합니다.")
+    .max(15, "계좌명은 한글 기준 15자 이하여야 합니다.")
     .optional(),
   icon_id: z.number().min(1, "아이콘을 선택해주세요.").optional(),
   use_yn: z.boolean().optional()
@@ -75,8 +75,13 @@ export const AccountForm: React.FC<AccountFormProps> = ({ mode, account }) => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Parameters<typeof accountApi.updateAccount>[1] }) =>
-      accountApi.updateAccount(id, data),
+    mutationFn: ({
+      id,
+      data
+    }: {
+      id: number;
+      data: Parameters<typeof accountApi.updateAccount>[1];
+    }) => accountApi.updateAccount(id, data),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["accounts"] });
       navigate("/accounts", { replace: true });
@@ -152,7 +157,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({ mode, account }) => {
         }}
         placeholder="예: 생활비 통장"
         error={fieldErrors.account_name}
-        maxLength={50}
+        maxLength={15}
       />
 
       {!isEdit && (
@@ -178,7 +183,9 @@ export const AccountForm: React.FC<AccountFormProps> = ({ mode, account }) => {
           <p className="min-h-11 rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] px-3 py-2 text-sm text-[var(--color-text-primary)]">
             {(account.current_balance ?? account.initial_balance).toLocaleString()}원
           </p>
-          <p className="text-xs text-[var(--color-text-caption)]">잔액은 거래 기준으로 자동 계산됩니다.</p>
+          <p className="text-xs text-[var(--color-text-caption)]">
+            잔액은 거래 기준으로 자동 계산됩니다.
+          </p>
         </div>
       )}
 
