@@ -22,6 +22,22 @@ export interface TransactionListData {
   total_count: number;
 }
 
+export interface CreateTransactionRequest {
+  wallet_type: "ACCOUNT" | "CARD";
+  wallet_id: number;
+  category_id: number;
+  transaction_type: "INCOME" | "EXPENSE";
+  amount: number;
+  memo?: string;
+  transaction_date: string;
+}
+
+export interface CreateTransactionResult {
+  transaction_id: number;
+  updated_at: string;
+  synced_at: string | null;
+}
+
 export interface TransactionListParams {
   start_date?: string;
   end_date?: string;

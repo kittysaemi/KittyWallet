@@ -1,6 +1,6 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, RefreshCw, WifiOff } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, RefreshCw, WifiOff } from "lucide-react";
 import { Link } from "react-router-dom";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import type { TransactionItem } from "../../entities/transaction/model/transaction.types";
@@ -126,7 +126,13 @@ const TransactionsPage: React.FC = () => {
             ← 홈
           </Link>
           <h1 className="text-lg font-bold text-[var(--color-text-primary)]">거래 내역</h1>
-          <div className="w-10" />
+          <Link
+            to="/transactions/new"
+            className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-primary)] text-[var(--color-text-primary)] transition hover:bg-[var(--color-primary-hover)]"
+            aria-label="거래 등록"
+          >
+            <Plus size={18} />
+          </Link>
         </div>
 
         {/* 오프라인 배너 */}
