@@ -2,6 +2,7 @@ import React from "react";
 import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { useAuthStore } from "../../entities/auth/store/authStore";
 import AccountsPage from "../../pages/accounts";
+import TransactionsPage from "../../pages/transactions";
 import CardsPage from "../../pages/cards";
 import CategoriesPage from "../../pages/categories";
 import IconsPage from "../../pages/icons";
@@ -39,6 +40,12 @@ const DashboardPage: React.FC = () => {
         </p>
         <p className="mb-8 text-sm text-[var(--color-text-secondary)]">대시보드 준비 중입니다.</p>
         <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:justify-center">
+          <Link
+            to="/transactions"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-text-primary)] transition hover:bg-[var(--color-primary-hover)]"
+          >
+            거래 내역
+          </Link>
           <Link
             to="/accounts"
             className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-text-primary)] transition hover:bg-[var(--color-primary-hover)]"
@@ -133,6 +140,14 @@ export const AppRouter: React.FC = () => (
       element={
         <ProtectedRoute>
           <CategoriesPage />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/transactions"
+      element={
+        <ProtectedRoute>
+          <TransactionsPage />
         </ProtectedRoute>
       }
     />
