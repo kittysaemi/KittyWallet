@@ -1,6 +1,19 @@
 import { Injectable } from "@nestjs/common";
-import { Account, Card, Category, Transaction, TransactionType, WalletType } from "@prisma/client";
+import { Account, Card, Category, Prisma, Transaction, TransactionType, WalletType } from "@prisma/client";
 import { PrismaService } from "../../../database/prisma.service";
+
+export type TransactionWithCategory = Transaction & { category: Category };
+
+export interface FindTransactionsCondition {
+  userId: bigint;
+  startDate?: Date;
+  endDate?: Date;
+  keyword?: string;
+  walletType?: WalletType;
+  walletId?: bigint;
+  categoryId?: bigint;
+  transactionType?: TransactionType;
+}
 
 export interface CreateTransactionInput {
   userId: bigint;
@@ -17,6 +30,76 @@ export interface CreateTransactionInput {
 @Injectable()
 export class TransactionsRepository {
   constructor(private readonly prisma: PrismaService) {}
+
+  private buildWhere(condition: FindTransactionsCondition): Prisma.TransactionWhereInput {
+    const dateFilter: Prisma.DateTimeFilter | undefined =
+      condition.startDate || condition.endDate
+        ? {
+            ...(condition.startDate ? { gte: condition.startDate } : {}),
+            ...(condition.endDate ? { lte: condition.endDate } : {})
+          }
+        : undefined;
+
+    return {
+      userId: condition.userId,
+      deletedYn: false,
+      ...(dateFilter ? { transactionDate: dateFilter } : {}),
+      ...(condition.keyword ? { memo: { contains: condition.keyword } } : {}),
+      ...(condition.walletType ? { walletType: condition.walletType } : {}),
+      ...(condition.walletId ? { walletId: condition.walletId } : {}),
+      ...(condition.categoryId ? { categoryId: condition.categoryId } : {}),
+      ...(condition.transactionType ? { transactionType: condition.transactionType } : {})
+    };
+  }
+
+  findMany(
+    condition: FindTransactionsCondition,
+    page: number,
+    limit: number,
+    orderBy: Prisma.TransactionOrderByWithRelationInput[]
+  ): Promise<TransactionWithCategory[]> {
+    return this.prisma.transaction.findMany({
+      where: this.buildWhere(condition),
+      include: { category: true },
+      orderBy,
+      skip: (page - 1) * limit,
+      take: limit
+    });
+  }
+
+  count(condition: FindTransactionsCondition): Promise<number> {
+    return this.prisma.transaction.count({ where: this.buildWhere(condition) });
+  }
+
+  findById(transactionId: bigint, userId: bigint): Promise<TransactionWithCategory | null> {
+    return this.prisma.transaction.findFirst({
+      where: { transactionId, userId, deletedYn: false },
+      include: { category: true }
+    });
+  }
+
+  findRecent(userId: bigint, limit: number): Promise<TransactionWithCategory[]> {
+    return this.prisma.transaction.findMany({
+      where: { userId, deletedYn: false },
+      include: { category: true },
+      orderBy: [{ transactionDate: "desc" }, { createdAt: "desc" }],
+      take: limit
+    });
+  }
+
+  findAccountsByIds(ids: bigint[]): Promise<Pick<Account, "accountId" | "accountName">[]> {
+    return this.prisma.account.findMany({
+      where: { accountId: { in: ids } },
+      select: { accountId: true, accountName: true }
+    });
+  }
+
+  findCardsByIds(ids: bigint[]): Promise<Pick<Card, "cardId" | "cardName">[]> {
+    return this.prisma.card.findMany({
+      where: { cardId: { in: ids } },
+      select: { cardId: true, cardName: true }
+    });
+  }
 
   findAccount(accountId: bigint, userId: bigint): Promise<Account | null> {
     return this.prisma.account.findFirst({
