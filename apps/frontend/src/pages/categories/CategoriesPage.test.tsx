@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter } from "react-router-dom";
 import CategoriesPage from ".";
 import { categoryApi } from "../../entities/category/api/categoryApi";
 import { iconApi } from "../../entities/icon/api/iconApi";
@@ -33,13 +33,7 @@ const createWrapper = () => {
 
   const Wrapper: React.FC<React.PropsWithChildren> = ({ children }) => (
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={["/categories"]}>
-        <Routes>
-          <Route path="/categories" element={children} />
-          <Route path="/categories/new" element={<div>카테고리 등록 화면</div>} />
-          <Route path="/categories/:id/icon" element={<div>아이콘 선택 화면</div>} />
-        </Routes>
-      </MemoryRouter>
+      <MemoryRouter initialEntries={["/categories"]}>{children}</MemoryRouter>
     </QueryClientProvider>
   );
 
@@ -138,24 +132,40 @@ describe("CategoriesPage", () => {
     expect(await screen.findByText("식비")).toBeInTheDocument();
     expect(screen.getByText("반려동물")).toBeInTheDocument();
     expect(screen.getByText("취미")).toBeInTheDocument();
-    expect(screen.getByText("기본")).toBeInTheDocument();
+    expect(screen.queryByText("기본")).not.toBeInTheDocument();
     expect(screen.queryByText("숨김")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "식비 숨기기" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "식비 숨기기" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "반려동물 표시하기" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "카테고리 등록" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "식비 이름 변경" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "식비 이름 변경" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "반려동물 이름 변경" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "취미 이름 변경" })).toBeEnabled();
   });
 
-  it("moves to create screen from add action", async () => {
+  it("opens inline create form from add action", async () => {
     mockedCategoryApi.getCategories.mockResolvedValue(successCategories);
     mockedIconApi.getIcons.mockResolvedValueOnce(visibleIcons).mockResolvedValueOnce(hiddenIcons);
 
     render(<CategoriesPage />, { wrapper: createWrapper() });
 
     await userEvent.click(await screen.findByRole("button", { name: "카테고리 등록" }));
-    expect(screen.getByText("카테고리 등록 화면")).toBeInTheDocument();
+    expect(screen.getByLabelText("카테고리명")).toHaveAttribute("maxLength", "15");
+    expect(screen.getByRole("button", { name: "카테고리 아이콘 선택" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "등록" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "취소" })).toBeInTheDocument();
+  });
+
+  it("closes and resets inline category create form from cancel action", async () => {
+    mockedCategoryApi.getCategories.mockResolvedValue(successCategories);
+    mockedIconApi.getIcons.mockResolvedValueOnce(visibleIcons).mockResolvedValueOnce(hiddenIcons);
+
+    render(<CategoriesPage />, { wrapper: createWrapper() });
+
+    await userEvent.click(await screen.findByRole("button", { name: "카테고리 등록" }));
+    await userEvent.type(screen.getByLabelText("카테고리명"), "새카테고리");
+    await userEvent.click(screen.getByRole("button", { name: "취소" }));
+
+    expect(screen.queryByLabelText("카테고리명")).not.toBeInTheDocument();
   });
 
   it("edits active category name inline", async () => {
@@ -181,7 +191,10 @@ describe("CategoriesPage", () => {
 
   it("limits inline category name editing to 15 Korean characters", async () => {
     mockedCategoryApi.getCategories.mockResolvedValue(successCategories);
-    mockedIconApi.getIcons.mockResolvedValueOnce(visibleIcons).mockResolvedValueOnce(hiddenIcons);
+    mockedIconApi.getIcons
+      .mockResolvedValueOnce(visibleIcons)
+      .mockResolvedValueOnce(hiddenIcons)
+      .mockResolvedValueOnce(visibleIcons);
 
     render(<CategoriesPage />, { wrapper: createWrapper() });
 
@@ -200,7 +213,8 @@ describe("CategoriesPage", () => {
     expect(screen.getByRole("button", { name: "반려동물 아이콘 변경" })).toBeDisabled();
     await userEvent.click(screen.getByRole("button", { name: "취미 아이콘 변경" }));
 
-    expect(screen.getByText("아이콘 선택 화면")).toBeInTheDocument();
+    expect(screen.getByText("카테고리 아이콘 선택")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "닫기" })).toBeInTheDocument();
   });
 
   it("renders empty state when there are no categories", async () => {

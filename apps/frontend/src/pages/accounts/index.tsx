@@ -1,51 +1,25 @@
 import React from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Plus } from "lucide-react";
+import { z } from "zod";
 import { accountApi } from "../../entities/account/api/accountApi";
-import { iconApi } from "../../entities/icon/api/iconApi";
 import type { AccountItem } from "../../entities/account/model/account.types";
+import { iconApi } from "../../entities/icon/api/iconApi";
 import type { IconItem } from "../../entities/icon/model/icon.types";
 import { Button } from "../../shared/ui/Button";
 import { IconRenderer } from "../../shared/ui/IconRenderer";
+import { IconPickerSheet } from "../../features/icons/IconPickerSheet";
 
 const cardClass =
   "rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] shadow-[0_4px_16px_var(--color-card-shadow)]";
 
-const AccountCard: React.FC<{
-  account: AccountItem;
-  icon: IconItem | undefined;
-  onClick: () => void;
-}> = ({ account, icon, onClick }) => {
-  const inactive = !account.use_yn;
-  return (
-  <button
-    type="button"
-    onClick={onClick}
-    className={`${cardClass} flex w-full items-center gap-4 p-4 text-left transition hover:bg-[var(--color-bg-secondary)] active:bg-[var(--color-bg-secondary)] ${inactive ? "opacity-50 grayscale" : ""}`}
-  >
-    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-bg-secondary)]">
-      {icon ? (
-        <IconRenderer providerType={icon.provider_type} providerKey={icon.provider_key} size={24} />
-      ) : (
-        <span className="text-xl">💳</span>
-      )}
-    </div>
-    <div className="min-w-0 flex-1">
-      <div className="flex items-center gap-2">
-        <span className="truncate font-semibold text-[var(--color-text-primary)]">
-          {account.account_name}
-        </span>
-      </div>
-      {account.current_balance !== null && (
-        <p className="mt-0.5 text-sm text-[var(--color-text-secondary)]">
-          {account.current_balance.toLocaleString()}원
-        </p>
-      )}
-    </div>
-    <span className="shrink-0 text-[var(--color-text-caption)]">›</span>
-  </button>
-  );
-};
+const accountNameSchema = z
+  .string()
+  .trim()
+  .min(1, "계좌명을 입력해주세요.")
+  .max(15, "계좌명은 한글 기준 15자 이하여야 합니다.");
+
+type PickerTarget = { type: "create" } | { type: "edit"; item: AccountItem } | null;
 
 const AccountListSkeleton: React.FC = () => (
   <div className="flex flex-col gap-3" aria-label="계좌 목록을 불러오는 중입니다.">
@@ -62,8 +36,16 @@ const AccountListSkeleton: React.FC = () => (
 );
 
 const AccountsPage: React.FC = () => {
-  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const isOffline = !navigator.onLine;
+  const [isCreating, setIsCreating] = React.useState(false);
+  const [newName, setNewName] = React.useState("");
+  const [newBalance, setNewBalance] = React.useState("");
+  const [newIconId, setNewIconId] = React.useState<number | undefined>();
+  const [editingId, setEditingId] = React.useState<number | null>(null);
+  const [editingName, setEditingName] = React.useState("");
+  const [errors, setErrors] = React.useState<Record<string, string>>({});
+  const [pickerTarget, setPickerTarget] = React.useState<PickerTarget>(null);
 
   const accountsQuery = useQuery({
     queryKey: ["accounts"],
@@ -77,6 +59,38 @@ const AccountsPage: React.FC = () => {
     staleTime: 5 * 60 * 1000
   });
 
+  const refreshAccounts = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["accounts"] });
+  };
+
+  const createMutation = useMutation({
+    mutationFn: accountApi.createAccount,
+    onSuccess: async () => {
+      setIsCreating(false);
+      setNewName("");
+      setNewBalance("");
+      setNewIconId(undefined);
+      setErrors({});
+      await refreshAccounts();
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({
+      id,
+      data
+    }: {
+      id: number;
+      data: Parameters<typeof accountApi.updateAccount>[1];
+    }) => accountApi.updateAccount(id, data),
+    onSuccess: async () => {
+      setEditingId(null);
+      setEditingName("");
+      setErrors({});
+      await refreshAccounts();
+    }
+  });
+
   const iconMap = React.useMemo(() => {
     const map = new Map<number, IconItem>();
     iconsQuery.data?.data?.items.forEach((icon) => map.set(icon.icon_id, icon));
@@ -86,6 +100,75 @@ const AccountsPage: React.FC = () => {
   const accounts = accountsQuery.data?.data?.items ?? [];
   const isLoading = accountsQuery.isLoading;
   const isError = accountsQuery.isError || (accountsQuery.data && !accountsQuery.data.success);
+  const isPending = createMutation.isPending || updateMutation.isPending;
+
+  const saveCreate = () => {
+    const name = accountNameSchema.safeParse(newName);
+    const balance = Number(newBalance);
+    const nextErrors: Record<string, string> = {};
+    if (!name.success)
+      nextErrors.newName = name.error.errors[0]?.message ?? "입력값을 확인해주세요.";
+    if (newBalance === "" || Number.isNaN(balance)) nextErrors.newBalance = "잔액을 입력해주세요.";
+    if (balance < 0) nextErrors.newBalance = "초기 잔액은 0 이상이어야 합니다.";
+    if (!newIconId) nextErrors.newIcon = "아이콘을 선택해주세요.";
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0 || !name.success || !newIconId) return;
+    createMutation.mutate({
+      account_name: name.data,
+      initial_balance: balance,
+      icon_id: newIconId
+    });
+  };
+
+  const cancelCreate = () => {
+    setIsCreating(false);
+    setNewName("");
+    setNewBalance("");
+    setNewIconId(undefined);
+    setErrors({});
+  };
+
+  const startEditName = (account: AccountItem) => {
+    if (!account.use_yn || isPending) return;
+    setEditingId(account.account_id);
+    setEditingName(account.account_name);
+  };
+
+  const saveName = (account: AccountItem) => {
+    if (editingId !== account.account_id) return;
+    const parsed = accountNameSchema.safeParse(editingName);
+    if (!parsed.success) {
+      setErrors((prev) => ({
+        ...prev,
+        [`name-${account.account_id}`]: parsed.error.errors[0]?.message ?? "입력값을 확인해주세요."
+      }));
+      return;
+    }
+    if (parsed.data === account.account_name) {
+      setEditingId(null);
+      setEditingName("");
+      return;
+    }
+    updateMutation.mutate({ id: account.account_id, data: { account_name: parsed.data } });
+  };
+
+  const selectIcon = (icon: IconItem) => {
+    if (!pickerTarget) return;
+    if (pickerTarget.type === "create") {
+      setNewIconId(icon.icon_id);
+      setErrors((prev) => ({ ...prev, newIcon: "" }));
+      setPickerTarget(null);
+      return;
+    }
+    if (!pickerTarget.item.use_yn) return;
+    updateMutation.mutate({ id: pickerTarget.item.account_id, data: { icon_id: icon.icon_id } });
+    setPickerTarget(null);
+  };
+
+  const toggleUseYn = (account: AccountItem) => {
+    if (isPending) return;
+    updateMutation.mutate({ id: account.account_id, data: { use_yn: !account.use_yn } });
+  };
 
   return (
     <div className="min-h-screen bg-[var(--color-bg-primary)] px-4 py-6">
@@ -97,12 +180,14 @@ const AccountsPage: React.FC = () => {
               등록된 계좌를 관리합니다.
             </p>
           </div>
-          <Link
-            to="/accounts/new"
-            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-text-primary)] transition hover:bg-[var(--color-primary-hover)]"
+          <button
+            type="button"
+            aria-label="계좌 등록"
+            onClick={() => setIsCreating((prev) => !prev)}
+            className="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--color-primary)] text-[var(--color-text-primary)]"
           >
-            등록
-          </Link>
+            <Plus size={20} aria-hidden="true" />
+          </button>
         </header>
 
         {isOffline && (
@@ -110,6 +195,77 @@ const AccountsPage: React.FC = () => {
             <p className="text-sm text-[var(--color-text-secondary)]">
               현재 오프라인 상태예요. 저장한 내용은 연결 후 동기화됩니다.
             </p>
+          </div>
+        )}
+
+        {isCreating && (
+          <div className={`${cardClass} flex flex-col gap-3 p-4`}>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                aria-label="계좌 아이콘 선택"
+                onClick={() => setPickerTarget({ type: "create" })}
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-primary-soft)]"
+              >
+                {newIconId && iconMap.get(newIconId) ? (
+                  <IconRenderer
+                    providerType={iconMap.get(newIconId)!.provider_type}
+                    providerKey={iconMap.get(newIconId)!.provider_key}
+                    size={24}
+                  />
+                ) : (
+                  <Plus size={20} aria-hidden="true" />
+                )}
+              </button>
+              <input
+                aria-label="계좌명"
+                value={newName}
+                maxLength={15}
+                onChange={(event) => setNewName(event.target.value)}
+                placeholder="계좌명"
+                className="min-h-11 min-w-0 flex-1 rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none"
+              />
+            </div>
+            <input
+              aria-label="초기 잔액"
+              inputMode="numeric"
+              value={newBalance ? Number(newBalance).toLocaleString() : ""}
+              onChange={(event) => {
+                const raw = event.target.value.replace(/,/g, "").replace(/[^0-9]/g, "");
+                setNewBalance(raw);
+              }}
+              placeholder="초기 잔액"
+              className="min-h-11 rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none"
+            />
+            {Object.values(errors).some(Boolean) && (
+              <div className="space-y-1">
+                {Object.values(errors)
+                  .filter(Boolean)
+                  .map((error) => (
+                    <p key={error} className="text-xs text-[var(--color-danger)]">
+                      {error}
+                    </p>
+                  ))}
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                fullWidth
+                onClick={saveCreate}
+                isLoading={createMutation.isPending}
+              >
+                등록
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={cancelCreate}
+                disabled={createMutation.isPending}
+              >
+                취소
+              </Button>
+            </div>
           </div>
         )}
 
@@ -131,7 +287,7 @@ const AccountsPage: React.FC = () => {
           </div>
         )}
 
-        {!isLoading && !isError && accounts.length === 0 && (
+        {!isLoading && !isError && accounts.length === 0 && !isCreating && (
           <div className={`${cardClass} flex flex-col items-center px-6 py-12 text-center`}>
             <span className="text-5xl">🐾</span>
             <p className="mt-4 font-semibold text-[var(--color-text-primary)]">
@@ -140,28 +296,114 @@ const AccountsPage: React.FC = () => {
             <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
               첫 계좌를 등록해볼까요?
             </p>
-            <Link
-              to="/accounts/new"
-              className="mt-6 inline-flex min-h-11 items-center justify-center rounded-xl bg-[var(--color-primary)] px-6 py-2 text-sm font-semibold text-[var(--color-text-primary)] transition hover:bg-[var(--color-primary-hover)]"
-            >
-              계좌 등록
-            </Link>
           </div>
         )}
 
         {!isLoading && !isError && accounts.length > 0 && (
           <div className="flex flex-col gap-3" aria-label="계좌 목록">
-            {accounts.map((account) => (
-              <AccountCard
-                key={account.account_id}
-                account={account}
-                icon={iconMap.get(account.icon_id)}
-                onClick={() => navigate(`/accounts/${account.account_id}/edit`)}
-              />
-            ))}
+            {accounts.map((account) => {
+              const inactive = !account.use_yn;
+              const isEditing = editingId === account.account_id;
+              const icon = iconMap.get(account.icon_id);
+              return (
+                <div
+                  key={account.account_id}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${account.account_name} ${account.use_yn ? "비활성화" : "활성화"}`}
+                  onClick={() => toggleUseYn(account)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") toggleUseYn(account);
+                  }}
+                  className={`${cardClass} flex w-full cursor-pointer items-center gap-4 p-4 text-left transition hover:bg-[var(--color-bg-secondary)] active:bg-[var(--color-bg-secondary)]`}
+                >
+                  <button
+                    type="button"
+                    aria-label={`${account.account_name} 아이콘 변경`}
+                    disabled={inactive || isPending}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setPickerTarget({ type: "edit", item: account });
+                    }}
+                    className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-bg-secondary)] disabled:cursor-not-allowed ${
+                      inactive
+                        ? "text-[var(--gray-500)] grayscale"
+                        : "text-[var(--color-text-primary)]"
+                    }`}
+                  >
+                    {icon ? (
+                      <IconRenderer
+                        providerType={icon.provider_type}
+                        providerKey={icon.provider_key}
+                        size={24}
+                      />
+                    ) : (
+                      <span className="text-xl">💳</span>
+                    )}
+                  </button>
+                  <div className="min-w-0 flex-1">
+                    {isEditing ? (
+                      <input
+                        aria-label={`${account.account_name} 이름 수정`}
+                        value={editingName}
+                        maxLength={15}
+                        autoFocus
+                        onClick={(event) => event.stopPropagation()}
+                        onChange={(event) => setEditingName(event.target.value)}
+                        onBlur={() => saveName(account)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") saveName(account);
+                          if (event.key === "Escape") {
+                            setEditingId(null);
+                            setEditingName("");
+                          }
+                        }}
+                        className="min-h-10 w-full rounded-xl border border-[var(--color-primary)] bg-[var(--color-bg-input)] px-3 py-2 font-semibold text-[var(--color-text-primary)] outline-none"
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        aria-label={`${account.account_name} 이름 변경`}
+                        disabled={inactive || isPending}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          startEditName(account);
+                        }}
+                        className={`truncate text-left font-semibold disabled:cursor-not-allowed ${
+                          inactive ? "text-[var(--gray-500)]" : "text-[var(--color-text-primary)]"
+                        }`}
+                      >
+                        {account.account_name}
+                      </button>
+                    )}
+                    {account.current_balance !== null && (
+                      <p
+                        className={`mt-0.5 text-sm ${
+                          inactive ? "text-[var(--gray-500)]" : "text-[var(--color-text-secondary)]"
+                        }`}
+                      >
+                        {account.current_balance.toLocaleString()}원
+                      </p>
+                    )}
+                    {errors[`name-${account.account_id}`] && (
+                      <p className="mt-1 text-xs text-[var(--color-danger)]">
+                        {errors[`name-${account.account_id}`]}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
+      <IconPickerSheet
+        title="계좌 아이콘 선택"
+        isOpen={pickerTarget !== null}
+        selectedIconId={pickerTarget?.type === "create" ? newIconId : pickerTarget?.item.icon_id}
+        onClose={() => setPickerTarget(null)}
+        onSelect={selectIcon}
+      />
     </div>
   );
 };

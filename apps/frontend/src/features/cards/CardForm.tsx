@@ -14,7 +14,7 @@ const createSchema = z.object({
   card_name: z
     .string()
     .min(1, "카드명을 입력해주세요.")
-    .max(50, "카드명은 50자 이하여야 합니다."),
+    .max(15, "카드명은 한글 기준 15자 이하여야 합니다."),
   icon_id: z.number().min(1, "아이콘을 선택해주세요.")
 });
 
@@ -22,7 +22,7 @@ const editSchema = z.object({
   card_name: z
     .string()
     .min(1, "카드명을 입력해주세요.")
-    .max(50, "카드명은 50자 이하여야 합니다.")
+    .max(15, "카드명은 한글 기준 15자 이하여야 합니다.")
     .optional(),
   icon_id: z.number().min(1).optional(),
   use_yn: z.boolean().optional()
@@ -143,7 +143,7 @@ export const CardForm: React.FC<CardFormProps> = ({ mode, card }) => {
         }}
         placeholder="예: 신한카드"
         error={fieldErrors.card_name}
-        maxLength={50}
+        maxLength={15}
       />
 
       <div className="flex flex-col gap-2">

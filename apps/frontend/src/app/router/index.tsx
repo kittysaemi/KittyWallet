@@ -2,14 +2,8 @@ import React from "react";
 import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { useAuthStore } from "../../entities/auth/store/authStore";
 import AccountsPage from "../../pages/accounts";
-import AccountNewPage from "../../pages/accounts/new";
-import AccountEditPage from "../../pages/accounts/edit";
 import CardsPage from "../../pages/cards";
-import CardNewPage from "../../pages/cards/new";
-import CardEditPage from "../../pages/cards/edit";
 import CategoriesPage from "../../pages/categories";
-import CategoryNewPage from "../../pages/categories/new";
-import CategoryIconSelectPage from "../../pages/categories/icon";
 import IconsPage from "../../pages/icons";
 import LoginPage from "../../pages/login";
 import SignupPage from "../../pages/signup";
@@ -119,32 +113,12 @@ export const AppRouter: React.FC = () => (
       }
     />
     <Route
-      path="/accounts/new"
-      element={
-        <ProtectedRoute>
-          <AccountNewPage />
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path="/accounts/:id/edit"
-      element={
-        <ProtectedRoute>
-          <AccountEditPage />
-        </ProtectedRoute>
-      }
-    />
-    <Route
       path="/cards"
-      element={<ProtectedRoute><CardsPage /></ProtectedRoute>}
-    />
-    <Route
-      path="/cards/new"
-      element={<ProtectedRoute><CardNewPage /></ProtectedRoute>}
-    />
-    <Route
-      path="/cards/:id/edit"
-      element={<ProtectedRoute><CardEditPage /></ProtectedRoute>}
+      element={
+        <ProtectedRoute>
+          <CardsPage />
+        </ProtectedRoute>
+      }
     />
     <Route
       path="/icons"
@@ -159,22 +133,6 @@ export const AppRouter: React.FC = () => (
       element={
         <ProtectedRoute>
           <CategoriesPage />
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path="/categories/new"
-      element={
-        <ProtectedRoute>
-          <CategoryNewPage />
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path="/categories/:id/icon"
-      element={
-        <ProtectedRoute>
-          <CategoryIconSelectPage />
         </ProtectedRoute>
       }
     />
