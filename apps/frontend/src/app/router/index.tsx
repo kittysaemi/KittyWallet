@@ -4,6 +4,9 @@ import { useAuthStore } from "../../entities/auth/store/authStore";
 import AccountsPage from "../../pages/accounts";
 import AccountNewPage from "../../pages/accounts/new";
 import AccountEditPage from "../../pages/accounts/edit";
+import CardsPage from "../../pages/cards";
+import CardNewPage from "../../pages/cards/new";
+import CardEditPage from "../../pages/cards/edit";
 import CategoriesPage from "../../pages/categories";
 import CategoryNewPage from "../../pages/categories/new";
 import CategoryIconSelectPage from "../../pages/categories/icon";
@@ -47,6 +50,12 @@ const DashboardPage: React.FC = () => {
             className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-text-primary)] transition hover:bg-[var(--color-primary-hover)]"
           >
             계좌 관리
+          </Link>
+          <Link
+            to="/cards"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] px-4 py-2 text-sm font-semibold text-[var(--color-text-secondary)] transition hover:bg-[var(--color-primary-soft)]"
+          >
+            카드 관리
           </Link>
           <Link
             to="/categories"
@@ -124,6 +133,18 @@ export const AppRouter: React.FC = () => (
           <AccountEditPage />
         </ProtectedRoute>
       }
+    />
+    <Route
+      path="/cards"
+      element={<ProtectedRoute><CardsPage /></ProtectedRoute>}
+    />
+    <Route
+      path="/cards/new"
+      element={<ProtectedRoute><CardNewPage /></ProtectedRoute>}
+    />
+    <Route
+      path="/cards/:id/edit"
+      element={<ProtectedRoute><CardEditPage /></ProtectedRoute>}
     />
     <Route
       path="/icons"
