@@ -1,6 +1,6 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Plus, RefreshCw, WifiOff } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, RefreshCw, Search, WifiOff } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import type { TransactionItem } from "../../entities/transaction/model/transaction.types";
@@ -87,9 +87,12 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ item, iconMap, catego
           </span>
         )}
       </div>
-      <p className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--color-text-primary)]">
-        {item.category_name}
-      </p>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">
+          {item.category_name}
+        </p>
+        <p className="truncate text-xs text-[var(--color-text-secondary)]">{item.wallet_name}</p>
+      </div>
       <p
         className={`shrink-0 text-sm font-semibold ${
           item.transaction_type === "INCOME"
@@ -177,13 +180,22 @@ const TransactionsPage: React.FC = () => {
             ← 홈
           </Link>
           <h1 className="text-lg font-bold text-[var(--color-text-primary)]">거래 내역</h1>
-          <Link
-            to="/transactions/new"
-            className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-primary)] text-[var(--color-text-primary)] transition hover:bg-[var(--color-primary-hover)]"
-            aria-label="거래 등록"
-          >
-            <Plus size={18} />
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              to="/transactions/search"
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] transition hover:bg-[var(--color-primary-soft)]"
+              aria-label="거래 검색"
+            >
+              <Search size={18} />
+            </Link>
+            <Link
+              to="/transactions/new"
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-primary)] text-[var(--color-text-primary)] transition hover:bg-[var(--color-primary-hover)]"
+              aria-label="거래 등록"
+            >
+              <Plus size={18} />
+            </Link>
+          </div>
         </div>
 
         {/* 오프라인 배너 */}
