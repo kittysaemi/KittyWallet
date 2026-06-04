@@ -13,7 +13,7 @@ test("E2E-CORE-002 API mock: login and register account transaction", async ({ p
   await installE2EApiFixtures(page);
   await login(page);
 
-  await page.getByRole("link", { name: "거래 내역" }).click();
+  await page.getByRole("link", { name: /전체 보기/ }).click();
   await expect(page).toHaveURL(/\/transactions$/);
   await page.getByRole("link", { name: "거래 등록" }).click();
 
