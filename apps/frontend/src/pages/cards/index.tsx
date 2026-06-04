@@ -126,11 +126,9 @@ const CardsPage: React.FC = () => {
       }));
       return;
     }
-    if (parsed.data === card.card_name) {
-      setEditingId(null);
-      setEditingName("");
-      return;
-    }
+    setEditingId(null);
+    setEditingName("");
+    if (parsed.data === card.card_name) return;
     updateMutation.mutate({ id: card.card_id, data: { card_name: parsed.data } });
   };
 
@@ -323,6 +321,7 @@ const CardsPage: React.FC = () => {
                         onChange={(event) => setEditingName(event.target.value)}
                         onBlur={() => saveName(card)}
                         onKeyDown={(event) => {
+                          event.stopPropagation();
                           if (event.key === "Enter") saveName(card);
                           if (event.key === "Escape") {
                             setEditingId(null);
@@ -340,7 +339,7 @@ const CardsPage: React.FC = () => {
                           event.stopPropagation();
                           startEditName(card);
                         }}
-                        className={`truncate text-left font-semibold disabled:cursor-not-allowed ${
+                        className={`truncate cursor-pointer select-none text-left font-semibold disabled:cursor-not-allowed ${
                           inactive ? "text-[var(--gray-500)]" : "text-[var(--color-text-primary)]"
                         }`}
                       >
