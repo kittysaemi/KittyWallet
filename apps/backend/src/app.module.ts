@@ -10,6 +10,7 @@ import { AccountsModule } from "./modules/accounts/accounts.module";
 import { CardsModule } from "./modules/cards/cards.module";
 import { TransactionsModule } from "./modules/transactions/transactions.module";
 import { DashboardModule } from "./modules/dashboard/dashboard.module";
+import { StatisticsModule } from "./modules/statistics/statistics.module";
 import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
 import { ApiResponseInterceptor } from "./common/interceptors/api-response.interceptor";
 
@@ -26,7 +27,8 @@ import { ApiResponseInterceptor } from "./common/interceptors/api-response.inter
     AccountsModule,
     CardsModule,
     TransactionsModule,
-    DashboardModule
+    DashboardModule,
+    StatisticsModule
   ],
   providers: [
     {
