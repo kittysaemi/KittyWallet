@@ -13,6 +13,7 @@ export interface AssetSummaryData {
 export interface SpendingSummaryData {
   income_amount: number;
   expense_amount: number;
+  card_expense_amount: number;
   net_amount: number;
   transaction_count: number;
 }
@@ -79,7 +80,7 @@ export class DashboardRepository {
       transactionDate: { gte: startDate, lte: endDate }
     };
 
-    const [incomeResult, expenseResult] = await Promise.all([
+    const [incomeResult, expenseResult, cardExpenseResult] = await Promise.all([
       this.prisma.transaction.aggregate({
         where: { ...baseWhere, transactionType: TransactionType.INCOME },
         _sum: { amount: true },
@@ -89,17 +90,23 @@ export class DashboardRepository {
         where: { ...baseWhere, transactionType: TransactionType.EXPENSE },
         _sum: { amount: true },
         _count: { transactionId: true }
+      }),
+      this.prisma.transaction.aggregate({
+        where: { ...baseWhere, transactionType: TransactionType.EXPENSE, walletType: "CARD" },
+        _sum: { amount: true }
       })
     ]);
 
     const income_amount = incomeResult._sum.amount?.toNumber() ?? 0;
     const expense_amount = expenseResult._sum.amount?.toNumber() ?? 0;
+    const card_expense_amount = cardExpenseResult._sum.amount?.toNumber() ?? 0;
     const transaction_count =
       incomeResult._count.transactionId + expenseResult._count.transactionId;
 
     return {
       income_amount,
       expense_amount,
+      card_expense_amount,
       net_amount: income_amount - expense_amount,
       transaction_count
     };

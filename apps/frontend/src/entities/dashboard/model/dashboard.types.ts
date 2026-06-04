@@ -18,6 +18,7 @@ export interface SpendingSummary {
   end_date: string;
   income_amount: number;
   expense_amount: number;
+  card_expense_amount: number;
   net_amount: number;
   transaction_count: number;
 }

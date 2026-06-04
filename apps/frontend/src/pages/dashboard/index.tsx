@@ -1,16 +1,16 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  CreditCard,
-  LayoutList,
+  BarChart2,
+  Home,
   LogOut,
   Plus,
   RefreshCw,
-  Settings,
-  Tag,
-  Wallet,
+  Search,
+  Settings2,
   WifiOff
 } from "lucide-react";
+
 import { Link, useNavigate } from "react-router-dom";
 import { dashboardApi } from "../../entities/dashboard/api/dashboardApi";
 import type { DashboardTransaction } from "../../entities/dashboard/model/dashboard.types";
@@ -24,14 +24,10 @@ function fmt(n: number): string {
   return n.toLocaleString("ko-KR");
 }
 
-function fmtSigned(n: number): string {
-  return n >= 0 ? `+${fmt(n)}원` : `-${fmt(Math.abs(n))}원`;
-}
-
 // ─── Skeleton ────────────────────────────────────────────────
-const SkeletonCard: React.FC<{ rows?: number }> = ({ rows = 2 }) => (
-  <div className={`${cardClass} p-5`}>
-    <div className="mb-3 h-4 w-24 rounded-lg bg-[var(--color-bg-secondary)]" />
+const SkeletonCard: React.FC<{ rows?: number; tall?: boolean }> = ({ rows = 2, tall }) => (
+  <div className={`${cardClass} p-5 ${tall ? "h-28" : ""}`}>
+    <div className="mb-3 h-3 w-20 rounded-lg bg-[var(--color-bg-secondary)]" />
     {Array.from({ length: rows }).map((_, i) => (
       <div key={i} className="mb-2 h-5 w-full rounded-lg bg-[var(--color-bg-secondary)]" />
     ))}
@@ -44,7 +40,7 @@ const TxRow: React.FC<{ tx: DashboardTransaction }> = ({ tx }) => {
   const isIncome = tx.transaction_type === "INCOME";
   return (
     <div
-      className="flex cursor-pointer items-center gap-3 py-3 transition hover:bg-[var(--color-bg-secondary)] px-1 rounded-xl"
+      className="flex cursor-pointer items-center gap-3 px-1 py-3 rounded-xl transition hover:bg-[var(--color-bg-secondary)]"
       onClick={() => navigate(`/transactions/${tx.transaction_id}`)}
       role="button"
       tabIndex={0}
@@ -59,32 +55,70 @@ const TxRow: React.FC<{ tx: DashboardTransaction }> = ({ tx }) => {
         </p>
         <p className="truncate text-xs text-[var(--color-text-secondary)]">{tx.wallet_name}</p>
       </div>
-      <p
-        className={`shrink-0 text-sm font-semibold ${
-          isIncome ? "text-[var(--color-success,#22c55e)]" : "text-[var(--color-text-primary)]"
-        }`}
-      >
-        {isIncome ? "+" : "-"}
-        {fmt(tx.amount)}원
+      <p className={`shrink-0 text-sm font-semibold ${isIncome ? "text-blue-500" : "text-red-500"}`}>
+        {isIncome ? "+" : "-"}{fmt(tx.amount)}원
       </p>
     </div>
   );
 };
 
-// ─── 메뉴 버튼 ───────────────────────────────────────────────
-interface MenuBtnProps {
-  to: string;
-  icon: React.ReactNode;
+// ─── 요약 섹션 카드 ──────────────────────────────────────────
+interface SumCardProps {
   label: string;
+  amount: number;
+  sign?: "+" | "-";
+  labelColor: string;
+  amountColor: string;
 }
-const MenuBtn: React.FC<MenuBtnProps> = ({ to, icon, label }) => (
-  <Link
-    to={to}
-    className="flex flex-col items-center gap-1.5 rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] px-3 py-4 text-center transition hover:bg-[var(--color-primary-soft)]"
-  >
-    <span className="text-[var(--color-text-primary)]">{icon}</span>
-    <span className="text-xs font-medium text-[var(--color-text-secondary)]">{label}</span>
-  </Link>
+const SumCard: React.FC<SumCardProps> = ({ label, amount, sign = "+", labelColor, amountColor }) => (
+  <div className={`${cardClass} flex flex-col gap-1.5 px-4 py-4`}>
+    <p className={`text-xs font-medium ${labelColor}`}>{label}</p>
+    <p className={`text-base font-bold ${amountColor}`}>
+      {sign}{fmt(amount)}원
+    </p>
+  </div>
+);
+
+// ─── 하단 네비게이션 ──────────────────────────────────────────
+const BottomNav: React.FC = () => (
+  <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[var(--color-border-primary)] bg-[var(--color-bg-card)]">
+    <div className="mx-auto flex max-w-[480px] items-end justify-around px-2 pb-safe-area-inset-bottom">
+      {/* 홈 */}
+      <Link to="/dashboard" className="flex flex-col items-center gap-1 py-3 px-4">
+        <Home size={20} className="text-[var(--color-primary)]" strokeWidth={2.5} />
+        <span className="text-[10px] font-medium text-[var(--color-primary)]">홈</span>
+      </Link>
+
+      {/* 검색 */}
+      <Link to="/transactions/search" className="flex flex-col items-center gap-1 py-3 px-4">
+        <Search size={20} className="text-[var(--color-text-secondary)]" />
+        <span className="text-[10px] font-medium text-[var(--color-text-secondary)]">검색</span>
+      </Link>
+
+      {/* + 중앙 버튼 */}
+      <div className="relative -top-4">
+        <Link
+          to="/transactions/new"
+          className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-primary)] shadow-[0_4px_20px_var(--color-card-shadow)] transition active:scale-95"
+          aria-label="거래 등록"
+        >
+          <Plus size={32} strokeWidth={3} className="text-[var(--color-text-primary)]" />
+        </Link>
+      </div>
+
+      {/* 통계 */}
+      <button type="button" className="flex flex-col items-center gap-1 py-3 px-4">
+        <BarChart2 size={20} className="text-[var(--color-text-secondary)]" />
+        <span className="text-[10px] font-medium text-[var(--color-text-secondary)]">통계</span>
+      </button>
+
+      {/* 관리 */}
+      <button type="button" className="flex flex-col items-center gap-1 py-3 px-4">
+        <Settings2 size={20} className="text-[var(--color-text-secondary)]" />
+        <span className="text-[10px] font-medium text-[var(--color-text-secondary)]">관리</span>
+      </button>
+    </div>
+  </div>
 );
 
 // ─── 메인 페이지 ─────────────────────────────────────────────
@@ -102,17 +136,18 @@ const DashboardPage: React.FC = () => {
   const data = query.data?.data;
 
   async function handleLogout() {
-    try {
-      await authApi.logout();
-    } catch {
-      // ignore
-    }
+    try { await authApi.logout(); } catch { /* ignore */ }
     clearAuth();
   }
 
+  const accountExpense =
+    (data?.spending_summary.expense_amount ?? 0) -
+    (data?.spending_summary.card_expense_amount ?? 0);
+
   return (
     <div className="min-h-screen bg-[var(--color-bg-primary)]">
-      <div className="mx-auto max-w-[480px] px-4 pb-12 pt-6">
+      {/* 스크롤 영역 - 하단 네비게이션 높이만큼 패딩 */}
+      <div className="mx-auto max-w-[480px] px-4 pb-28 pt-6">
 
         {/* 오프라인 배너 */}
         {isOffline && (
@@ -124,7 +159,7 @@ const DashboardPage: React.FC = () => {
 
         {/* ── 사용자 카드 ── */}
         {query.isLoading ? (
-          <SkeletonCard rows={1} />
+          <div className="mb-4"><SkeletonCard rows={1} /></div>
         ) : (
           <div className={`${cardClass} mb-4 flex items-center justify-between px-5 py-4`}>
             <div>
@@ -146,13 +181,8 @@ const DashboardPage: React.FC = () => {
 
         {/* 에러 */}
         {query.isError && !data && (
-          <div
-            className={`${cardClass} mb-4 flex flex-col items-center gap-3 px-6 py-10 text-center`}
-            role="alert"
-          >
-            <p className="text-sm text-[var(--color-text-secondary)]">
-              대시보드를 불러오지 못했습니다.
-            </p>
+          <div className={`${cardClass} mb-4 flex flex-col items-center gap-3 px-6 py-10 text-center`} role="alert">
+            <p className="text-sm text-[var(--color-text-secondary)]">대시보드를 불러오지 못했습니다.</p>
             <button
               type="button"
               onClick={() => query.refetch()}
@@ -164,73 +194,55 @@ const DashboardPage: React.FC = () => {
           </div>
         )}
 
-        {/* ── 자산 요약 ── */}
+        {/* ── 전체 자산 카드 ── */}
         {query.isLoading ? (
-          <SkeletonCard rows={2} />
+          <div className="mb-4"><SkeletonCard rows={1} tall /></div>
         ) : data ? (
-          <div className={`${cardClass} mb-4 px-5 py-4`}>
-            <p className="mb-1 text-xs font-medium text-[var(--color-text-secondary)]">전체 자산</p>
-            <p className="text-2xl font-bold text-[var(--color-text-primary)]">
+          <div
+            className="mb-4 rounded-2xl px-5 py-5 shadow-[0_4px_20px_rgba(253,165,227,0.35)]"
+            style={{ background: "linear-gradient(135deg, var(--color-primary) 0%, #F98DD9 100%)" }}
+          >
+            <p className="mb-1 text-xs font-medium text-white/80">전체 자산</p>
+            <p className="text-3xl font-bold text-white">
               {fmt(data.asset_summary.total_asset_amount)}원
-            </p>
-            <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-              계좌 {data.asset_summary.active_account_count}/{data.asset_summary.account_count}개
-              {data.asset_summary.card_count > 0 &&
-                ` · 카드 ${data.asset_summary.active_card_count}/${data.asset_summary.card_count}개`}
             </p>
           </div>
         ) : null}
 
-        {/* ── 소비 요약 ── */}
+        {/* ── 이번달 수입 / 지출 / 카드지출 ── */}
         {query.isLoading ? (
-          <SkeletonCard rows={3} />
+          <div className="mb-4 grid grid-cols-3 gap-2">
+            {[1, 2, 3].map((i) => <SkeletonCard key={i} rows={1} />)}
+          </div>
         ) : data ? (
-          <div className={`${cardClass} mb-4 px-5 py-4`}>
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-xs font-medium text-[var(--color-text-secondary)]">
-                {data.spending_summary.period_type === "MONTH"
-                  ? "이번 달"
-                  : data.spending_summary.period_type === "WEEK"
-                  ? "이번 주"
-                  : "오늘"}{" "}
-                소비 요약
-              </p>
-              <p className="text-xs text-[var(--color-text-secondary)]">
-                거래 {data.spending_summary.transaction_count}건
-              </p>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-[var(--color-text-secondary)]">수입</span>
-                <span className="text-sm font-semibold text-[var(--color-success,#22c55e)]">
-                  +{fmt(data.spending_summary.income_amount)}원
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-[var(--color-text-secondary)]">지출</span>
-                <span className="text-sm font-semibold text-[var(--color-text-primary)]">
-                  -{fmt(data.spending_summary.expense_amount)}원
-                </span>
-              </div>
-              <div className="border-t border-[var(--color-border-secondary)] pt-2 flex items-center justify-between">
-                <span className="text-sm font-medium text-[var(--color-text-primary)]">순</span>
-                <span
-                  className={`text-sm font-bold ${
-                    data.spending_summary.net_amount >= 0
-                      ? "text-[var(--color-success,#22c55e)]"
-                      : "text-[var(--color-danger)]"
-                  }`}
-                >
-                  {fmtSigned(data.spending_summary.net_amount)}
-                </span>
-              </div>
-            </div>
+          <div className="mb-4 grid grid-cols-3 gap-2">
+            <SumCard
+              label="이번달수입"
+              amount={data.spending_summary.income_amount}
+              sign="+"
+              labelColor="text-blue-500"
+              amountColor="text-blue-600"
+            />
+            <SumCard
+              label="이번달지출"
+              amount={accountExpense}
+              sign="-"
+              labelColor="text-orange-500"
+              amountColor="text-orange-600"
+            />
+            <SumCard
+              label="카드지출"
+              amount={data.spending_summary.card_expense_amount}
+              sign="-"
+              labelColor="text-purple-500"
+              amountColor="text-purple-600"
+            />
           </div>
         ) : null}
 
         {/* ── 최근 거래 ── */}
         {query.isLoading ? (
-          <SkeletonCard rows={4} />
+          <div className="mb-4"><SkeletonCard rows={4} /></div>
         ) : data ? (
           <div className={`${cardClass} mb-4 px-5 py-4`}>
             <div className="mb-2 flex items-center justify-between">
@@ -262,16 +274,10 @@ const DashboardPage: React.FC = () => {
           </div>
         ) : null}
 
-        {/* ── 메뉴 ── */}
-        <div className="grid grid-cols-5 gap-2">
-          <MenuBtn to="/transactions" icon={<LayoutList size={20} />} label="거래내역" />
-          <MenuBtn to="/transactions/new" icon={<Plus size={20} />} label="거래등록" />
-          <MenuBtn to="/accounts" icon={<Wallet size={20} />} label="계좌" />
-          <MenuBtn to="/cards" icon={<CreditCard size={20} />} label="카드" />
-          <MenuBtn to="/categories" icon={<Tag size={20} />} label="카테고리" />
-        </div>
-
       </div>
+
+      {/* ── 하단 고정 네비게이션 ── */}
+      <BottomNav />
     </div>
   );
 };
