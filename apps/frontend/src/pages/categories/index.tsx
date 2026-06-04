@@ -205,6 +205,7 @@ const CategoryRow: React.FC<CategoryRowProps> = ({
                 onChange={(event) => onNameChange(event.target.value)}
                 onBlur={() => onNameSave(category)}
                 onKeyDown={(event) => {
+                  event.stopPropagation();
                   if (event.key === "Enter") onNameSave(category);
                   if (event.key === "Escape") onNameCancel();
                 }}
@@ -223,7 +224,7 @@ const CategoryRow: React.FC<CategoryRowProps> = ({
                   event.stopPropagation();
                   onStartNameEdit(category);
                 }}
-                className={`min-w-0 truncate text-left text-base font-semibold disabled:cursor-not-allowed ${
+                className={`min-w-0 cursor-pointer select-none truncate text-left text-base font-semibold disabled:cursor-not-allowed ${
                   category.show ? "text-[var(--color-text-primary)]" : "text-[var(--gray-500)]"
                 } ${canEditDetails ? "underline-offset-4 hover:underline" : ""}`}
               >
@@ -345,11 +346,9 @@ const CategoriesPage: React.FC = () => {
       }));
       return;
     }
-    if (parsed.data === category.category_name) {
-      setEditingNameId(null);
-      setEditingName("");
-      return;
-    }
+    setEditingNameId(null);
+    setEditingName("");
+    if (parsed.data === category.category_name) return;
     updateMutation.mutate({
       categoryId: category.category_id,
       data: { category_name: parsed.data }

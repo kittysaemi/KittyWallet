@@ -144,11 +144,9 @@ const AccountsPage: React.FC = () => {
       }));
       return;
     }
-    if (parsed.data === account.account_name) {
-      setEditingId(null);
-      setEditingName("");
-      return;
-    }
+    setEditingId(null);
+    setEditingName("");
+    if (parsed.data === account.account_name) return;
     updateMutation.mutate({ id: account.account_id, data: { account_name: parsed.data } });
   };
 
@@ -352,6 +350,7 @@ const AccountsPage: React.FC = () => {
                         onChange={(event) => setEditingName(event.target.value)}
                         onBlur={() => saveName(account)}
                         onKeyDown={(event) => {
+                          event.stopPropagation();
                           if (event.key === "Enter") saveName(account);
                           if (event.key === "Escape") {
                             setEditingId(null);
@@ -369,7 +368,7 @@ const AccountsPage: React.FC = () => {
                           event.stopPropagation();
                           startEditName(account);
                         }}
-                        className={`truncate text-left font-semibold disabled:cursor-not-allowed ${
+                        className={`truncate cursor-pointer select-none text-left font-semibold disabled:cursor-not-allowed ${
                           inactive ? "text-[var(--gray-500)]" : "text-[var(--color-text-primary)]"
                         }`}
                       >
