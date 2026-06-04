@@ -20,7 +20,7 @@ const schema = z
   .object({
     transaction_type: z.enum(["INCOME", "EXPENSE"]),
     wallet_type: z.enum(["ACCOUNT", "CARD"]),
-    wallet_id: z.number().min(1, "결제수단을 선택해주세요."),
+    wallet_id: z.number().min(1, "지갑을 선택해주세요."),
     category_id: z.number().min(1, "카테고리를 선택해주세요."),
     amount: z
       .number({ invalid_type_error: "금액을 입력해주세요." })
@@ -42,7 +42,8 @@ const API_ERRORS: Record<string, string> = {
   TX_003: "존재하지 않는 계좌입니다.",
   TX_004: "존재하지 않는 카드입니다.",
   TX_007: "카드로 수입 거래를 저장할 수 없습니다.",
-  ACCOUNT_004: "잔액이 부족합니다. 지출 금액이 현재 잔액을 초과합니다."
+  ACCOUNT_004: "잔액이 부족합니다. 지출 금액이 현재 잔액을 초과합니다.",
+  CATEGORY_002: "카테고리를 찾을 수 없습니다."
 };
 
 // 아이콘 포함 드롭다운 컴포넌트
@@ -251,7 +252,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     const accounts = (accountsQuery.data?.data?.items ?? []).map((a) => ({
       id: a.account_id,
       label: a.account_name,
-      sublabel: a.current_balance !== null ? `잔액 ${a.current_balance.toLocaleString()}원` : undefined,
+      sublabel: undefined,
       iconId: a.icon_id,
       group: "계좌",
       disabled: false,
@@ -320,20 +321,16 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     setErrors({});
   }
 
-  function handleWalletSelect(option: DropdownOption & { _type?: "ACCOUNT" | "CARD" }) {
-    const allOptions = [...(accountsQuery.data?.data?.items ?? []).map(a => ({ id: a.account_id, type: "ACCOUNT" as const })),
-                       ...(cardsQuery.data?.data?.items ?? []).map(c => ({ id: c.card_id, type: "CARD" as const }))];
-    const found = allOptions.find(o => o.id === option.id);
-    if (found) {
-      setWalletId(option.id);
-      setWalletType(found.type);
-      setErrors((e) => ({ ...e, wallet_id: "", wallet_type: "" }));
-    }
+  function handleWalletSelect(option: DropdownOption) {
+    setWalletId(option.id);
+    setWalletType(option.group === "계좌" ? "ACCOUNT" : "CARD");
+    setErrors((e) => ({ ...e, wallet_id: "", wallet_type: "" }));
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setApiError("");
+    mutation.reset();
 
     const parsed = schema.safeParse({
       transaction_type: txType,
@@ -437,21 +434,34 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         disabled={isSaving}
       />
 
-      {/* 결제수단 드롭다운 */}
+      {/* 지갑 드롭다운 */}
       <div className="flex flex-col gap-1.5">
-        <p className="text-sm font-medium text-[var(--color-text-secondary)]">결제수단</p>
+        <p className="text-sm font-medium text-[var(--color-text-secondary)]">지갑</p>
         {txType === "INCOME" && (
           <p className="text-xs text-[var(--color-text-secondary)]">수입 거래는 계좌만 선택 가능합니다.</p>
         )}
         <IconDropdown
           options={walletOptions}
           value={walletId || undefined}
-          placeholder={isLoading ? "불러오는 중..." : "결제수단 선택"}
+          placeholder={isLoading ? "불러오는 중..." : "지갑 선택"}
           onChange={handleWalletSelect}
           error={errors.wallet_id || errors.wallet_type}
           iconMap={iconMap}
           disabled={isSaving || isLoading}
         />
+        {walletType === "ACCOUNT" && walletId > 0 && (() => {
+          const acct = accountsQuery.data?.data?.items?.find((a) => a.account_id === walletId);
+          if (!acct || acct.current_balance === null) return null;
+          const isInsufficient = txType === "EXPENSE" &&
+            amountStr &&
+            parseInt(amountStr.replace(/,/g, ""), 10) > acct.current_balance;
+          return (
+            <p className={`text-xs ${isInsufficient ? "text-[var(--color-danger)]" : "text-[var(--color-text-secondary)]"}`}>
+              현재 잔액: {acct.current_balance.toLocaleString()}원
+              {isInsufficient && " — 입력 금액이 잔액을 초과합니다"}
+            </p>
+          );
+        })()}
       </div>
 
       {/* 카테고리 드롭다운 */}
