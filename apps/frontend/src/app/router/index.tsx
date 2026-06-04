@@ -5,6 +5,8 @@ import AccountsPage from "../../pages/accounts";
 import TransactionsPage from "../../pages/transactions";
 import TransactionNewPage from "../../pages/transactions/new";
 import TransactionEditPage from "../../pages/transactions/edit";
+import TransactionDetailPage from "../../pages/transactions/detail";
+import TransactionSearchPage from "../../pages/transactions/search";
 import CardsPage from "../../pages/cards";
 import CategoriesPage from "../../pages/categories";
 import IconsPage from "../../pages/icons";
@@ -162,10 +164,26 @@ export const AppRouter: React.FC = () => (
       }
     />
     <Route
+      path="/transactions/:id"
+      element={
+        <ProtectedRoute>
+          <TransactionDetailPage />
+        </ProtectedRoute>
+      }
+    />
+    <Route
       path="/transactions/:id/edit"
       element={
         <ProtectedRoute>
           <TransactionEditPage />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/transactions/search"
+      element={
+        <ProtectedRoute>
+          <TransactionSearchPage />
         </ProtectedRoute>
       }
     />
