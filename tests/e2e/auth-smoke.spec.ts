@@ -27,7 +27,7 @@ test("E2E-CORE-001 API mock: signup, login, and enter dashboard", async ({ page 
   await page.getByRole("button", { name: "로그인" }).click();
 
   await expect(page).toHaveURL(/\/dashboard$/);
-  await expect(page.getByText("안녕하세요,")).toBeVisible();
+  await expect(page.getByText("안녕하세요")).toBeVisible();
   await expect(page.getByText("테스트사용자")).toBeVisible();
-  await expect(page.getByRole("link", { name: "거래 내역" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "로그아웃" })).toBeVisible();
 });

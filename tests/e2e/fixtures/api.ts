@@ -80,6 +80,33 @@ async function fulfillJson(route: Route, status: number, body: ApiBody) {
 export async function installE2EApiFixtures(page: Page) {
   const transactions: TestTransaction[] = [];
 
+  await page.route("**/api/v1/dashboard**", async (route) => {
+    await fulfillJson(route, 200, success({
+      user: { user_id: testUser.user_id, nickname: testUser.nickname },
+      asset_summary: {
+        total_asset_amount: 500000,
+        account_count: 1,
+        active_account_count: 1,
+        card_count: 0,
+        active_card_count: 0,
+        currency: "KRW"
+      },
+      spending_summary: {
+        period_type: "MONTH",
+        start_date: "2026-06-01",
+        end_date: "2026-06-04",
+        income_amount: 0,
+        expense_amount: 0,
+        card_expense_amount: 0,
+        net_amount: 0,
+        transaction_count: 0
+      },
+      recent_transactions: [],
+      sync_summary: { has_pending_sync: false, pending_count: 0, failed_count: 0, last_synced_at: null },
+      cache_policy: { cacheable: true, recommended_stale_time_seconds: 60 }
+    }));
+  });
+
   await page.route("**/api/v1/auth/refresh", async (route) => {
     await fulfillJson(route, 200, { success: false, data: null, error: null });
   });
