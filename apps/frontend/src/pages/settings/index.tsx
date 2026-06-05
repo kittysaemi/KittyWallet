@@ -117,7 +117,7 @@ const SettingsPage: React.FC = () => {
 
   if (userQuery.isLoading) {
     return (
-      <div className="min-h-screen bg-[var(--color-bg-primary)] px-4 py-6">
+      <div className="bg-[var(--color-bg-primary)] px-4 py-6">
         <div className="mx-auto w-full max-w-[480px]">
           <div className="h-8 w-24 animate-pulse rounded-lg bg-[var(--color-bg-secondary)]" />
           <div className={`${cardClass} mt-6 h-32 animate-pulse`} />
@@ -128,7 +128,7 @@ const SettingsPage: React.FC = () => {
 
   if (userQuery.isError || (userQuery.data && !userQuery.data.success)) {
     return (
-      <div className="min-h-screen bg-[var(--color-bg-primary)] px-4 py-6">
+      <div className="bg-[var(--color-bg-primary)] px-4 py-6">
         <div className="mx-auto w-full max-w-[480px]">
           <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">설정</h1>
           <div className={`${cardClass} mt-6 p-4`}>
@@ -148,7 +148,7 @@ const SettingsPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg-primary)] px-4 py-6">
+    <div className="bg-[var(--color-bg-primary)] px-4 py-6">
       <div className="mx-auto flex w-full max-w-[480px] flex-col gap-6">
         <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">설정</h1>
 

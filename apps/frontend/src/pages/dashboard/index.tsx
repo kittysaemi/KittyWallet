@@ -1,13 +1,10 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  BarChart2,
-  Home,
   LogOut,
-  Plus,
+  PawPrint,
   RefreshCw,
-  Search,
-  Settings2,
+  Settings,
   WifiOff
 } from "lucide-react";
 
@@ -16,6 +13,10 @@ import { dashboardApi } from "../../entities/dashboard/api/dashboardApi";
 import type { DashboardTransaction } from "../../entities/dashboard/model/dashboard.types";
 import { useAuthStore } from "../../entities/auth/store/authStore";
 import { authApi } from "../../entities/auth/api/authApi";
+import { categoryApi } from "../../entities/category/api/categoryApi";
+import { iconApi } from "../../entities/icon/api/iconApi";
+import type { IconItem } from "../../entities/icon/model/icon.types";
+import { IconRenderer } from "../../shared/ui/IconRenderer";
 
 const cardClass =
   "rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] shadow-[0_4px_16px_var(--color-card-shadow)]";
@@ -35,9 +36,16 @@ const SkeletonCard: React.FC<{ rows?: number; tall?: boolean }> = ({ rows = 2, t
 );
 
 // ─── 최근 거래 항목 ──────────────────────────────────────────
-const TxRow: React.FC<{ tx: DashboardTransaction }> = ({ tx }) => {
+interface TxRowProps {
+  tx: DashboardTransaction;
+  iconMap: Map<number, IconItem>;
+  categoryIconMap: Map<number, number>;
+}
+const TxRow: React.FC<TxRowProps> = ({ tx, iconMap, categoryIconMap }) => {
   const navigate = useNavigate();
   const isIncome = tx.transaction_type === "INCOME";
+  const iconId = categoryIconMap.get(tx.category_id);
+  const icon = iconId ? iconMap.get(iconId) : undefined;
   return (
     <div
       className="flex cursor-pointer items-center gap-3 px-1 py-3 rounded-xl transition hover:bg-[var(--color-bg-secondary)]"
@@ -46,8 +54,12 @@ const TxRow: React.FC<{ tx: DashboardTransaction }> = ({ tx }) => {
       tabIndex={0}
       onKeyDown={(e) => e.key === "Enter" && navigate(`/transactions/${tx.transaction_id}`)}
     >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--color-bg-secondary)] text-sm font-semibold text-[var(--color-text-secondary)]">
-        {tx.category_name.slice(0, 1)}
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--color-bg-secondary)]">
+        {icon ? (
+          <IconRenderer providerType={icon.provider_type} providerKey={icon.provider_key} size={18} className="text-[var(--color-text-secondary)]" />
+        ) : (
+          <span className="text-sm font-semibold text-[var(--color-text-secondary)]">{tx.category_name.slice(0, 1)}</span>
+        )}
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">
@@ -79,48 +91,6 @@ const SumCard: React.FC<SumCardProps> = ({ label, amount, sign = "+", labelColor
   </div>
 );
 
-// ─── 하단 네비게이션 ──────────────────────────────────────────
-const BottomNav: React.FC = () => (
-  <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[var(--color-border-primary)] bg-[var(--color-bg-card)]">
-    <div className="mx-auto flex max-w-[480px] items-end justify-around px-2 pb-safe-area-inset-bottom">
-      {/* 홈 */}
-      <Link to="/dashboard" className="flex flex-col items-center gap-1 py-3 px-4">
-        <Home size={20} className="text-[var(--color-primary)]" strokeWidth={2.5} />
-        <span className="text-[10px] font-medium text-[var(--color-primary)]">홈</span>
-      </Link>
-
-      {/* 검색 */}
-      <Link to="/transactions/search" className="flex flex-col items-center gap-1 py-3 px-4">
-        <Search size={20} className="text-[var(--color-text-secondary)]" />
-        <span className="text-[10px] font-medium text-[var(--color-text-secondary)]">검색</span>
-      </Link>
-
-      {/* + 중앙 버튼 */}
-      <div className="relative -top-4">
-        <Link
-          to="/transactions/new"
-          className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-primary)] shadow-[0_4px_20px_var(--color-card-shadow)] transition active:scale-95"
-          aria-label="거래 등록"
-        >
-          <Plus size={32} strokeWidth={3} className="text-[var(--color-text-primary)]" />
-        </Link>
-      </div>
-
-      {/* 통계 */}
-      <button type="button" className="flex flex-col items-center gap-1 py-3 px-4">
-        <BarChart2 size={20} className="text-[var(--color-text-secondary)]" />
-        <span className="text-[10px] font-medium text-[var(--color-text-secondary)]">통계</span>
-      </button>
-
-      {/* 관리 */}
-      <button type="button" className="flex flex-col items-center gap-1 py-3 px-4">
-        <Settings2 size={20} className="text-[var(--color-text-secondary)]" />
-        <span className="text-[10px] font-medium text-[var(--color-text-secondary)]">관리</span>
-      </button>
-    </div>
-  </div>
-);
-
 // ─── 메인 페이지 ─────────────────────────────────────────────
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -134,6 +104,30 @@ const DashboardPage: React.FC = () => {
     retry: isOffline ? false : 2
   });
 
+  const categoriesQuery = useQuery({
+    queryKey: ["categories", "active"],
+    queryFn: () => categoryApi.getCategories(true),
+    staleTime: 5 * 60 * 1000
+  });
+
+  const iconsQuery = useQuery({
+    queryKey: ["icons", "select"],
+    queryFn: () => iconApi.getIcons(true),
+    staleTime: 10 * 60 * 1000
+  });
+
+  const iconMap = React.useMemo(() => {
+    const map = new Map<number, IconItem>();
+    iconsQuery.data?.data?.items.forEach((icon) => map.set(icon.icon_id, icon));
+    return map;
+  }, [iconsQuery.data]);
+
+  const categoryIconMap = React.useMemo(() => {
+    const map = new Map<number, number>();
+    categoriesQuery.data?.data?.items.forEach((cat) => map.set(cat.category_id, cat.icon_id));
+    return map;
+  }, [categoriesQuery.data]);
+
   const data = query.data?.data;
 
   async function handleLogout() {
@@ -146,9 +140,8 @@ const DashboardPage: React.FC = () => {
     (data?.spending_summary.card_expense_amount ?? 0);
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg-primary)]">
-      {/* 스크롤 영역 - 하단 네비게이션 높이만큼 패딩 */}
-      <div className="mx-auto max-w-[480px] px-4 pb-28 pt-6">
+    <div className="bg-[var(--color-bg-primary)]">
+      <div className="mx-auto max-w-[480px] px-4 pb-6 pt-6">
 
         {/* 오프라인 배너 */}
         {isOffline && (
@@ -169,19 +162,29 @@ const DashboardPage: React.FC = () => {
               onClick={() => navigate("/settings")}
               className="flex flex-col text-left transition hover:opacity-70 active:opacity-50"
             >
-              <p className="text-xs text-[var(--color-text-secondary)]">안녕하세요</p>
-              <p className="mt-0.5 text-lg font-bold text-[var(--color-text-primary)]">
+              <p className="text-sm text-[var(--color-text-secondary)]" style={{ fontFamily: "var(--font-brand)" }}>안녕하세요</p>
+              <p className="mt-0.5 flex items-center gap-1.5 text-xl font-bold text-[var(--color-text-primary)]" style={{ fontFamily: "var(--font-brand)" }}>
                 {data?.user.nickname ?? "—"}님
+                <PawPrint size={20} className="text-[var(--color-primary)]" strokeWidth={1.8} />
               </p>
             </button>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="flex items-center gap-1.5 rounded-xl border border-[var(--color-border-primary)] px-3 py-2 text-xs text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-secondary)]"
-            >
-              <LogOut size={14} />
-              로그아웃
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                aria-label="설정"
+                className="flex h-8 w-8 items-center justify-center rounded-xl border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-secondary)]"
+              >
+                <Settings size={15} />
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                aria-label="로그아웃"
+                className="flex h-8 w-8 items-center justify-center rounded-xl border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-secondary)]"
+              >
+                <LogOut size={15} />
+              </button>
+            </div>
           </div>
         )}
 
@@ -273,7 +276,7 @@ const DashboardPage: React.FC = () => {
             ) : (
               <div className="divide-y divide-[var(--color-border-secondary)]">
                 {data.recent_transactions.map((tx) => (
-                  <TxRow key={tx.transaction_id} tx={tx} />
+                  <TxRow key={tx.transaction_id} tx={tx} iconMap={iconMap} categoryIconMap={categoryIconMap} />
                 ))}
               </div>
             )}
@@ -282,8 +285,6 @@ const DashboardPage: React.FC = () => {
 
       </div>
 
-      {/* ── 하단 고정 네비게이션 ── */}
-      <BottomNav />
     </div>
   );
 };

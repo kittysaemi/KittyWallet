@@ -1,6 +1,7 @@
 import React from "react";
 import { Navigate, Route, Routes, useLocation, useSearchParams } from "react-router-dom";
 import { useAuthStore } from "../../entities/auth/store/authStore";
+import { BottomNav } from "../../shared/ui/BottomNav";
 import DashboardPage from "../../pages/dashboard";
 import AccountsPage from "../../pages/accounts";
 import TransactionsPage from "../../pages/transactions";
@@ -9,6 +10,7 @@ import TransactionEditPage from "../../pages/transactions/edit";
 import TransactionDetailPage from "../../pages/transactions/detail";
 import TransactionSearchPage from "../../pages/transactions/search";
 import StatisticsPage from "../../pages/statistics";
+import ManagePage from "../../pages/manage";
 import CardsPage from "../../pages/cards";
 import CategoriesPage from "../../pages/categories";
 import IconsPage from "../../pages/icons";
@@ -46,6 +48,15 @@ const RootRedirect: React.FC = () => {
   return <Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />;
 };
 
+const NavLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="flex h-screen flex-col overflow-hidden bg-[var(--color-bg-primary)]">
+    <div className="scrollbar-hide flex-1 overflow-y-auto">
+      {children}
+    </div>
+    <BottomNav />
+  </div>
+);
+
 export const AppRouter: React.FC = () => (
   <Routes>
     <Route path="/" element={<RootRedirect />} />
@@ -69,7 +80,15 @@ export const AppRouter: React.FC = () => (
       path="/dashboard"
       element={
         <ProtectedRoute>
-          <DashboardPage />
+          <NavLayout><DashboardPage /></NavLayout>
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/manage"
+      element={
+        <ProtectedRoute>
+          <NavLayout><ManagePage /></NavLayout>
         </ProtectedRoute>
       }
     />
@@ -77,7 +96,7 @@ export const AppRouter: React.FC = () => (
       path="/accounts"
       element={
         <ProtectedRoute>
-          <AccountsPage />
+          <NavLayout><AccountsPage /></NavLayout>
         </ProtectedRoute>
       }
     />
@@ -85,7 +104,7 @@ export const AppRouter: React.FC = () => (
       path="/cards"
       element={
         <ProtectedRoute>
-          <CardsPage />
+          <NavLayout><CardsPage /></NavLayout>
         </ProtectedRoute>
       }
     />
@@ -93,7 +112,7 @@ export const AppRouter: React.FC = () => (
       path="/icons"
       element={
         <ProtectedRoute>
-          <IconsPage />
+          <NavLayout><IconsPage /></NavLayout>
         </ProtectedRoute>
       }
     />
@@ -101,7 +120,7 @@ export const AppRouter: React.FC = () => (
       path="/categories"
       element={
         <ProtectedRoute>
-          <CategoriesPage />
+          <NavLayout><CategoriesPage /></NavLayout>
         </ProtectedRoute>
       }
     />
@@ -109,7 +128,7 @@ export const AppRouter: React.FC = () => (
       path="/statistics"
       element={
         <ProtectedRoute>
-          <StatisticsPage />
+          <NavLayout><StatisticsPage /></NavLayout>
         </ProtectedRoute>
       }
     />
@@ -117,7 +136,7 @@ export const AppRouter: React.FC = () => (
       path="/transactions"
       element={
         <ProtectedRoute>
-          <TransactionsPage />
+          <NavLayout><TransactionsPage /></NavLayout>
         </ProtectedRoute>
       }
     />
@@ -133,7 +152,7 @@ export const AppRouter: React.FC = () => (
       path="/transactions/search"
       element={
         <ProtectedRoute>
-          <TransactionSearchPage />
+          <NavLayout><TransactionSearchPage /></NavLayout>
         </ProtectedRoute>
       }
     />
@@ -157,7 +176,7 @@ export const AppRouter: React.FC = () => (
       path="/settings"
       element={
         <ProtectedRoute>
-          <SettingsPage />
+          <NavLayout><SettingsPage /></NavLayout>
         </ProtectedRoute>
       }
     />
