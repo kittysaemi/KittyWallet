@@ -9,6 +9,7 @@ interface AuthState {
   setAuth: (accessToken: string, user: { user_id: number; nickname: string }) => void;
   clearAuth: () => void;
   setInitialized: () => void;
+  updateNickname: (nickname: string) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -32,4 +33,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     }),
 
   setInitialized: () => set({ isInitialized: true }),
+
+  updateNickname: (nickname) =>
+    set((state) => ({
+      user: state.user ? { ...state.user, nickname } : null,
+    })),
 }));

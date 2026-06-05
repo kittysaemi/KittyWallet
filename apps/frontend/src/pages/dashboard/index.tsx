@@ -123,6 +123,7 @@ const BottomNav: React.FC = () => (
 
 // ─── 메인 페이지 ─────────────────────────────────────────────
 const DashboardPage: React.FC = () => {
+  const navigate = useNavigate();
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const isOffline = !navigator.onLine;
 
@@ -162,12 +163,17 @@ const DashboardPage: React.FC = () => {
           <div className="mb-4"><SkeletonCard rows={1} /></div>
         ) : (
           <div className={`${cardClass} mb-4 flex items-center justify-between px-5 py-4`}>
-            <div>
+            <button
+              type="button"
+              aria-label="사용자 설정으로 이동"
+              onClick={() => navigate("/settings")}
+              className="flex flex-col text-left transition hover:opacity-70 active:opacity-50"
+            >
               <p className="text-xs text-[var(--color-text-secondary)]">안녕하세요</p>
               <p className="mt-0.5 text-lg font-bold text-[var(--color-text-primary)]">
                 {data?.user.nickname ?? "—"}님
               </p>
-            </div>
+            </button>
             <button
               type="button"
               onClick={handleLogout}
