@@ -4,7 +4,9 @@ import type {
   CategoryStatisticsData,
   CategoryStatisticsParams,
   MonthlyStatisticsData,
-  MonthlyStatisticsParams
+  MonthlyStatisticsParams,
+  PeriodStatisticsData,
+  PeriodStatisticsParams
 } from "../model/statistics.types";
 
 export const statisticsApi = {
@@ -21,6 +23,15 @@ export const statisticsApi = {
     params: CategoryStatisticsParams
   ): Promise<ApiResponse<CategoryStatisticsData>> => {
     const res = await apiClient.get<ApiResponse<CategoryStatisticsData>>("/statistics/category", {
+      params
+    });
+    return res.data;
+  },
+
+  getPeriodStatistics: async (
+    params: PeriodStatisticsParams
+  ): Promise<ApiResponse<PeriodStatisticsData>> => {
+    const res = await apiClient.get<ApiResponse<PeriodStatisticsData>>("/statistics/period", {
       params
     });
     return res.data;
