@@ -14,6 +14,7 @@ import CategoriesPage from "../../pages/categories";
 import IconsPage from "../../pages/icons";
 import LoginPage from "../../pages/login";
 import SignupPage from "../../pages/signup";
+import SettingsPage from "../../pages/settings";
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -149,6 +150,14 @@ export const AppRouter: React.FC = () => (
       element={
         <ProtectedRoute>
           <TransactionEditPage />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/settings"
+      element={
+        <ProtectedRoute>
+          <SettingsPage />
         </ProtectedRoute>
       }
     />
