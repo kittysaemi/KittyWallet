@@ -13,9 +13,14 @@ import {
 import { ChevronLeft, ChevronRight, RefreshCw, WifiOff } from "lucide-react";
 import { Link } from "react-router-dom";
 import { statisticsApi } from "../../entities/statistics/api/statisticsApi";
-import type { MonthlyDailyItem } from "../../entities/statistics/model/statistics.types";
+import type {
+  MonthlyDailyItem,
+  PeriodStatisticsItem
+} from "../../entities/statistics/model/statistics.types";
 
 Chart.register(CategoryScale, LinearScale, LineController, LineElement, PointElement, Filler, Tooltip);
+
+type ViewMode = "MONTH" | "WEEK";
 
 interface ChartItem {
   label: string;
@@ -44,6 +49,14 @@ function getMonthRange(date: Date): { start: string; end: string } {
   };
 }
 
+function getWeekRange(date: Date): { start: string; end: string } {
+  const start = new Date(date);
+  start.setDate(date.getDate() - date.getDay());
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  return { start: toDateValue(start), end: toDateValue(end) };
+}
+
 function formatAmount(amount: number): string {
   return `${amount.toLocaleString("ko-KR")}원`;
 }
@@ -52,11 +65,29 @@ function formatMonthLabel(date: Date): string {
   return `${date.getFullYear()}년 ${date.getMonth() + 1}월`;
 }
 
+function formatPeriodLabel(mode: ViewMode, date: Date, range: { start: string; end: string }) {
+  if (mode === "MONTH") return formatMonthLabel(date);
+
+  const start = new Date(`${range.start}T00:00:00`);
+  const end = new Date(`${range.end}T00:00:00`);
+  return `${start.getMonth() + 1}월 ${start.getDate()}일 - ${end.getMonth() + 1}월 ${end.getDate()}일`;
+}
+
 function toChartItems(items: MonthlyDailyItem[]): ChartItem[] {
   return items.map((item) => ({
     label: item.date.slice(8),
     expenseAmount: item.expense_amount
   }));
+}
+
+function toPeriodChartItems(items: PeriodStatisticsItem[]): ChartItem[] {
+  return items.map((item) => {
+    const date = new Date(`${item.period}T00:00:00`);
+    return {
+      label: `${date.getMonth() + 1}/${date.getDate()}`,
+      expenseAmount: item.expense_amount
+    };
+  });
 }
 
 const SpendingChart: React.FC<{ items: ChartItem[] }> = ({ items }) => {
@@ -139,16 +170,31 @@ const StatisticsSkeleton: React.FC = () => (
 
 const StatisticsPage: React.FC = () => {
   const today = React.useMemo(() => new Date(), []);
+  const [viewMode, setViewMode] = React.useState<ViewMode>("MONTH");
   const [baseDate, setBaseDate] = React.useState(today);
   const isOffline = !navigator.onLine;
   const monthValue = formatMonthValue(baseDate);
-  const range = getMonthRange(baseDate);
+  const range = viewMode === "MONTH" ? getMonthRange(baseDate) : getWeekRange(baseDate);
 
   const monthlyQuery = useQuery({
     queryKey: ["statistics", "monthly", monthValue],
     queryFn: () => statisticsApi.getMonthlyStatistics({ month: monthValue }),
     staleTime: 30 * 1000,
-    retry: isOffline ? false : 2
+    retry: isOffline ? false : 2,
+    enabled: viewMode === "MONTH"
+  });
+
+  const periodQuery = useQuery({
+    queryKey: ["statistics", "period", range.start, range.end],
+    queryFn: () =>
+      statisticsApi.getPeriodStatistics({
+        start_date: range.start,
+        end_date: range.end,
+        group_by: "DAY"
+      }),
+    staleTime: 30 * 1000,
+    retry: isOffline ? false : 2,
+    enabled: viewMode === "WEEK"
   });
 
   const categoryQuery = useQuery({
@@ -165,25 +211,55 @@ const StatisticsPage: React.FC = () => {
   });
 
   const monthly = monthlyQuery.data?.data ?? null;
+  const period = periodQuery.data?.data ?? null;
   const category = categoryQuery.data?.data ?? null;
-  const chartItems = monthly ? toChartItems(monthly.daily_items) : [];
+  const summary =
+    viewMode === "MONTH" && monthly
+      ? {
+          incomeAmount: monthly.income_amount,
+          expenseAmount: monthly.expense_amount,
+          netAmount: monthly.net_amount,
+          transactionCount: monthly.transaction_count,
+          chartItems: toChartItems(monthly.daily_items)
+        }
+      : period
+        ? {
+            incomeAmount: period.income_amount,
+            expenseAmount: period.expense_amount,
+            netAmount: period.net_amount,
+            transactionCount: period.items.reduce((sum, item) => sum + item.transaction_count, 0),
+            chartItems: toPeriodChartItems(period.items)
+          }
+        : null;
+  const chartItems = summary?.chartItems ?? [];
   const hasChartData = chartItems.some((item) => item.expenseAmount > 0);
-  const isLoading = monthlyQuery.isLoading || categoryQuery.isLoading;
-  const isError = (monthlyQuery.isError && !monthly) || (categoryQuery.isError && !category);
+  const activeSummaryQuery = viewMode === "MONTH" ? monthlyQuery : periodQuery;
+  const isLoading = activeSummaryQuery.isLoading || categoryQuery.isLoading;
+  const isError = (activeSummaryQuery.isError && !summary) || (categoryQuery.isError && !category);
   const isEmpty = !isLoading && !isError && !hasChartData && (category?.items.length ?? 0) === 0;
-  const isCurrentMonth =
-    baseDate.getFullYear() === today.getFullYear() && baseDate.getMonth() === today.getMonth();
+  const isCurrentPeriod =
+    viewMode === "MONTH"
+      ? baseDate.getFullYear() === today.getFullYear() && baseDate.getMonth() === today.getMonth()
+      : getWeekRange(baseDate).start === getWeekRange(today).start;
 
-  function moveMonth(direction: -1 | 1) {
+  function movePeriod(direction: -1 | 1) {
     setBaseDate((current) => {
       const next = new Date(current);
-      next.setMonth(current.getMonth() + direction);
+      if (viewMode === "MONTH") {
+        next.setMonth(current.getMonth() + direction);
+      } else {
+        next.setDate(current.getDate() + direction * 7);
+      }
       return next > today ? current : next;
     });
   }
 
   function refresh() {
-    void monthlyQuery.refetch();
+    if (viewMode === "MONTH") {
+      void monthlyQuery.refetch();
+    } else {
+      void periodQuery.refetch();
+    }
     void categoryQuery.refetch();
   }
 
@@ -215,24 +291,41 @@ const StatisticsPage: React.FC = () => {
           </div>
         )}
 
+        <div className="mb-3 grid grid-cols-2 rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] p-1">
+          {(["MONTH", "WEEK"] as ViewMode[]).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => setViewMode(mode)}
+              className={`min-h-10 rounded-xl text-sm font-semibold transition ${
+                viewMode === mode
+                  ? "bg-[var(--color-primary)] text-[var(--color-text-primary)]"
+                  : "text-[var(--color-text-secondary)]"
+              }`}
+            >
+              {mode === "MONTH" ? "월별" : "주별"}
+            </button>
+          ))}
+        </div>
+
         <div className={`${cardClass} mb-4 flex items-center justify-between px-4 py-3`}>
           <button
             type="button"
-            onClick={() => moveMonth(-1)}
+            onClick={() => movePeriod(-1)}
             className="flex h-9 w-9 items-center justify-center rounded-xl text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-secondary)]"
-            aria-label="이전 달"
+            aria-label="이전 기간"
           >
             <ChevronLeft size={20} />
           </button>
           <span className="text-base font-semibold text-[var(--color-text-primary)]">
-            {formatMonthLabel(baseDate)}
+            {formatPeriodLabel(viewMode, baseDate, range)}
           </span>
           <button
             type="button"
-            onClick={() => moveMonth(1)}
-            disabled={isCurrentMonth}
+            onClick={() => movePeriod(1)}
+            disabled={isCurrentPeriod}
             className="flex h-9 w-9 items-center justify-center rounded-xl text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-secondary)] disabled:opacity-30"
-            aria-label="다음 달"
+            aria-label="다음 기간"
           >
             <ChevronRight size={20} />
           </button>
@@ -270,31 +363,31 @@ const StatisticsPage: React.FC = () => {
           </div>
         )}
 
-        {!isLoading && !isError && !isEmpty && monthly && (
+        {!isLoading && !isError && !isEmpty && summary && (
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-2 gap-3">
               <div className={`${cardClass} p-4`}>
                 <p className="text-xs font-medium text-[var(--color-text-secondary)]">수입</p>
                 <p className="mt-2 text-lg font-bold text-[var(--color-success)]">
-                  {formatAmount(monthly.income_amount)}
+                  {formatAmount(summary.incomeAmount)}
                 </p>
               </div>
               <div className={`${cardClass} p-4`}>
                 <p className="text-xs font-medium text-[var(--color-text-secondary)]">지출</p>
                 <p className="mt-2 text-lg font-bold text-[var(--color-danger)]">
-                  {formatAmount(monthly.expense_amount)}
+                  {formatAmount(summary.expenseAmount)}
                 </p>
               </div>
               <div className={`${cardClass} p-4`}>
                 <p className="text-xs font-medium text-[var(--color-text-secondary)]">잔액 흐름</p>
                 <p className="mt-2 text-lg font-bold text-[var(--color-text-primary)]">
-                  {formatAmount(monthly.net_amount)}
+                  {formatAmount(summary.netAmount)}
                 </p>
               </div>
               <div className={`${cardClass} p-4`}>
                 <p className="text-xs font-medium text-[var(--color-text-secondary)]">거래 수</p>
                 <p className="mt-2 text-lg font-bold text-[var(--color-text-primary)]">
-                  {monthly.transaction_count.toLocaleString("ko-KR")}건
+                  {summary.transactionCount.toLocaleString("ko-KR")}건
                 </p>
               </div>
             </div>
@@ -303,7 +396,7 @@ const StatisticsPage: React.FC = () => {
               <div className="mb-4">
                 <h2 className="text-base font-bold text-[var(--color-text-primary)]">소비 흐름</h2>
                 <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-                  선택한 달의 일별 지출 금액 기준
+                  선택한 기간의 지출 금액 기준
                 </p>
               </div>
               {hasChartData ? (

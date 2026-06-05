@@ -48,4 +48,28 @@ export interface CategoryStatisticsData {
   items: CategoryStatisticsItem[];
 }
 
+export interface PeriodStatisticsParams {
+  start_date: string;
+  end_date: string;
+  wallet_type?: "ACCOUNT" | "CARD";
+  wallet_id?: number;
+  group_by?: "DAY" | "MONTH";
+}
+
+export interface PeriodStatisticsItem {
+  period: string;
+  income_amount: number;
+  expense_amount: number;
+  transaction_count: number;
+}
+
+export interface PeriodStatisticsData {
+  start_date: string;
+  end_date: string;
+  income_amount: number;
+  expense_amount: number;
+  net_amount: number;
+  items: PeriodStatisticsItem[];
+}
+
 export type { ApiResponse };

@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import StatisticsPage from ".";
 import { statisticsApi } from "../../entities/statistics/api/statisticsApi";
@@ -8,7 +9,8 @@ import { statisticsApi } from "../../entities/statistics/api/statisticsApi";
 vi.mock("../../entities/statistics/api/statisticsApi", () => ({
   statisticsApi: {
     getMonthlyStatistics: vi.fn(),
-    getCategoryStatistics: vi.fn()
+    getCategoryStatistics: vi.fn(),
+    getPeriodStatistics: vi.fn()
   }
 }));
 
@@ -109,6 +111,25 @@ describe("StatisticsPage", () => {
       },
       error: null
     });
+    mockedStatisticsApi.getPeriodStatistics.mockResolvedValue({
+      success: true,
+      data: {
+        start_date: "2026-06-01",
+        end_date: "2026-06-07",
+        income_amount: 120000,
+        expense_amount: 45000,
+        net_amount: 75000,
+        items: [
+          {
+            period: "2026-06-02",
+            income_amount: 120000,
+            expense_amount: 45000,
+            transaction_count: 2
+          }
+        ]
+      },
+      error: null
+    });
   });
 
   it("renders monthly summary, Chart.js canvas, and category statistics", async () => {
@@ -128,6 +149,16 @@ describe("StatisticsPage", () => {
     render(<StatisticsPage />, { wrapper: createWrapper() });
 
     expect(screen.getByLabelText("통계 데이터를 불러오는 중입니다.")).toBeInTheDocument();
+  });
+
+  it("switches to weekly period statistics", async () => {
+    render(<StatisticsPage />, { wrapper: createWrapper() });
+
+    await userEvent.click(await screen.findByRole("button", { name: "주별" }));
+
+    await waitFor(() => expect(mockedStatisticsApi.getPeriodStatistics).toHaveBeenCalled());
+    expect(await screen.findByText("120,000원")).toBeInTheDocument();
+    expect(screen.getByText("45,000원")).toBeInTheDocument();
   });
 
   it("renders empty state when statistics have no items", async () => {
