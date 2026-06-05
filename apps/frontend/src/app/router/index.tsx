@@ -1,5 +1,5 @@
 import React from "react";
-import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Link, Navigate, Route, Routes, useLocation, useSearchParams } from "react-router-dom";
 import { useAuthStore } from "../../entities/auth/store/authStore";
 import AccountsPage from "../../pages/accounts";
 import TransactionsPage from "../../pages/transactions";
@@ -7,6 +7,7 @@ import TransactionNewPage from "../../pages/transactions/new";
 import TransactionEditPage from "../../pages/transactions/edit";
 import TransactionDetailPage from "../../pages/transactions/detail";
 import TransactionSearchPage from "../../pages/transactions/search";
+import StatisticsPage from "../../pages/statistics";
 import CardsPage from "../../pages/cards";
 import CategoriesPage from "../../pages/categories";
 import IconsPage from "../../pages/icons";
@@ -18,15 +19,23 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const location = useLocation();
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    const redirectTo = `${location.pathname}${location.search}`;
+    return (
+      <Navigate
+        to={`/login?redirect=${encodeURIComponent(redirectTo)}`}
+        state={{ from: location }}
+        replace
+      />
+    );
   }
   return <>{children}</>;
 };
 
 const PublicOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const [searchParams] = useSearchParams();
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={searchParams.get("redirect") ?? "/dashboard"} replace />;
   }
   return <>{children}</>;
 };
@@ -144,6 +153,14 @@ export const AppRouter: React.FC = () => (
       element={
         <ProtectedRoute>
           <CategoriesPage />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/statistics"
+      element={
+        <ProtectedRoute>
+          <StatisticsPage />
         </ProtectedRoute>
       }
     />
