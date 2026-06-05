@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { AxiosError } from 'axios';
 import { authApi } from '../../../entities/auth/api/authApi';
 import { useAuthStore } from '../../../entities/auth/store/authStore';
@@ -8,6 +8,7 @@ import type { LoginRequest } from '../../../entities/auth/model/auth.types';
 export const useLogin = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const setAuth = useAuthStore((state) => state.setAuth);
 
   return useMutation({
@@ -15,7 +16,9 @@ export const useLogin = () => {
     onSuccess: (response) => {
       if (response.success && response.data) {
         setAuth(response.data.access_token, response.data.user);
-        const from = (location.state as { from?: Location })?.from?.pathname ?? '/dashboard';
+        const redirect = searchParams.get("redirect");
+        const fromState = (location.state as { from?: Location })?.from;
+        const from = redirect ?? fromState?.pathname ?? '/dashboard';
         navigate(from, { replace: true });
       }
     },
