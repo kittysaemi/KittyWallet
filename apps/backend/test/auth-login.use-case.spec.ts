@@ -36,14 +36,13 @@ describe("LoginUseCase", () => {
     });
   });
 
-  it("issues access and refresh tokens for an active user", async () => {
+  it("issues access and refresh tokens for a valid user", async () => {
     const password = await bcrypt.hash("password", 4);
     authRepository.findUserByEmail.mockResolvedValue({
       userId: BigInt(1),
       email: "test@example.com",
       password,
       nickname: "tester",
-      status: "ACTIVE",
       createdAt: new Date(),
       updatedAt: new Date()
     });
@@ -63,12 +62,29 @@ describe("LoginUseCase", () => {
     expect(authRepository.createRefreshToken).toHaveBeenCalledTimes(1);
   });
 
-  it("rejects an unknown user", async () => {
+  it("rejects an unknown user with AUTH_002", async () => {
     authRepository.findUserByEmail.mockResolvedValue(null);
 
     await expect(
       useCase.execute({ email: "none@example.com", password: "password" })
-    ).rejects.toBeInstanceOf(AppException);
+    ).rejects.toMatchObject({ code: "AUTH_002" });
+    expect(authRepository.createRefreshToken).not.toHaveBeenCalled();
+  });
+
+  it("rejects wrong password with AUTH_002", async () => {
+    const password = await bcrypt.hash("correct-password", 4);
+    authRepository.findUserByEmail.mockResolvedValue({
+      userId: BigInt(1),
+      email: "test@example.com",
+      password,
+      nickname: "tester",
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+
+    await expect(
+      useCase.execute({ email: "test@example.com", password: "wrong-password" })
+    ).rejects.toMatchObject({ code: "AUTH_002" });
     expect(authRepository.createRefreshToken).not.toHaveBeenCalled();
   });
 });
