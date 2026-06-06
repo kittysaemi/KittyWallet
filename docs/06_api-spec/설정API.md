@@ -70,7 +70,7 @@
   "success": true,
   "data": {
     "settings": {
-      "theme": "system",
+      "theme": "cat-pink",
       "currency": "KRW",
       "sync_enabled": true,
       "transaction_list_page_size": 20
@@ -105,7 +105,7 @@
 ```json
 {
   "settings": {
-    "theme": "dark",
+    "theme": "mint",
     "currency": "KRW",
     "sync_enabled": true,
     "transaction_list_page_size": 20
@@ -123,10 +123,12 @@
 
 | key | 타입 | 기본값 | 설명 |
 |---|---|---|---|
-| theme | string | system | system/light/dark |
+| theme | string | cat-pink | cat-pink/mint/lavender |
 | currency | string | KRW | 표시 통화 |
 | sync_enabled | boolean | true | 네트워크 복구 시 자동 동기화 사용 여부 |
-| transaction_list_page_size | number | 20 | 거래 목록 기본 페이지 크기 |
+| transaction_list_page_size | number | 20 | 거래내역 페이지네이션 정책 확정 전까지 화면에 노출하지 않는 호환/예약 설정 |
+
+과거 저장값인 `system`, `light`, `dark`는 조회 시 `cat-pink`로 보정한다.
 
 ---
 
@@ -137,7 +139,7 @@
   "success": true,
   "data": {
     "settings": {
-      "theme": "dark",
+      "theme": "mint",
       "currency": "KRW",
       "sync_enabled": true,
       "transaction_list_page_size": 20

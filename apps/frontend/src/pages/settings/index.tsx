@@ -1,21 +1,22 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { z } from 'zod';
-import { userApi } from '../../entities/user/api/userApi';
-import { authApi } from '../../entities/auth/api/authApi';
-import { useAuthStore } from '../../entities/auth/store/authStore';
-import { Button } from '../../shared/ui/Button';
-import { getPendingSyncCount } from '../../shared/storage/syncQueue';
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ChevronLeft } from "lucide-react";
+import { z } from "zod";
+import { authApi } from "../../entities/auth/api/authApi";
+import { useAuthStore } from "../../entities/auth/store/authStore";
+import { userApi } from "../../entities/user/api/userApi";
+import { getPendingSyncCount } from "../../shared/storage/syncQueue";
+import { Button } from "../../shared/ui/Button";
 
 const nicknameSchema = z
   .string()
   .trim()
-  .min(1, '닉네임을 입력해주세요.')
-  .max(30, '닉네임은 30자 이하여야 합니다.');
+  .min(1, "닉네임을 입력해주세요.")
+  .max(30, "닉네임은 30자 이하여야 합니다.");
 
 const cardClass =
-  'rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] shadow-[0_4px_16px_var(--color-card-shadow)]';
+  "rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] shadow-[0_4px_16px_var(--color-card-shadow)]";
 
 const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -24,15 +25,14 @@ const SettingsPage: React.FC = () => {
   const updateNickname = useAuthStore((state) => state.updateNickname);
 
   const [isEditingNickname, setIsEditingNickname] = React.useState(false);
-  const [nicknameInput, setNicknameInput] = React.useState('');
-  const [nicknameError, setNicknameError] = React.useState('');
-
+  const [nicknameInput, setNicknameInput] = React.useState("");
+  const [nicknameError, setNicknameError] = React.useState("");
   const [isWithdrawOpen, setIsWithdrawOpen] = React.useState(false);
-  const [withdrawError, setWithdrawError] = React.useState('');
+  const [withdrawError, setWithdrawError] = React.useState("");
 
   const userQuery = useQuery({
-    queryKey: ['user', 'me'],
-    queryFn: userApi.getMe,
+    queryKey: ["user", "me"],
+    queryFn: userApi.getMe
   });
 
   const user = userQuery.data?.data;
@@ -42,15 +42,15 @@ const SettingsPage: React.FC = () => {
     onSuccess: (res) => {
       if (res.success && res.data) {
         updateNickname(res.data.nickname);
-        void queryClient.invalidateQueries({ queryKey: ['user', 'me'] });
-        void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+        void queryClient.invalidateQueries({ queryKey: ["user", "me"] });
+        void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
         setIsEditingNickname(false);
-        setNicknameError('');
+        setNicknameError("");
       }
     },
     onError: () => {
-      setNicknameError('닉네임 수정에 실패했습니다. 다시 시도해주세요.');
-    },
+      setNicknameError("닉네임 수정에 실패했습니다. 다시 시도해주세요.");
+    }
   });
 
   const withdrawMutation = useMutation({
@@ -58,17 +58,17 @@ const SettingsPage: React.FC = () => {
     onSuccess: () => {
       clearAuth();
       void queryClient.clear();
-      navigate('/login', { replace: true });
+      navigate("/login", { replace: true });
     },
     onError: (err: unknown) => {
       const code = (err as { response?: { data?: { error?: { code?: string } } } })
         ?.response?.data?.error?.code;
-      if (code === 'USER_003') {
-        setWithdrawError('미동기화 데이터가 있습니다. 동기화 완료 후 다시 시도해주세요.');
-      } else {
-        setWithdrawError('탈퇴 처리에 실패했습니다. 다시 시도해주세요.');
-      }
-    },
+      setWithdrawError(
+        code === "USER_003"
+          ? "미동기화 데이터가 있습니다. 동기화 완료 후 다시 시도해주세요."
+          : "탈퇴 처리에 실패했습니다. 다시 시도해주세요."
+      );
+    }
   });
 
   const handleLogout = async () => {
@@ -78,19 +78,19 @@ const SettingsPage: React.FC = () => {
       // 실패해도 로컬 상태는 제거
     }
     clearAuth();
-    navigate('/login', { replace: true });
+    navigate("/login", { replace: true });
   };
 
   const handleStartEditNickname = () => {
-    setNicknameInput(user?.nickname ?? '');
-    setNicknameError('');
+    setNicknameInput(user?.nickname ?? "");
+    setNicknameError("");
     setIsEditingNickname(true);
   };
 
   const handleSaveNickname = () => {
     const result = nicknameSchema.safeParse(nicknameInput);
     if (!result.success) {
-      setNicknameError(result.error.errors[0]?.message ?? '입력값을 확인해주세요.');
+      setNicknameError(result.error.errors[0]?.message ?? "입력값을 확인해주세요.");
       return;
     }
     if (result.data === user?.nickname) {
@@ -101,17 +101,17 @@ const SettingsPage: React.FC = () => {
   };
 
   const handleOpenWithdraw = async () => {
-    setWithdrawError('');
+    setWithdrawError("");
     const pendingCount = await getPendingSyncCount();
     if (pendingCount > 0) {
-      setWithdrawError('미동기화 데이터가 있습니다. 동기화 완료 후 다시 시도해주세요.');
+      setWithdrawError("미동기화 데이터가 있습니다. 동기화 완료 후 다시 시도해주세요.");
       return;
     }
     setIsWithdrawOpen(true);
   };
 
   const handleConfirmWithdraw = () => {
-    setWithdrawError('');
+    setWithdrawError("");
     withdrawMutation.mutate();
   };
 
@@ -130,7 +130,17 @@ const SettingsPage: React.FC = () => {
     return (
       <div className="bg-[var(--color-bg-primary)] px-4 py-6">
         <div className="mx-auto w-full max-w-[480px]">
-          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">설정</h1>
+          <div className="mb-6 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-secondary)]"
+              aria-label="뒤로"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <h1 className="font-gamja text-2xl text-[var(--color-text-primary)]">사용자 설정</h1>
+          </div>
           <div className={`${cardClass} mt-6 p-4`}>
             <p className="text-[var(--color-text-primary)]">사용자 정보를 불러오지 못했습니다.</p>
             <Button
@@ -150,9 +160,18 @@ const SettingsPage: React.FC = () => {
   return (
     <div className="bg-[var(--color-bg-primary)] px-4 py-6">
       <div className="mx-auto flex w-full max-w-[480px] flex-col gap-6">
-        <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">설정</h1>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-secondary)]"
+            aria-label="뒤로"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <h1 className="font-gamja text-2xl text-[var(--color-text-primary)]">사용자 설정</h1>
+        </div>
 
-        {/* 사용자 정보 */}
         <section aria-labelledby="profile-heading">
           <h2
             id="profile-heading"
@@ -180,8 +199,8 @@ const SettingsPage: React.FC = () => {
                       autoFocus
                       onChange={(e) => setNicknameInput(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleSaveNickname();
-                        if (e.key === 'Escape') setIsEditingNickname(false);
+                        if (e.key === "Enter") handleSaveNickname();
+                        if (e.key === "Escape") setIsEditingNickname(false);
                       }}
                       className="min-h-10 flex-1 rounded-xl border border-[var(--color-primary)] bg-[var(--color-bg-input)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none"
                     />
@@ -224,7 +243,6 @@ const SettingsPage: React.FC = () => {
           </div>
         </section>
 
-        {/* 계정 관리 */}
         <section aria-labelledby="account-heading">
           <h2
             id="account-heading"
@@ -254,7 +272,6 @@ const SettingsPage: React.FC = () => {
         </section>
       </div>
 
-      {/* 회원 탈퇴 확인 모달 */}
       {isWithdrawOpen && (
         <div
           role="dialog"
@@ -297,7 +314,7 @@ const SettingsPage: React.FC = () => {
                 disabled={withdrawMutation.isPending}
                 onClick={() => {
                   setIsWithdrawOpen(false);
-                  setWithdrawError('');
+                  setWithdrawError("");
                 }}
               >
                 취소
