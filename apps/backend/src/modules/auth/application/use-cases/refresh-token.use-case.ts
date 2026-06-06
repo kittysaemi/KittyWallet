@@ -39,7 +39,7 @@ export class RefreshTokenUseCase {
     }
 
     const user = await this.authRepository.findUserById(userId);
-    if (!user || user.status !== 'ACTIVE') {
+    if (!user) {
       throw new AppException('AUTH_004', '유효하지 않은 토큰입니다.', HttpStatus.UNAUTHORIZED);
     }
 
