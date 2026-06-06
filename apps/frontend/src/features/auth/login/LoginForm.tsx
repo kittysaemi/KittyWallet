@@ -15,8 +15,7 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 
 const ERROR_MESSAGES: Record<string, string> = {
-  AUTH_002: "이메일 또는 비밀번호가 올바르지 않습니다.",
-  AUTH_003: "비활성 계정입니다."
+  AUTH_002: "가입되어 있지 않은 계정입니다.",
 };
 
 export const LoginForm: React.FC = () => {

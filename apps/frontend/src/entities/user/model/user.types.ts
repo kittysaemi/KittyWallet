@@ -14,11 +14,6 @@ export interface UpdateProfileData {
   updated_at: string;
 }
 
-export interface WithdrawData {
-  withdrawn: boolean;
-  withdrawn_at: string;
-}
-
 export type UserProfileResponse = ApiResponse<UserProfile>;
 export type UpdateProfileResponse = ApiResponse<UpdateProfileData>;
-export type WithdrawResponse = ApiResponse<WithdrawData>;
+export type WithdrawResponse = ApiResponse<null>;
