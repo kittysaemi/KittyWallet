@@ -109,7 +109,7 @@ const TransactionRow: React.FC<TransactionRowProps> = ({ item, iconMap, category
       <p
         className={`shrink-0 text-sm font-semibold ${
           item.transaction_type === "INCOME"
-            ? "text-[var(--color-success,#22c55e)]"
+            ? "text-blue-500"
             : "text-[var(--color-text-primary)]"
         }`}
       >

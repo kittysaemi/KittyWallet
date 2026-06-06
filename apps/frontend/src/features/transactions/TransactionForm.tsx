@@ -283,6 +283,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     mutationFn: transactionApi.createTransaction,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       onSuccess();
     },
     onError: (err: unknown) => {
@@ -299,6 +300,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       transactionApi.updateTransaction(transactionId!, data),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       onSuccess();
     },
     onError: (err: unknown) => {

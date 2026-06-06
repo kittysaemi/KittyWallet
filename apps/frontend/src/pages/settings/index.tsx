@@ -5,6 +5,7 @@ import { ChevronLeft } from "lucide-react";
 import { z } from "zod";
 import { authApi } from "../../entities/auth/api/authApi";
 import { useAuthStore } from "../../entities/auth/store/authStore";
+import { applyThemeSetting, DEFAULT_THEME } from "../../entities/settings/model/theme";
 import { userApi } from "../../entities/user/api/userApi";
 import { getPendingSyncCount } from "../../shared/storage/syncQueue";
 import { Button } from "../../shared/ui/Button";
@@ -58,6 +59,7 @@ const SettingsPage: React.FC = () => {
     onSuccess: () => {
       clearAuth();
       void queryClient.clear();
+      applyThemeSetting(DEFAULT_THEME);
       navigate("/login", { replace: true });
     },
     onError: (err: unknown) => {
@@ -78,6 +80,8 @@ const SettingsPage: React.FC = () => {
       // 실패해도 로컬 상태는 제거
     }
     clearAuth();
+    void queryClient.clear();
+    applyThemeSetting(DEFAULT_THEME);
     navigate("/login", { replace: true });
   };
 
