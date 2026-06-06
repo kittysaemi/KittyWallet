@@ -33,16 +33,12 @@ export class LoginUseCase {
     const user = await this.authRepository.findUserByEmail(command.email);
 
     if (!user) {
-      throw new AppException('AUTH_002', '이메일 또는 비밀번호가 올바르지 않습니다.', HttpStatus.UNAUTHORIZED);
-    }
-
-    if (user.status !== 'ACTIVE') {
-      throw new AppException('AUTH_003', '비활성 계정입니다.', HttpStatus.UNAUTHORIZED);
+      throw new AppException('AUTH_002', '가입되어 있지 않은 계정입니다.', HttpStatus.UNAUTHORIZED);
     }
 
     const passwordMatch = await bcrypt.compare(command.password, user.password);
     if (!passwordMatch) {
-      throw new AppException('AUTH_002', '이메일 또는 비밀번호가 올바르지 않습니다.', HttpStatus.UNAUTHORIZED);
+      throw new AppException('AUTH_002', '가입되어 있지 않은 계정입니다.', HttpStatus.UNAUTHORIZED);
     }
 
     const accessToken = this.jwtService.sign(

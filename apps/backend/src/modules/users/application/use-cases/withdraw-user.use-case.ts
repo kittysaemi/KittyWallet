@@ -23,12 +23,8 @@ export class WithdrawUserUseCase {
       throw new AppException('USER_003', '미동기화 데이터가 있습니다. 동기화 완료 후 다시 시도해주세요.', HttpStatus.CONFLICT);
     }
 
-    await this.userRepository.revokeAllRefreshTokens(userId);
-    const withdrawn = await this.userRepository.withdraw(userId);
+    await this.userRepository.deleteAllUserData(userId);
 
-    return {
-      withdrawn: true,
-      withdrawn_at: withdrawn.withdrawnAt!.toISOString(),
-    };
+    return null;
   }
 }
