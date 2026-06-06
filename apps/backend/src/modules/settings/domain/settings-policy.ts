@@ -2,7 +2,7 @@ import { HttpStatus } from "@nestjs/common";
 import { AppException } from "../../../common/exceptions/app.exception";
 
 export const SETTING_DEFAULTS = {
-  theme: "system",
+  theme: "cat-pink",
   currency: "KRW",
   sync_enabled: true,
   transaction_list_page_size: 20
@@ -10,7 +10,7 @@ export const SETTING_DEFAULTS = {
 
 export type SettingKey = keyof typeof SETTING_DEFAULTS;
 export interface SettingsMap {
-  theme: "system" | "light" | "dark";
+  theme: "cat-pink" | "mint" | "lavender";
   currency: "KRW";
   sync_enabled: boolean;
   transaction_list_page_size: number;
@@ -40,17 +40,15 @@ export function normalizeSettings(input: Record<string, unknown>): PartialSettin
 export function mergeWithDefaultSettings(settings: PartialSettingsMap): SettingsMap {
   return {
     ...SETTING_DEFAULTS,
-    ...settings
+    ...settings,
+    theme: normalizeThemeValue(settings.theme)
   };
 }
 
 function normalizeSettingValue(key: SettingKey, value: unknown): SettingValue {
   switch (key) {
     case "theme":
-      if (value === "system" || value === "light" || value === "dark") {
-        return value;
-      }
-      break;
+      return normalizeThemeValue(value);
     case "currency":
       if (value === "KRW") {
         return value;
@@ -66,6 +64,18 @@ function normalizeSettingValue(key: SettingKey, value: unknown): SettingValue {
         return value;
       }
       break;
+  }
+
+  throw new AppException("SETTING_001", "지원하지 않는 설정값입니다.", HttpStatus.BAD_REQUEST);
+}
+
+function normalizeThemeValue(value: unknown): SettingsMap["theme"] {
+  if (value === "cat-pink" || value === "mint" || value === "lavender") {
+    return value;
+  }
+
+  if (value === undefined || value === "system" || value === "light" || value === "dark") {
+    return SETTING_DEFAULTS.theme;
   }
 
   throw new AppException("SETTING_001", "지원하지 않는 설정값입니다.", HttpStatus.BAD_REQUEST);
