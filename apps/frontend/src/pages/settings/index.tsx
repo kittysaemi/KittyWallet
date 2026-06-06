@@ -290,7 +290,7 @@ const SettingsPage: React.FC = () => {
               정말 탈퇴하시겠어요?
             </h3>
             <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
-              탈퇴하면 모든 데이터에 접근할 수 없게 됩니다. 이 작업은 되돌릴 수 없습니다.
+              탈퇴하면 등록한 데이터가 삭제되며 복구할 수 없습니다.
             </p>
 
             {withdrawError && (
