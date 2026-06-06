@@ -66,10 +66,8 @@ erDiagram
         VARCHAR email "로그인 이메일"
         VARCHAR password "암호화된 비밀번호"
         VARCHAR nickname "사용자 표시명"
-        VARCHAR status "계정 상태. ACTIVE / INACTIVE / WITHDRAWN"
         VARCHAR reset_token "비밀번호 재설정 토큰 (해시 저장). NULL이면 미발급 상태"
         DATETIME reset_token_expires_at "reset_token 만료 일시 (발급 후 30분)"
-        DATETIME withdrawn_at "회원 탈퇴 일시. NULL이면 활성 사용자"
         DATETIME created_at "생성일시"
         DATETIME updated_at "수정일시"
     }

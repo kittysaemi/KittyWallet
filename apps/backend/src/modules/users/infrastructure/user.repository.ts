@@ -17,16 +17,6 @@ export class UserRepository {
     });
   }
 
-  withdraw(userId: bigint): Promise<User> {
-    return this.prisma.user.update({
-      where: { userId },
-      data: {
-        status: 'WITHDRAWN',
-        withdrawnAt: new Date(),
-      },
-    });
-  }
-
   countPendingSyncTransactions(userId: bigint): Promise<number> {
     return this.prisma.transaction.count({
       where: {
@@ -42,6 +32,22 @@ export class UserRepository {
     return this.prisma.refreshToken.updateMany({
       where: { userId, revokedAt: null },
       data: { revokedAt: new Date() },
+    });
+  }
+
+  async deleteAllUserData(userId: bigint): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      await tx.syncHistory.deleteMany({ where: { userId } });
+      await tx.transaction.deleteMany({ where: { userId } });
+      await tx.categoryUserSetting.deleteMany({ where: { userId } });
+      await tx.userSetting.deleteMany({ where: { userId } });
+      await tx.account.deleteMany({ where: { userId } });
+      await tx.card.deleteMany({ where: { userId } });
+      await tx.category.deleteMany({ where: { userId, isDefault: false } });
+      await tx.icon.deleteMany({ where: { userId, isDefault: false } });
+      await tx.syncClient.deleteMany({ where: { userId } });
+      await tx.refreshToken.deleteMany({ where: { userId } });
+      await tx.user.delete({ where: { userId } });
     });
   }
 }
