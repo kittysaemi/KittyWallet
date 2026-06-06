@@ -1,7 +1,7 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronDown, ChevronLeft, Circle, Search, X } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { ChevronDown, Circle, Search, X } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import type { TransactionItem } from "../../entities/transaction/model/transaction.types";
 import { accountApi } from "../../entities/account/api/accountApi";
@@ -587,7 +587,13 @@ const ResultList: React.FC<{
 
 // 메인 페이지
 const TransactionSearchPage: React.FC = () => {
-  const [tab, setTab] = React.useState<"browse" | "keyword">(() => _sc.tab);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawTab = searchParams.get("tab");
+  const tab: "browse" | "keyword" = rawTab === "keyword" ? "keyword" : "browse";
+  const setTab = (next: "browse" | "keyword") => {
+    _sc.tab = next;
+    setSearchParams({ tab: next }, { replace: true });
+  };
 
   const accountsQuery = useQuery({
     queryKey: ["accounts", "active"],
@@ -659,26 +665,19 @@ const TransactionSearchPage: React.FC = () => {
     }`;
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg-primary)]">
-      <div className="mx-auto max-w-[480px] px-4 pb-10 pt-6">
+    <div className="bg-[var(--color-bg-primary)]">
+      <div className="mx-auto max-w-[480px] px-4 pb-6 pt-6">
         {/* 헤더 */}
-        <div className="mb-4 flex items-center gap-3">
-          <Link
-            to="/transactions"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-secondary)]"
-            aria-label="뒤로"
-          >
-            <ChevronLeft size={20} />
-          </Link>
-          <h1 className="flex-1 text-lg font-bold text-[var(--color-text-primary)]">거래 검색</h1>
+        <div className="mb-4 flex items-center">
+          <h1 className="font-gamja text-2xl text-[var(--color-text-primary)]">거래 검색</h1>
         </div>
 
         {/* 탭 */}
         <div className="mb-5 flex border-b border-[var(--color-border-primary)]">
-          <button type="button" className={tabClass(tab === "browse")} onClick={() => { _sc.tab = "browse"; setTab("browse"); }}>
+          <button type="button" className={tabClass(tab === "browse")} onClick={() => setTab("browse")}>
             조회
           </button>
-          <button type="button" className={tabClass(tab === "keyword")} onClick={() => { _sc.tab = "keyword"; setTab("keyword"); }}>
+          <button type="button" className={tabClass(tab === "keyword")} onClick={() => setTab("keyword")}>
             키워드검색
           </button>
         </div>

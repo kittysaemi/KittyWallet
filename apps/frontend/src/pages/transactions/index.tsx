@@ -1,7 +1,7 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Plus, RefreshCw, Search, WifiOff } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { ChevronLeft, ChevronRight, RefreshCw, WifiOff } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import type { TransactionItem } from "../../entities/transaction/model/transaction.types";
 import { categoryApi } from "../../entities/category/api/categoryApi";
@@ -169,33 +169,11 @@ const TransactionsPage: React.FC = () => {
   const isCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1;
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg-primary)]">
-      <div className="mx-auto max-w-[480px] px-4 pb-10 pt-6">
+    <div className="bg-[var(--color-bg-primary)]">
+      <div className="mx-auto max-w-[480px] px-4 pb-6 pt-6">
         {/* 헤더 */}
-        <div className="mb-6 flex items-center justify-between">
-          <Link
-            to="/dashboard"
-            className="text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
-          >
-            ← 홈
-          </Link>
-          <h1 className="text-lg font-bold text-[var(--color-text-primary)]">거래 내역</h1>
-          <div className="flex items-center gap-2">
-            <Link
-              to="/transactions/search"
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] transition hover:bg-[var(--color-primary-soft)]"
-              aria-label="거래 검색"
-            >
-              <Search size={18} />
-            </Link>
-            <Link
-              to="/transactions/new"
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-primary)] text-[var(--color-text-primary)] transition hover:bg-[var(--color-primary-hover)]"
-              aria-label="거래 등록"
-            >
-              <Plus size={18} />
-            </Link>
-          </div>
+        <div className="mb-6 flex items-center">
+          <h1 className="font-gamja text-2xl text-[var(--color-text-primary)]">거래 내역</h1>
         </div>
 
         {/* 오프라인 배너 */}

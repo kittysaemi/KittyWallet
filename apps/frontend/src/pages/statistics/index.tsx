@@ -11,12 +11,15 @@ import {
   Tooltip
 } from "chart.js";
 import { ChevronLeft, ChevronRight, RefreshCw, WifiOff } from "lucide-react";
-import { Link } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { statisticsApi } from "../../entities/statistics/api/statisticsApi";
 import type {
   MonthlyDailyItem,
   PeriodStatisticsItem
 } from "../../entities/statistics/model/statistics.types";
+import { iconApi } from "../../entities/icon/api/iconApi";
+import type { IconItem } from "../../entities/icon/model/icon.types";
+import { IconRenderer } from "../../shared/ui/IconRenderer";
 
 Chart.register(CategoryScale, LinearScale, LineController, LineElement, PointElement, Filler, Tooltip);
 
@@ -170,7 +173,10 @@ const StatisticsSkeleton: React.FC = () => (
 
 const StatisticsPage: React.FC = () => {
   const today = React.useMemo(() => new Date(), []);
-  const [viewMode, setViewMode] = React.useState<ViewMode>("MONTH");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawMode = searchParams.get("mode");
+  const viewMode: ViewMode = rawMode === "WEEK" ? "WEEK" : "MONTH";
+  const setViewMode = (next: ViewMode) => setSearchParams({ mode: next }, { replace: true });
   const [baseDate, setBaseDate] = React.useState(today);
   const isOffline = !navigator.onLine;
   const monthValue = formatMonthValue(baseDate);
@@ -209,6 +215,18 @@ const StatisticsPage: React.FC = () => {
     staleTime: 30 * 1000,
     retry: isOffline ? false : 2
   });
+
+  const iconsQuery = useQuery({
+    queryKey: ["icons", "select"],
+    queryFn: () => iconApi.getIcons(true),
+    staleTime: 10 * 60 * 1000
+  });
+
+  const iconMap = React.useMemo(() => {
+    const map = new Map<number, IconItem>();
+    iconsQuery.data?.data?.items.forEach((icon) => map.set(icon.icon_id, icon));
+    return map;
+  }, [iconsQuery.data]);
 
   const monthly = monthlyQuery.data?.data ?? null;
   const period = periodQuery.data?.data ?? null;
@@ -264,16 +282,10 @@ const StatisticsPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg-primary)]">
-      <div className="mx-auto max-w-[480px] px-4 pb-10 pt-6">
+    <div className="bg-[var(--color-bg-primary)]">
+      <div className="mx-auto max-w-[480px] px-4 pb-6 pt-6">
         <div className="mb-6 flex items-center justify-between">
-          <Link
-            to="/dashboard"
-            className="text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
-          >
-            홈
-          </Link>
-          <h1 className="text-lg font-bold text-[var(--color-text-primary)]">소비 통계</h1>
+          <h1 className="font-gamja text-2xl text-[var(--color-text-primary)]">소비 통계</h1>
           <button
             type="button"
             onClick={refresh}
@@ -368,7 +380,7 @@ const StatisticsPage: React.FC = () => {
             <div className="grid grid-cols-2 gap-3">
               <div className={`${cardClass} p-4`}>
                 <p className="text-xs font-medium text-[var(--color-text-secondary)]">수입</p>
-                <p className="mt-2 text-lg font-bold text-[var(--color-success)]">
+                <p className="mt-2 text-lg font-bold text-sky-400">
                   {formatAmount(summary.incomeAmount)}
                 </p>
               </div>
@@ -424,12 +436,21 @@ const StatisticsPage: React.FC = () => {
               </div>
               {category && category.items.length > 0 ? (
                 <div className="flex flex-col gap-3">
-                  {category.items.map((item) => (
+                  {category.items.map((item) => {
+                    const icon = item.icon_id != null ? iconMap.get(item.icon_id) : undefined;
+                    return (
                     <div key={item.category_id}>
                       <div className="mb-1 flex items-center justify-between gap-3">
-                        <span className="truncate text-sm font-medium text-[var(--color-text-primary)]">
-                          {item.category_name}
-                        </span>
+                        <div className="flex min-w-0 items-center gap-2">
+                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--color-bg-secondary)]">
+                            {icon && (
+                              <IconRenderer providerType={icon.provider_type} providerKey={icon.provider_key} size={15} className="text-[var(--color-text-secondary)]" />
+                            )}
+                          </div>
+                          <span className="truncate text-sm font-medium text-[var(--color-text-primary)]">
+                            {item.category_name}
+                          </span>
+                        </div>
                         <span className="shrink-0 text-sm font-semibold text-[var(--color-text-primary)]">
                           {formatAmount(item.amount)}
                         </span>
@@ -444,7 +465,7 @@ const StatisticsPage: React.FC = () => {
                         {item.ratio.toFixed(2)}%
                       </p>
                     </div>
-                  ))}
+                  );})}
                 </div>
               ) : (
                 <div className="rounded-xl bg-[var(--color-bg-secondary)] px-4 py-6 text-center text-sm text-[var(--color-text-secondary)]">

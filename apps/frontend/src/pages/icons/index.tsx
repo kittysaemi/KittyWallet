@@ -99,7 +99,7 @@ const IconsPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg-primary)] px-4 py-6">
+    <div className="bg-[var(--color-bg-primary)] px-4 py-6">
       <div className="mx-auto flex w-full max-w-[480px] flex-col gap-6">
         <header>
           <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">아이콘 관리</h1>
