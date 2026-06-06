@@ -172,6 +172,7 @@ const DashboardPage: React.FC = () => {
               <button
                 type="button"
                 aria-label="설정"
+                onClick={() => navigate("/settings/app")}
                 className="flex h-8 w-8 items-center justify-center rounded-xl border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-secondary)]"
               >
                 <Settings size={15} />
@@ -209,7 +210,9 @@ const DashboardPage: React.FC = () => {
         ) : data ? (
           <div
             className="mb-4 rounded-2xl px-5 py-5 shadow-[0_4px_20px_rgba(253,165,227,0.35)]"
-            style={{ background: "linear-gradient(135deg, var(--color-primary) 0%, #F98DD9 100%)" }}
+            style={{
+              background: "linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%)"
+            }}
           >
             <p className="mb-1 text-xs font-medium text-white/80">전체 자산</p>
             <p className="text-3xl font-bold text-white">

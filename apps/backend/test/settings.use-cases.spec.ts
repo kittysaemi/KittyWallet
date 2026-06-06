@@ -33,13 +33,13 @@ describe("SettingsUseCases", () => {
 
   it("returns all settings with defaults merged with stored values", async () => {
     settingsRepository.findMany.mockResolvedValue([
-      makeSetting("theme", "dark"),
+      makeSetting("theme", "mint"),
       makeSetting("transaction_list_page_size", 50, later)
     ] as any);
 
     await expect(getSettingsUseCase.execute(BigInt(1))).resolves.toEqual({
       settings: {
-        theme: "dark",
+        theme: "mint",
         currency: "KRW",
         sync_enabled: true,
         transaction_list_page_size: 50
@@ -53,28 +53,40 @@ describe("SettingsUseCases", () => {
 
     await expect(getSettingsUseCase.execute(BigInt(1), "theme")).resolves.toEqual({
       settings: {
-        theme: "system"
+        theme: "cat-pink"
       },
       updated_at: null
     });
     expect(settingsRepository.findMany).toHaveBeenCalledWith(BigInt(1), "theme");
   });
 
+  it("normalizes legacy theme values to the default theme", async () => {
+    settingsRepository.findMany.mockResolvedValue([
+      makeSetting("theme", "dark")
+    ] as any);
+
+    await expect(getSettingsUseCase.execute(BigInt(1))).resolves.toMatchObject({
+      settings: {
+        theme: "cat-pink"
+      }
+    });
+  });
+
   it("upserts valid settings by user_id and setting_key", async () => {
     settingsRepository.upsertMany.mockResolvedValue();
     settingsRepository.findMany.mockResolvedValue([
-      makeSetting("theme", "light"),
+      makeSetting("theme", "lavender"),
       makeSetting("sync_enabled", false)
     ] as any);
 
     await expect(
       updateSettingsUseCase.execute(BigInt(1), {
-        theme: "light",
+        theme: "lavender",
         sync_enabled: false
       })
     ).resolves.toEqual({
       settings: {
-        theme: "light",
+        theme: "lavender",
         currency: "KRW",
         sync_enabled: false,
         transaction_list_page_size: 20
@@ -82,7 +94,7 @@ describe("SettingsUseCases", () => {
       updated_at: "2026-01-01T00:00:00.000Z"
     });
     expect(settingsRepository.upsertMany).toHaveBeenCalledWith([
-      { userId: BigInt(1), settingKey: "theme", settingValue: "light" },
+      { userId: BigInt(1), settingKey: "theme", settingValue: "lavender" },
       { userId: BigInt(1), settingKey: "sync_enabled", settingValue: false }
     ]);
   });

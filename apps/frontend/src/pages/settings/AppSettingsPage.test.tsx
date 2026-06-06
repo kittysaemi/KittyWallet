@@ -2,9 +2,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import SettingsPage from ".";
 import { settingsApi } from "../../entities/settings/api/settingsApi";
-import { userApi } from "../../entities/user/api/userApi";
+import AppSettingsPage from "./app";
 
 vi.mock("../../entities/settings/api/settingsApi", () => ({
   settingsApi: {
@@ -13,26 +12,7 @@ vi.mock("../../entities/settings/api/settingsApi", () => ({
   }
 }));
 
-vi.mock("../../entities/user/api/userApi", () => ({
-  userApi: {
-    getMe: vi.fn(),
-    updateProfile: vi.fn(),
-    withdraw: vi.fn()
-  }
-}));
-
-vi.mock("../../entities/auth/api/authApi", () => ({
-  authApi: {
-    logout: vi.fn()
-  }
-}));
-
-vi.mock("../../shared/storage/syncQueue", () => ({
-  getPendingSyncCount: vi.fn().mockResolvedValue(0)
-}));
-
 const mockedSettingsApi = vi.mocked(settingsApi);
-const mockedUserApi = vi.mocked(userApi);
 
 const renderPage = () => {
   const queryClient = new QueryClient({
@@ -45,31 +25,21 @@ const renderPage = () => {
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter>
-        <SettingsPage />
+        <AppSettingsPage />
       </MemoryRouter>
     </QueryClientProvider>
   );
 };
 
-describe("SettingsPage app settings", () => {
+describe("AppSettingsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockedUserApi.getMe.mockResolvedValue({
-      success: true,
-      data: {
-        user_id: 1,
-        email: "test@example.com",
-        nickname: "테스트사용자",
-        created_at: "2026-01-01T00:00:00.000Z",
-        updated_at: "2026-01-01T00:00:00.000Z"
-      },
-      error: null
-    });
+    document.documentElement.removeAttribute("data-theme");
     mockedSettingsApi.getSettings.mockResolvedValue({
       success: true,
       data: {
         settings: {
-          theme: "dark",
+          theme: "mint",
           currency: "KRW",
           sync_enabled: true,
           transaction_list_page_size: 20
@@ -80,23 +50,35 @@ describe("SettingsPage app settings", () => {
     });
   });
 
-  it("shows loaded app settings", async () => {
+  it("shows loaded app settings and applies the theme", async () => {
     renderPage();
 
-    expect(await screen.findByRole("radio", { name: "다크" })).toHaveAttribute(
-      "aria-checked",
-      "true"
-    );
+    const mintTheme = await screen.findByRole("radio", { name: /민트/ });
+    await waitFor(() => expect(mintTheme).toHaveAttribute("aria-checked", "true"));
+    expect(screen.getByRole("button", { name: "뒤로" })).toBeInTheDocument();
     expect(screen.getByLabelText("표시 통화")).toHaveValue("KRW");
-    expect(screen.getByLabelText("거래 목록 페이지 크기")).toHaveValue("20");
+    expect(screen.queryByLabelText("거래내역 표시 개수")).not.toBeInTheDocument();
+    expect(document.documentElement.dataset.theme).toBe("mint");
   });
 
-  it("saves changed settings", async () => {
+  it("restores the saved theme when leaving without saving", async () => {
+    const { unmount } = renderPage();
+
+    await waitFor(() => expect(document.documentElement.dataset.theme).toBe("mint"));
+    await userEvent.click(await screen.findByRole("radio", { name: /라벤더/ }));
+    expect(document.documentElement.dataset.theme).toBe("lavender");
+
+    unmount();
+
+    expect(document.documentElement.dataset.theme).toBe("mint");
+  });
+
+  it("previews and saves changed settings", async () => {
     mockedSettingsApi.updateSettings.mockResolvedValue({
       success: true,
       data: {
         settings: {
-          theme: "light",
+          theme: "lavender",
           currency: "KRW",
           sync_enabled: true,
           transaction_list_page_size: 20
@@ -108,13 +90,15 @@ describe("SettingsPage app settings", () => {
 
     renderPage();
 
-    await userEvent.click(await screen.findByRole("radio", { name: "라이트" }));
+    await userEvent.click(await screen.findByRole("radio", { name: /라벤더/ }));
+    expect(document.documentElement.dataset.theme).toBe("lavender");
+
     await userEvent.click(screen.getByRole("button", { name: "앱 설정 저장" }));
 
     await waitFor(() =>
       expect(mockedSettingsApi.updateSettings).toHaveBeenCalledWith({
         settings: {
-          theme: "light",
+          theme: "lavender",
           currency: "KRW",
           sync_enabled: true,
           transaction_list_page_size: 20
@@ -137,7 +121,7 @@ describe("SettingsPage app settings", () => {
 
     renderPage();
 
-    await userEvent.click(await screen.findByRole("radio", { name: "라이트" }));
+    await userEvent.click(await screen.findByRole("radio", { name: /라벤더/ }));
     await userEvent.click(screen.getByRole("button", { name: "앱 설정 저장" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("지원하지 않는 설정값입니다.");

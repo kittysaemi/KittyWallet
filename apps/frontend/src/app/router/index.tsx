@@ -17,6 +17,7 @@ import IconsPage from "../../pages/icons";
 import LoginPage from "../../pages/login";
 import SignupPage from "../../pages/signup";
 import SettingsPage from "../../pages/settings";
+import AppSettingsPage from "../../pages/settings/app";
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -177,6 +178,14 @@ export const AppRouter: React.FC = () => (
       element={
         <ProtectedRoute>
           <NavLayout><SettingsPage /></NavLayout>
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/settings/app"
+      element={
+        <ProtectedRoute>
+          <NavLayout><AppSettingsPage /></NavLayout>
         </ProtectedRoute>
       }
     />

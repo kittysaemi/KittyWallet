@@ -1,6 +1,6 @@
 import type { ApiResponse } from "../../auth/model/auth.types";
 
-export type ThemeSetting = "system" | "light" | "dark";
+export type ThemeSetting = "cat-pink" | "mint" | "lavender";
 export type CurrencySetting = "KRW";
 
 export interface AppSettings {

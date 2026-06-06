@@ -1,7 +1,10 @@
 import React, { useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { AppRouter } from "./app/router";
 import { authApi } from "./entities/auth/api/authApi";
 import { useAuthStore } from "./entities/auth/store/authStore";
+import { settingsApi } from "./entities/settings/api/settingsApi";
+import { applyThemeSetting, DEFAULT_THEME } from "./entities/settings/model/theme";
 
 const AUTH_REFRESH_TIMEOUT_MS = 5000;
 
@@ -18,7 +21,24 @@ function decodeUserId(accessToken: string): number | null {
 }
 
 const App: React.FC = () => {
-  const { setAuth, setInitialized, isInitialized } = useAuthStore();
+  const { setAuth, setInitialized, isInitialized, isAuthenticated } = useAuthStore();
+
+  const settingsQuery = useQuery({
+    queryKey: ["settings"],
+    queryFn: settingsApi.getSettings,
+    enabled: isInitialized && isAuthenticated,
+    staleTime: 5 * 60 * 1000
+  });
+
+  useEffect(() => {
+    applyThemeSetting(DEFAULT_THEME);
+  }, []);
+
+  useEffect(() => {
+    if (settingsQuery.data?.success) {
+      applyThemeSetting(settingsQuery.data.data?.settings.theme);
+    }
+  }, [settingsQuery.data]);
 
   useEffect(() => {
     const refreshTimeout = new Promise<never>((_, reject) => {
