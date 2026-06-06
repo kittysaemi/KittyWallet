@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 import { userApi } from '../../entities/user/api/userApi';
 import { authApi } from '../../entities/auth/api/authApi';
+import { settingsApi } from '../../entities/settings/api/settingsApi';
+import type { AppSettings, ThemeSetting } from '../../entities/settings/model/settings.types';
 import { useAuthStore } from '../../entities/auth/store/authStore';
 import { Button } from '../../shared/ui/Button';
 import { getPendingSyncCount } from '../../shared/storage/syncQueue';
@@ -17,6 +19,21 @@ const nicknameSchema = z
 const cardClass =
   'rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] shadow-[0_4px_16px_var(--color-card-shadow)]';
 
+const defaultAppSettings: AppSettings = {
+  theme: 'system',
+  currency: 'KRW',
+  sync_enabled: true,
+  transaction_list_page_size: 20,
+};
+
+const themeOptions: Array<{ value: ThemeSetting; label: string }> = [
+  { value: 'system', label: '시스템' },
+  { value: 'light', label: '라이트' },
+  { value: 'dark', label: '다크' },
+];
+
+const pageSizeOptions = [10, 20, 30, 50];
+
 const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -29,13 +46,34 @@ const SettingsPage: React.FC = () => {
 
   const [isWithdrawOpen, setIsWithdrawOpen] = React.useState(false);
   const [withdrawError, setWithdrawError] = React.useState('');
+  const [appSettings, setAppSettings] = React.useState<AppSettings>(defaultAppSettings);
+  const [settingsError, setSettingsError] = React.useState('');
+  const [settingsSavedMessage, setSettingsSavedMessage] = React.useState('');
 
   const userQuery = useQuery({
     queryKey: ['user', 'me'],
     queryFn: userApi.getMe,
   });
 
+  const settingsQuery = useQuery({
+    queryKey: ['settings'],
+    queryFn: settingsApi.getSettings,
+  });
+
   const user = userQuery.data?.data;
+  const savedSettings = settingsQuery.data?.data?.settings ?? defaultAppSettings;
+  const isSettingsDirty =
+    appSettings.theme !== savedSettings.theme ||
+    appSettings.currency !== savedSettings.currency ||
+    appSettings.sync_enabled !== savedSettings.sync_enabled ||
+    appSettings.transaction_list_page_size !== savedSettings.transaction_list_page_size;
+
+  React.useEffect(() => {
+    if (settingsQuery.data?.success && settingsQuery.data.data) {
+      setAppSettings(settingsQuery.data.data.settings);
+      setSettingsError('');
+    }
+  }, [settingsQuery.data]);
 
   const updateProfileMutation = useMutation({
     mutationFn: (nickname: string) => userApi.updateProfile(nickname),
@@ -68,6 +106,25 @@ const SettingsPage: React.FC = () => {
       } else {
         setWithdrawError('탈퇴 처리에 실패했습니다. 다시 시도해주세요.');
       }
+    },
+  });
+
+  const updateSettingsMutation = useMutation({
+    mutationFn: (settings: AppSettings) => settingsApi.updateSettings({ settings }),
+    onSuccess: (res) => {
+      if (res.success && res.data) {
+        setAppSettings(res.data.settings);
+        setSettingsError('');
+        setSettingsSavedMessage('설정이 저장되었습니다.');
+        void queryClient.invalidateQueries({ queryKey: ['settings'] });
+      }
+    },
+    onError: (err: unknown) => {
+      const message =
+        (err as { response?: { data?: { error?: { message?: string } } } })
+          ?.response?.data?.error?.message ?? '설정 저장에 실패했습니다. 다시 시도해주세요.';
+      setSettingsError(message);
+      setSettingsSavedMessage('');
     },
   });
 
@@ -113,6 +170,19 @@ const SettingsPage: React.FC = () => {
   const handleConfirmWithdraw = () => {
     setWithdrawError('');
     withdrawMutation.mutate();
+  };
+
+  const handleChangeAppSetting = <K extends keyof AppSettings>(
+    key: K,
+    value: AppSettings[K]
+  ) => {
+    setAppSettings((prev) => ({ ...prev, [key]: value }));
+    setSettingsError('');
+    setSettingsSavedMessage('');
+  };
+
+  const handleSaveAppSettings = () => {
+    updateSettingsMutation.mutate(appSettings);
   };
 
   if (userQuery.isLoading) {
@@ -221,6 +291,146 @@ const SettingsPage: React.FC = () => {
                 </div>
               )}
             </div>
+          </div>
+        </section>
+
+        {/* 앱 설정 */}
+        <section aria-labelledby="app-settings-heading">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2
+              id="app-settings-heading"
+              className="text-sm font-semibold text-[var(--color-text-secondary)]"
+            >
+              앱 설정
+            </h2>
+            {settingsQuery.data?.data?.updated_at && (
+              <span className="text-xs text-[var(--color-text-caption)]">
+                {new Date(settingsQuery.data.data.updated_at).toLocaleDateString('ko-KR')} 저장
+              </span>
+            )}
+          </div>
+
+          <div className={`${cardClass} flex flex-col gap-5 p-4`}>
+            {settingsQuery.isLoading ? (
+              <div className="flex flex-col gap-3" aria-label="설정 불러오는 중">
+                <div className="h-11 animate-pulse rounded-xl bg-[var(--color-bg-secondary)]" />
+                <div className="h-11 animate-pulse rounded-xl bg-[var(--color-bg-secondary)]" />
+                <div className="h-11 animate-pulse rounded-xl bg-[var(--color-bg-secondary)]" />
+              </div>
+            ) : settingsQuery.isError || (settingsQuery.data && !settingsQuery.data.success) ? (
+              <div>
+                <p className="text-sm text-[var(--color-text-primary)]">
+                  앱 설정을 불러오지 못했습니다.
+                </p>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="mt-3"
+                  onClick={() => void settingsQuery.refetch()}
+                >
+                  다시 시도
+                </Button>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <span className="text-sm font-medium text-[var(--color-text-primary)]">
+                    테마
+                  </span>
+                  <div
+                    role="radiogroup"
+                    aria-label="테마"
+                    className="mt-2 grid grid-cols-3 gap-2"
+                  >
+                    {themeOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={appSettings.theme === option.value}
+                        onClick={() => handleChangeAppSetting('theme', option.value)}
+                        className={`min-h-11 rounded-xl border px-3 text-sm font-semibold transition ${
+                          appSettings.theme === option.value
+                            ? 'border-[var(--color-primary)] bg-[var(--color-primary-soft)] text-[var(--color-text-primary)]'
+                            : 'border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)]'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <label className="flex flex-col gap-2 text-sm font-medium text-[var(--color-text-primary)]">
+                  표시 통화
+                  <select
+                    value={appSettings.currency}
+                    onChange={(e) =>
+                      handleChangeAppSetting('currency', e.target.value as AppSettings['currency'])
+                    }
+                    className="min-h-11 rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 text-sm text-[var(--color-text-primary)] outline-none"
+                  >
+                    <option value="KRW">KRW</option>
+                  </select>
+                </label>
+
+                <label className="flex min-h-11 items-center justify-between gap-3 rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] px-3 py-2">
+                  <span>
+                    <span className="block text-sm font-medium text-[var(--color-text-primary)]">
+                      자동 동기화
+                    </span>
+                    <span className="block text-xs text-[var(--color-text-secondary)]">
+                      네트워크 복구 시 대기 중인 거래를 동기화합니다.
+                    </span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={appSettings.sync_enabled}
+                    onChange={(e) => handleChangeAppSetting('sync_enabled', e.target.checked)}
+                    className="h-5 w-5 accent-[var(--color-primary)]"
+                  />
+                </label>
+
+                <label className="flex flex-col gap-2 text-sm font-medium text-[var(--color-text-primary)]">
+                  거래 목록 페이지 크기
+                  <select
+                    value={appSettings.transaction_list_page_size}
+                    onChange={(e) =>
+                      handleChangeAppSetting(
+                        'transaction_list_page_size',
+                        Number(e.target.value)
+                      )
+                    }
+                    className="min-h-11 rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 text-sm text-[var(--color-text-primary)] outline-none"
+                  >
+                    {pageSizeOptions.map((size) => (
+                      <option key={size} value={size}>
+                        {size}개
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                {settingsError && (
+                  <p role="alert" className="text-sm text-[var(--color-danger)]">
+                    {settingsError}
+                  </p>
+                )}
+                {settingsSavedMessage && (
+                  <p className="text-sm text-[var(--color-success)]">{settingsSavedMessage}</p>
+                )}
+
+                <Button
+                  type="button"
+                  fullWidth
+                  disabled={!isSettingsDirty || updateSettingsMutation.isPending}
+                  isLoading={updateSettingsMutation.isPending}
+                  onClick={handleSaveAppSettings}
+                >
+                  앱 설정 저장
+                </Button>
+              </>
+            )}
           </div>
         </section>
 
