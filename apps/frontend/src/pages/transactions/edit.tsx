@@ -54,6 +54,7 @@ const TransactionEditPage: React.FC = () => {
     mutationFn: () => transactionApi.deleteTransaction(Number(id)),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       navigate("/transactions", { replace: true });
     }
   });

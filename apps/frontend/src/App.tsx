@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppRouter } from "./app/router";
 import { authApi } from "./entities/auth/api/authApi";
 import { useAuthStore } from "./entities/auth/store/authStore";
@@ -22,6 +22,7 @@ function decodeUserId(accessToken: string): number | null {
 
 const App: React.FC = () => {
   const { setAuth, setInitialized, isInitialized, isAuthenticated } = useAuthStore();
+  const queryClient = useQueryClient();
 
   const settingsQuery = useQuery({
     queryKey: ["settings"],
@@ -33,6 +34,13 @@ const App: React.FC = () => {
   useEffect(() => {
     applyThemeSetting(DEFAULT_THEME);
   }, []);
+
+  // 인증 해제(로그아웃/토큰 만료) 시 기본 테마로 복원
+  useEffect(() => {
+    if (isInitialized && !isAuthenticated) {
+      applyThemeSetting(DEFAULT_THEME);
+    }
+  }, [isInitialized, isAuthenticated]);
 
   useEffect(() => {
     if (settingsQuery.data?.success) {
@@ -52,12 +60,16 @@ const App: React.FC = () => {
         if (res.success && res.data) {
           const { access_token } = res.data;
           const currentUser = useAuthStore.getState().user;
+          const incomingUserId = decodeUserId(access_token);
+          // 이전과 다른 계정의 토큰이면 캐시를 비운다
+          if (currentUser && incomingUserId && currentUser.userId !== incomingUserId) {
+            queryClient.clear();
+          }
           if (currentUser) {
             setAuth(access_token, { user_id: currentUser.userId, nickname: currentUser.nickname });
           } else {
-            const userId = decodeUserId(access_token);
-            if (userId) {
-              setAuth(access_token, { user_id: userId, nickname: "사용자" });
+            if (incomingUserId) {
+              setAuth(access_token, { user_id: incomingUserId, nickname: "사용자" });
             }
           }
         }

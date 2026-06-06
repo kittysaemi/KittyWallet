@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { AxiosError } from 'axios';
 import { authApi } from '../../../entities/auth/api/authApi';
@@ -10,11 +10,13 @@ export const useLogin = () => {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const setAuth = useAuthStore((state) => state.setAuth);
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (data: LoginRequest) => authApi.login(data),
     onSuccess: (response) => {
       if (response.success && response.data) {
+        queryClient.clear();
         setAuth(response.data.access_token, response.data.user);
         const redirect = searchParams.get("redirect");
         const fromState = (location.state as { from?: Location })?.from;
