@@ -34,8 +34,25 @@ model User {
   transactions         Transaction[]
   syncClients          SyncClient[]
   syncHistories        SyncHistory[]
+  settings             UserSetting[]
 
   @@map("USER")
+}
+
+model UserSetting {
+  settingId    BigInt   @id @default(autoincrement()) @map("setting_id")
+  userId       BigInt   @map("user_id")
+  settingKey   String   @map("setting_key") @db.VarChar(50)
+  settingValue Json     @map("setting_value")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [userId])
+
+  @@unique([userId, settingKey], map: "USER_SETTING_user_id_setting_key_key")
+  @@index([userId])
+  @@index([settingKey])
+  @@map("USER_SETTING")
 }
 
 model IconDictionary {
