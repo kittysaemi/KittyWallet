@@ -40,7 +40,7 @@ function groupByDate(items: TransactionItem[]): Map<string, TransactionItem[]> {
 }
 
 const TransactionSkeleton: React.FC = () => (
-  <div className="flex flex-col gap-3" aria-label="거래 목록을 불러오는 중입니다.">
+  <div className="flex flex-col gap-3" aria-label="거래내역을 불러오는 중입니다.">
     {Array.from({ length: 5 }).map((_, i) => (
       <div key={i} className={`${cardClass} flex items-center gap-3 p-4`} aria-hidden="true">
         <div className="h-10 w-10 shrink-0 rounded-xl bg-[var(--color-bg-secondary)]" />
@@ -240,7 +240,7 @@ const TransactionsPage: React.FC = () => {
           </div>
         )}
 
-        {/* 거래 목록 */}
+        {/* 거래내역 */}
         {items.length > 0 && (
           <div className="flex flex-col gap-4">
             {Array.from(grouped.entries()).map(([date, txList]) => (
