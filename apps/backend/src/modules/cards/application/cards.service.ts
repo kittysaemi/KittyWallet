@@ -50,6 +50,18 @@ export class CardsService {
     return { card_id: Number(card.cardId) };
   }
 
+  async archiveCard(command: {
+    cardId: bigint;
+    userId: bigint;
+    deleteTransactions: boolean;
+  }): Promise<void> {
+    const card = await this.cardsRepository.findById(command.cardId, command.userId);
+    if (!card || card.deletedYn) {
+      throw new AppException("CARD_002", "카드를 찾을 수 없습니다.", HttpStatus.NOT_FOUND);
+    }
+    await this.cardsRepository.archive(command.cardId, command.userId, command.deleteTransactions);
+  }
+
   async updateCard(command: UpdateCardCommand): Promise<{ card_id: number; use_yn: boolean }> {
     if (
       command.cardName === undefined &&

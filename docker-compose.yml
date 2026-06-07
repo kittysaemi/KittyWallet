@@ -26,7 +26,7 @@ services:
     environment:
       DATABASE_URL: postgresql://kittywallet:kittywallet@postgres:5432/kittywallet?schema=public
     ports:
-      - "3000:3000"
+      - "3700:3000"
     depends_on:
       postgres:
         condition: service_healthy

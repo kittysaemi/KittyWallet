@@ -98,6 +98,7 @@ erDiagram
         DECIMAL initial_balance "초기 잔액"
         DECIMAL current_balance "현재 잔액"
         BOOLEAN use_yn "사용 여부"
+        BOOLEAN deleted_yn "아카이브 여부. true면 영구 삭제 처리"
         DATETIME created_at "생성일시"
         DATETIME updated_at "수정일시"
     }
@@ -108,6 +109,7 @@ erDiagram
         BIGINT icon_id FK "아이콘 ID"
         VARCHAR card_name "카드명"
         BOOLEAN use_yn "사용 여부"
+        BOOLEAN deleted_yn "아카이브 여부. true면 영구 삭제 처리"
         DATETIME created_at "생성일시"
         DATETIME updated_at "수정일시"
     }
@@ -250,7 +252,9 @@ erDiagram
 | ----------- | ---------- | ------------------------------ |
 | TRANSACTION   | deleted_yn | 거래 삭제 시 `true`로 변경한다.             |
 | ACCOUNT       | use_yn     | 계좌 미사용 처리 시 `false`로 변경한다.        |
+| ACCOUNT       | deleted_yn | 계좌 아카이브(영구 삭제) 시 `true`로 변경한다. 연결 거래는 `delete_transactions` 옵션에 따라 함께 삭제 처리하거나 보존한다. 아카이브된 계좌의 거래는 조회만 가능하고 수정 불가. |
 | CARD          | use_yn     | 카드 미사용 처리 시 `false`로 변경한다.        |
+| CARD          | deleted_yn | 카드 아카이브(영구 삭제) 시 `true`로 변경한다. 연결 거래는 `delete_transactions` 옵션에 따라 함께 삭제 처리하거나 보존한다. 아카이브된 카드의 거래는 조회만 가능하고 수정 불가. |
 | CATEGORY      | show       | 사용자 카테고리 선택 목록 제외 시 `false`로 변경한다. 기본 카테고리의 기본 표시값이다. |
 | CATEGORY_USER_SETTING | show | 기본 카테고리의 사용자별 선택 목록 표시 여부를 관리한다. |
 | ICON          | show       | 아이콘 선택 목록 제외 시 `false`로 변경한다.  |
@@ -280,6 +284,8 @@ erDiagram
 | SYNC_CLIENT | `(user_id, client_id)` unique |
 | TRANSACTION | `(user_id, sync_client_id, client_temp_id)` unique. 단 `client_temp_id`가 null인 온라인 거래는 제외 |
 | SYNC_HISTORY | `sync_client_id`, `client_temp_id`, `sync_action`, `server_applied_at` 기준 조회 인덱스 |
+| ACCOUNT | `(user_id, account_name)` 중복 불가. 단, `deleted_yn=true`인 계좌명은 중복 허용 (아카이브된 계좌명은 재사용 가능) |
+| CARD | `(user_id, card_name)` 중복 불가. 단, `deleted_yn=true`인 카드명은 중복 허용 (아카이브된 카드명은 재사용 가능) |
 | CATEGORY | 기본 카테고리 `(category_name, is_default)` unique, 사용자 카테고리 `(user_id, category_name)` unique |
 | CATEGORY_USER_SETTING | `(user_id, category_id)` unique |
 | ICON_DICTIONARY | `icon_code` unique, `(provider_type, provider_key)` unique |

@@ -10,6 +10,7 @@ export class CardsRepository {
     return this.prisma.card.findMany({
       where: {
         userId,
+        deletedYn: false,
         ...(useYn === undefined ? {} : { useYn })
       },
       orderBy: { cardId: "asc" }
@@ -31,6 +32,7 @@ export class CardsRepository {
       where: {
         cardName,
         userId,
+        deletedYn: false,
         ...(excludeId === undefined ? {} : { cardId: { not: excludeId } })
       }
     });
@@ -54,6 +56,25 @@ export class CardsRepository {
     return this.prisma.card.update({
       where: { cardId },
       data
+    });
+  }
+
+  async archive(
+    cardId: bigint,
+    userId: bigint,
+    deleteTransactions: boolean,
+    prismaClient?: Prisma.TransactionClient
+  ): Promise<void> {
+    const tx = prismaClient ?? this.prisma;
+    if (deleteTransactions) {
+      await (tx as typeof this.prisma).transaction.updateMany({
+        where: { walletId: cardId, walletType: "CARD", userId, deletedYn: false },
+        data: { deletedYn: true }
+      });
+    }
+    await (tx as typeof this.prisma).card.updateMany({
+      where: { cardId, userId },
+      data: { deletedYn: true }
     });
   }
 }

@@ -6,6 +6,8 @@ export interface AccountItem {
   icon_id: number;
   initial_balance: number;
   current_balance: number | null;
+  allow_negative_balance: boolean;
+  negative_balance_limit: number;
   use_yn: boolean;
   created_at: string;
   updated_at: string;
@@ -20,6 +22,8 @@ export interface CreateAccountRequest {
   initial_balance: number;
   icon_id: number;
   use_yn?: boolean;
+  allow_negative_balance?: boolean;
+  negative_balance_limit?: number;
 }
 
 export interface UpdateAccountRequest {

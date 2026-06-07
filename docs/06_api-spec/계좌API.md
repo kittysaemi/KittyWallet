@@ -42,10 +42,13 @@
 
 - initial_balance 사용
 - current_balance 자동 계산
+- allow_negative_balance 기본값 false
+- negative_balance_limit 기본값 0, 0 이상
 - use_yn 기반 사용 여부 관리
 - icon_id 필수
 - 사용자별 계좌 분리
-- 계좌 삭제 API는 제공하지 않으며, `PUT /api/v1/accounts/{id}`에서 `use_yn=false`로 비활성화한다
+- 비활성화: `PUT /api/v1/accounts/{id}`에서 `use_yn=false`로 처리
+- 아카이브(영구 삭제): `DELETE /api/v1/accounts/{id}`로 처리. 아카이브된 계좌명은 재사용 가능
 
 ---
 
@@ -64,6 +67,8 @@
   "account_name": "생활비 통장",
   "initial_balance": 500000,
   "icon_id": 1,
+  "allow_negative_balance": false,
+  "negative_balance_limit": 0,
   "use_yn": true
 }
 ```
@@ -73,6 +78,8 @@
 | account_name | string | Y | 계좌명. 사용자 내 중복 불가 |
 | initial_balance | number | Y | 초기 잔액. 0 이상 |
 | icon_id | number | Y | 계좌 아이콘 ID |
+| allow_negative_balance | boolean | N | 마이너스 잔액 허용 여부. 기본값 false |
+| negative_balance_limit | number | N | 마이너스 한도. 0 이상. `allow_negative_balance=false`면 0 처리 |
 | use_yn | boolean | N | 계좌 사용 여부. 기본값 true |
 
 ---
@@ -83,6 +90,8 @@
 |---|---|
 | 중복 계좌명 | 불가 |
 | 잔액 수정 | 거래 기준 자동 계산 |
+| 마이너스 허용 | 계좌별 설정 가능 |
+| 마이너스 한도 | 0 이상. 미허용 계좌는 0 처리 |
 | 사용 여부 | OFF 시 선택 불가 |
 | 계좌명 길이 | 한글 기준 15자 이하 |
 
@@ -135,6 +144,8 @@
 {
   "account_name": "생활비 통장",
   "icon_id": 1,
+  "allow_negative_balance": true,
+  "negative_balance_limit": 300000,
   "use_yn": false
 }
 ```
@@ -143,15 +154,17 @@
 |---|---|---|---|
 | account_name | string | N | 변경할 계좌명 |
 | icon_id | number | N | 변경할 아이콘 ID |
+| allow_negative_balance | boolean | N | 마이너스 잔액 허용 여부 |
+| negative_balance_limit | number | N | 마이너스 한도. 0 이상. `allow_negative_balance=false`면 0 처리 |
 | use_yn | boolean | N | 계좌 사용 여부. false면 거래 등록 선택 목록에서 제외 |
 
 ---
 
 ## 비활성화 처리
 
-계좌 삭제는 지원하지 않는다. 계좌 사용 중지는 본 API에 `use_yn=false`를 전달해 처리한다.
+계좌 사용 중지는 본 API에 `use_yn=false`를 전달해 처리한다.
 
-비활성화된 계좌는 거래 등록 선택 목록에서 제외하지만, 기존 거래 내역과 잔액 계산 기준은 유지한다. 연결 거래 유무와 관계없이 물리 삭제 또는 `DELETE /api/v1/accounts/{id}` API는 제공하지 않는다.
+비활성화된 계좌는 거래 등록 선택 목록에서 제외하지만, 기존 거래 내역과 잔액 계산 기준은 유지한다.
 
 `PATCH /api/v1/accounts/{id}`는 계좌 수정 API로 사용하지 않는다.
 
@@ -187,7 +200,72 @@
 | API | 처리 기준 |
 |---|---|
 | PATCH /api/v1/accounts/{id} | 사용하지 않음. 계좌 수정은 `PUT /api/v1/accounts/{id}` 사용 |
-| DELETE /api/v1/accounts/{id} | 제공하지 않음. 계좌 사용 중지는 `use_yn=false` 비활성화 사용 |
+
+---
+
+# 계좌 아카이브 API
+
+## Endpoint
+
+`DELETE /api/v1/accounts/{id}`
+
+---
+
+## Path Parameters
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| id | number | Y | 아카이브할 계좌 ID |
+
+---
+
+## Request Body
+
+```json
+{
+  "delete_transactions": false
+}
+```
+
+| 필드 | 타입 | 필수 | 기본값 | 설명 |
+|---|---|---|---|---|
+| delete_transactions | boolean | N | false | true면 연결 거래도 함께 소프트 삭제 |
+
+---
+
+## 비즈니스 규칙
+
+| 항목 | 처리 규칙 |
+|---|---|
+| 아카이브 방식 | `deleted_yn=true` 설정. 물리 삭제 아님 |
+| 거래 보존 | `delete_transactions=false`(기본값)이면 연결 거래 보존. 보존된 거래는 조회 및 삭제만 가능, 수정 불가 |
+| 거래 삭제 | `delete_transactions=true`이면 연결 거래 전체 소프트 삭제 |
+| 계좌명 재사용 | 아카이브된 계좌명은 동일 사용자 내 재등록 시 사용 가능 |
+| 이미 아카이브된 계좌 | `ACCOUNT_002` 반환 |
+
+---
+
+## Response
+
+```json
+{
+  "success": true,
+  "data": null,
+  "error": null
+}
+```
+
+---
+
+## 오류 처리
+
+| HTTP Status | 코드 | 설명 |
+|---|---|---|
+| 401 | AUTH_002 | 인증 토큰 없음 또는 유효하지 않음 |
+| 403 | AUTH_009 | 다른 사용자 계좌 접근 |
+| 404 | ACCOUNT_002 | 계좌 없음 또는 이미 아카이브됨 |
+
+---
 
 # 계좌 목록 API
 
@@ -219,6 +297,8 @@
         "icon_id": 1,
         "initial_balance": 500000,
         "current_balance": 420000,
+        "allow_negative_balance": false,
+        "negative_balance_limit": 0,
         "use_yn": true,
         "created_at": "2026-05-30T02:00:00Z",
         "updated_at": "2026-05-30T02:10:00Z"
@@ -237,6 +317,8 @@
 | icon_id | number | 계좌 아이콘 ID |
 | initial_balance | number | 초기 잔액 |
 | current_balance | number/null | 현재 잔액. `include_balance=false`면 null |
+| allow_negative_balance | boolean | 마이너스 잔액 허용 여부 |
+| negative_balance_limit | number | 마이너스 한도 |
 | use_yn | boolean | 계좌 사용 여부 |
 | created_at | string | 생성 시각, UTC ISO-8601 |
 | updated_at | string | 최종 수정 시각, UTC ISO-8601 |

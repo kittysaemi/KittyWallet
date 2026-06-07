@@ -32,12 +32,12 @@ function formatDate(dateStr: string): string {
 function groupByDate(items: TransactionItem[]): Map<string, TransactionItem[]> {
   const map = new Map<string, TransactionItem[]>();
   for (const item of items) {
-    const key = item.transaction_date;
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(item);
+    if (!map.has(item.transaction_date)) map.set(item.transaction_date, []);
+    map.get(item.transaction_date)!.push(item);
   }
   return map;
 }
+
 
 const TransactionSkeleton: React.FC = () => (
   <div className="flex flex-col gap-3" aria-label="거래내역을 불러오는 중입니다.">
@@ -91,7 +91,14 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ item, iconMap, catego
         <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">
           {item.category_name}
         </p>
-        <p className="truncate text-xs text-[var(--color-text-secondary)]">{item.wallet_name}</p>
+        <p className="flex items-center gap-1 text-xs text-[var(--color-text-secondary)]">
+          <span className="truncate">{item.wallet_name}</span>
+          {item.wallet_deleted && (
+            <span className="shrink-0 inline-block rounded px-1 py-0.5 text-[10px] font-medium leading-none bg-[var(--color-bg-secondary)] text-[var(--color-text-caption)]">
+              삭제된 지갑
+            </span>
+          )}
+        </p>
       </div>
       <p
         className={`shrink-0 text-sm font-semibold ${
@@ -243,23 +250,37 @@ const TransactionsPage: React.FC = () => {
         {/* 거래내역 */}
         {items.length > 0 && (
           <div className="flex flex-col gap-4">
-            {Array.from(grouped.entries()).map(([date, txList]) => (
-              <div key={date}>
-                <p className="mb-2 px-1 text-xs font-medium text-[var(--color-text-secondary)]">
-                  {formatDate(date)}
-                </p>
-                <div className="flex flex-col gap-2">
-                  {txList.map((tx) => (
-                    <TransactionCard
-                      key={tx.transaction_id}
-                      item={tx}
-                      iconMap={iconMap}
-                      categoryIconMap={categoryIconMap}
-                    />
-                  ))}
+            {Array.from(grouped.entries()).map(([date, txList]) => {
+              const income = txList.filter((t) => t.transaction_type === "INCOME").reduce((s, t) => s + t.amount, 0);
+              const expense = txList.filter((t) => t.transaction_type === "EXPENSE").reduce((s, t) => s + t.amount, 0);
+              return (
+                <div key={date}>
+                  <div className="mb-2 flex items-center justify-between px-1">
+                    <p className="text-xs font-medium text-[var(--color-text-secondary)]">
+                      {formatDate(date)}
+                    </p>
+                    <div className="flex items-center gap-2 text-xs font-medium">
+                      {income > 0 && (
+                        <span className="text-blue-500">+{income.toLocaleString("ko-KR")}원</span>
+                      )}
+                      {expense > 0 && (
+                        <span className="text-[var(--color-text-primary)]">-{expense.toLocaleString("ko-KR")}원</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {txList.map((tx) => (
+                      <TransactionCard
+                        key={tx.transaction_id}
+                        item={tx}
+                        iconMap={iconMap}
+                        categoryIconMap={categoryIconMap}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

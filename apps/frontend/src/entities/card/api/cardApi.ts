@@ -27,5 +27,12 @@ export const cardApi = {
       data
     );
     return res.data;
+  },
+
+  deleteCard: async (cardId: number, deleteTransactions: boolean): Promise<ApiResponse<null>> => {
+    const res = await apiClient.delete<ApiResponse<null>>(`/cards/${cardId}`, {
+      data: { delete_transactions: deleteTransactions }
+    });
+    return res.data;
   }
 };

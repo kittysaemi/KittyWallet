@@ -42,7 +42,7 @@ const API_ERRORS: Record<string, string> = {
   TX_003: "존재하지 않는 계좌입니다.",
   TX_004: "존재하지 않는 카드입니다.",
   TX_007: "카드로 수입 거래를 저장할 수 없습니다.",
-  ACCOUNT_004: "잔액이 부족합니다. 지출 금액이 현재 잔액을 초과합니다.",
+  ACCOUNT_004: "잔액이 부족하거나 마이너스 한도를 초과했습니다.",
   CATEGORY_002: "카테고리를 찾을 수 없습니다."
 };
 
@@ -147,8 +147,8 @@ const IconDropdown: React.FC<IconDropdownProps> = ({
           error
             ? "border-[var(--color-danger)]"
             : open
-            ? "border-[var(--color-primary)] ring-2 ring-[var(--color-primary-soft)]"
-            : "border-[var(--color-border-primary)]"
+              ? "border-[var(--color-primary)] ring-2 ring-[var(--color-primary-soft)]"
+              : "border-[var(--color-border-primary)]"
         } bg-[var(--color-bg-input)] ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
       >
         {selected ? (
@@ -156,7 +156,9 @@ const IconDropdown: React.FC<IconDropdownProps> = ({
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--color-bg-secondary)]">
               {renderIcon(selected.iconId)}
             </span>
-            <span className="flex-1 text-sm text-[var(--color-text-primary)]">{selected.label}</span>
+            <span className="flex-1 text-sm text-[var(--color-text-primary)]">
+              {selected.label}
+            </span>
           </>
         ) : (
           <span className="flex-1 text-sm text-[var(--color-text-caption)]">{placeholder}</span>
@@ -195,12 +197,14 @@ interface TransactionFormProps {
   onSuccess: () => void;
   initialData?: TransactionItem;
   transactionId?: number;
+  readOnly?: boolean;
 }
 
 export const TransactionForm: React.FC<TransactionFormProps> = ({
   onSuccess,
   initialData,
-  transactionId
+  transactionId,
+  readOnly = false
 }) => {
   const isEditMode = !!transactionId;
   const queryClient = useQueryClient();
@@ -224,7 +228,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const accountsQuery = useQuery({
     queryKey: ["accounts", "active"],
     queryFn: () => accountApi.getAccounts({ use_yn: true, include_balance: true }),
-    staleTime: 60 * 1000
+    staleTime: 0,
+    refetchOnMount: "always"
   });
   const cardsQuery = useQuery({
     queryKey: ["cards", "active"],
@@ -284,6 +289,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["transactions"] });
       void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      void queryClient.invalidateQueries({ queryKey: ["accounts"] });
       onSuccess();
     },
     onError: (err: unknown) => {
@@ -301,14 +307,26 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["transactions"] });
       void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      void queryClient.invalidateQueries({ queryKey: ["accounts"] });
       onSuccess();
     },
-    onError: (err: unknown) => {
+    onError: (err: unknown, variables) => {
       const code =
         err instanceof AxiosError
           ? (err.response?.data as { error?: { code?: string } })?.error?.code
           : undefined;
-      setApiError(code && API_ERRORS[code] ? API_ERRORS[code] : "거래 수정에 실패했습니다.");
+      const dateChanged =
+        variables.transaction_date !== undefined &&
+        variables.transaction_date !== initialData?.transaction_date;
+      if (code === "ACCOUNT_004" && dateChanged) {
+        setErrors((prev) => ({
+          ...prev,
+          transaction_date:
+            "이 날짜로 변경하면 해당 시점의 계좌 잔액이 부족합니다. 날짜를 다시 확인해주세요."
+        }));
+      } else {
+        setApiError(code && API_ERRORS[code] ? API_ERRORS[code] : "거래 수정에 실패했습니다.");
+      }
     }
   });
 
@@ -370,7 +388,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     }
   }
 
-  const isSaving = mutation.isPending;
+  const isSaving = mutation.isPending || readOnly;
   const isLoading = accountsQuery.isLoading || cardsQuery.isLoading || iconsQuery.isLoading;
 
   const toggleBase =
@@ -440,7 +458,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       <div className="flex flex-col gap-1.5">
         <p className="text-sm font-medium text-[var(--color-text-secondary)]">지갑</p>
         {txType === "INCOME" && (
-          <p className="text-xs text-[var(--color-text-secondary)]">수입 거래는 계좌만 선택 가능합니다.</p>
+          <p className="text-xs text-[var(--color-text-secondary)]">
+            수입 거래는 계좌만 선택 가능합니다.
+          </p>
         )}
         <IconDropdown
           options={walletOptions}
@@ -451,19 +471,56 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           iconMap={iconMap}
           disabled={isSaving || isLoading}
         />
-        {walletType === "ACCOUNT" && walletId > 0 && (() => {
-          const acct = accountsQuery.data?.data?.items?.find((a) => a.account_id === walletId);
-          if (!acct || acct.current_balance === null) return null;
-          const isInsufficient = txType === "EXPENSE" &&
-            amountStr &&
-            parseInt(amountStr.replace(/,/g, ""), 10) > acct.current_balance;
-          return (
-            <p className={`text-xs ${isInsufficient ? "text-[var(--color-danger)]" : "text-[var(--color-text-secondary)]"}`}>
-              현재 잔액: {acct.current_balance.toLocaleString()}원
-              {isInsufficient && " — 입력 금액이 잔액을 초과합니다"}
-            </p>
-          );
-        })()}
+        {walletType === "ACCOUNT" &&
+          walletId > 0 &&
+          (() => {
+            const acct = accountsQuery.data?.data?.items?.find((a) => a.account_id === walletId);
+            if (!acct && accountsQuery.isFetching) {
+              return (
+                <p className="text-xs text-[var(--color-text-secondary)]">
+                  현재 잔액을 새로 불러오는 중...
+                </p>
+              );
+            }
+            if (!acct || acct.current_balance === null) return null;
+            const amount = amountStr ? parseInt(amountStr.replace(/,/g, ""), 10) : 0;
+            const minAllowed = acct.allow_negative_balance ? -acct.negative_balance_limit : 0;
+            const isEditingSameAccount =
+              isEditMode &&
+              initialData?.wallet_type === "ACCOUNT" &&
+              initialData.wallet_id === acct.account_id;
+            const initialDelta =
+              isEditingSameAccount && initialData
+                ? initialData.transaction_type === "INCOME"
+                  ? initialData.amount
+                  : -initialData.amount
+                : 0;
+            const baseBalance = acct.current_balance - initialDelta;
+            const nextDelta = txType === "INCOME" ? amount : -amount;
+            const projectedBalance = baseBalance + nextDelta;
+            const isInsufficient =
+              txType === "EXPENSE" && amount > 0 && projectedBalance < minAllowed;
+            const remainingMinusLimit = acct.allow_negative_balance
+              ? Math.max(0, acct.negative_balance_limit + Math.min(projectedBalance, 0))
+              : null;
+            const textColor = isInsufficient
+              ? "text-[var(--color-danger)]"
+              : "text-[var(--color-text-secondary)]";
+            return (
+              <div className="flex flex-col gap-0.5 mt-0.5">
+                <p className={`text-xs ${textColor}`}>
+                  현재 잔액: {projectedBalance.toLocaleString()}원
+                  {accountsQuery.isFetching && " / 갱신 중"}
+                  {isInsufficient && " - 잔액/한도를 초과합니다"}
+                </p>
+                {acct.allow_negative_balance && remainingMinusLimit !== null && (
+                  <p className={`text-xs ${textColor}`}>
+                    마이너스 한도: {remainingMinusLimit.toLocaleString()}원
+                  </p>
+                )}
+              </div>
+            );
+          })()}
       </div>
 
       {/* 카테고리 드롭다운 */}
@@ -506,9 +563,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         </div>
       )}
 
-      <Button type="submit" disabled={isSaving} className="mt-2">
-        {isSaving ? "저장 중..." : isEditMode ? "수정 완료" : "거래 등록"}
-      </Button>
+      {!readOnly && (
+        <Button type="submit" disabled={isSaving} className="mt-2">
+          {mutation.isPending ? "저장 중..." : isEditMode ? "수정 완료" : "거래 등록"}
+        </Button>
+      )}
     </form>
   );
 };

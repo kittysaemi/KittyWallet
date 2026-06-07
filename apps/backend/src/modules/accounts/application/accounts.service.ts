@@ -8,6 +8,8 @@ export interface AccountItem {
   icon_id: number;
   initial_balance: number;
   current_balance: number | null;
+  allow_negative_balance: boolean;
+  negative_balance_limit: number;
   use_yn: boolean;
   created_at: string;
   updated_at: string;
@@ -19,6 +21,8 @@ interface CreateAccountCommand {
   initialBalance: number;
   iconId: bigint;
   useYn?: boolean;
+  allowNegativeBalance?: boolean;
+  negativeBalanceLimit?: number;
 }
 
 interface UpdateAccountCommand {
@@ -56,6 +60,10 @@ export class AccountsService {
         HttpStatus.BAD_REQUEST
       );
     }
+    const negativeSetting = this.normalizeNegativeSetting(
+      command.allowNegativeBalance,
+      command.negativeBalanceLimit
+    );
 
     const account = await this.accountsRepository.create({
       user: { connect: { userId: command.userId } },
@@ -63,10 +71,28 @@ export class AccountsService {
       accountName,
       initialBalance: command.initialBalance,
       currentBalance: command.initialBalance,
+      allowNegativeBalance: negativeSetting.allowNegativeBalance,
+      negativeBalanceLimit: negativeSetting.negativeBalanceLimit,
       useYn: command.useYn ?? true
     });
 
     return { account_id: Number(account.accountId) };
+  }
+
+  async archiveAccount(command: {
+    accountId: bigint;
+    userId: bigint;
+    deleteTransactions: boolean;
+  }): Promise<void> {
+    const account = await this.accountsRepository.findById(command.accountId, command.userId);
+    if (!account || account.deletedYn) {
+      throw new AppException("ACCOUNT_002", "계좌를 찾을 수 없습니다.", HttpStatus.NOT_FOUND);
+    }
+    await this.accountsRepository.archive(
+      command.accountId,
+      command.userId,
+      command.deleteTransactions
+    );
   }
 
   async updateAccount(
@@ -148,6 +174,25 @@ export class AccountsService {
     }
   }
 
+  private normalizeNegativeSetting(
+    allowNegativeBalance = false,
+    negativeBalanceLimit = 0
+  ): { allowNegativeBalance: boolean; negativeBalanceLimit: number } {
+    if (negativeBalanceLimit < 0) {
+      throw new AppException(
+        "VALIDATION_001",
+        "마이너스 한도는 0 이상이어야 합니다.",
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    if (!allowNegativeBalance) {
+      return { allowNegativeBalance: false, negativeBalanceLimit: 0 };
+    }
+
+    return { allowNegativeBalance: true, negativeBalanceLimit };
+  }
+
   private toItem(
     account: {
       accountId: bigint;
@@ -155,6 +200,8 @@ export class AccountsService {
       iconId: bigint;
       initialBalance: { toNumber(): number };
       currentBalance: { toNumber(): number };
+      allowNegativeBalance: boolean;
+      negativeBalanceLimit: { toNumber(): number };
       useYn: boolean;
       createdAt: Date;
       updatedAt: Date;
@@ -167,6 +214,8 @@ export class AccountsService {
       icon_id: Number(account.iconId),
       initial_balance: account.initialBalance.toNumber(),
       current_balance: includeBalance ? account.currentBalance.toNumber() : null,
+      allow_negative_balance: account.allowNegativeBalance,
+      negative_balance_limit: account.negativeBalanceLimit.toNumber(),
       use_yn: account.useYn,
       created_at: account.createdAt.toISOString(),
       updated_at: account.updatedAt.toISOString()

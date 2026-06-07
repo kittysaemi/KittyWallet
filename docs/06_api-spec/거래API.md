@@ -44,6 +44,7 @@
 - Soft Delete 적용
 - 거래 저장 시 잔액 자동 계산
 - 수정 시 기존 금액 복구 후 재계산
+- 계좌 거래는 날짜별 잔액 흐름 기준으로 잔액 부족/마이너스 한도 초과 검증
 - deleted_yn 기반 삭제 처리
 - Offline First 구조 지원
 
@@ -99,8 +100,8 @@
 | 금액 0 이하 | 저장 불가 |
 | 삭제 거래 | 통계 제외 |
 | 계좌 수입 | `transaction_type=INCOME`, `wallet_type=ACCOUNT`, current_balance 증가 |
-| 계좌 지출 | `transaction_type=EXPENSE`, `wallet_type=ACCOUNT`, current_balance 감소. 잔액이 0 미만이 되는 경우 저장 불가 (`ACCOUNT_004` 반환) |
-| 잔액 음수 | 계좌 거래 지출 후 current_balance < 0이 되는 경우 등록 차단 |
+| 계좌 지출 | `transaction_type=EXPENSE`, `wallet_type=ACCOUNT`, current_balance 감소. 날짜별 잔액 흐름이 허용 범위 아래로 내려가면 저장 불가 (`ACCOUNT_004` 반환) |
+| 잔액 음수 | 마이너스 미허용 계좌는 어느 날짜의 잔액도 0 미만 불가. 마이너스 허용 계좌는 `-negative_balance_limit` 미만 불가 |
 | 카드 지출 | `transaction_type=EXPENSE`, `wallet_type=CARD`, 카드 내역 저장 및 지출 통계 반영 |
 | 카드 수입 | `transaction_type=INCOME`, `wallet_type=CARD` 조합 저장 불가 |
 | 결제수단 | 계좌/카드는 거래 유형이 아니라 `wallet_type`으로 표현 |
@@ -134,7 +135,7 @@
 | TX_003 | 존재하지 않는 계좌 |
 | TX_004 | 존재하지 않는 카드 |
 | TX_007 | 카드 수입 거래 저장 불가 |
-| ACCOUNT_004 | 계좌 잔액 부족. 지출 금액이 현재 잔액을 초과함 |
+| ACCOUNT_004 | 계좌 잔액 부족 또는 마이너스 한도 초과 |
 
 ---
 
@@ -143,6 +144,7 @@
 - 거래 등록/수정/삭제 모두 로컬 저장 후 Sync Queue 처리
 - 온라인 복구 시 자동 재전송
 - updated_at 기준 충돌 처리
+- 오프라인 저장은 로컬 Queue 기준 1차 잔액 검증을 수행하고, 서버 동기화 시 서버가 날짜별 잔액 흐름 기준으로 최종 검증한다.
 
 | 상황 | Queue 처리 |
 |---|---|
@@ -224,11 +226,12 @@
 | 부분 수정 | 전달된 필드만 수정하되, 수정 가능한 필드가 하나 이상 필요 |
 | 미래 날짜 | 사용자 timezone 기준 today 이후 날짜 저장 불가 |
 | 금액 0 이하 | 저장 불가 |
-| 계좌 거래 수정 | 기존 계좌 잔액 복구 후 변경 기준으로 재반영. 재반영 후 잔액이 0 미만이 되는 경우 수정 불가 (`ACCOUNT_004` 반환) |
+| 계좌 거래 수정 | 기존 거래를 제거하고 변경 거래를 반영한 가상 상태로 날짜별 잔액 흐름을 검증. 허용 범위 아래로 내려가면 수정 불가 (`ACCOUNT_004` 반환) |
 | 카드 거래 수정 | 카드 내역만 변경하며 계좌 잔액은 변경하지 않음 |
 | 계좌/카드 변경 | 기존 반영분 복구 후 새 `wallet_type` 기준으로 처리 |
 | 카드 수입 | `transaction_type=INCOME`, `wallet_type=CARD` 조합 저장 불가 |
 | 비활성 결제수단 | `use_yn=false` 계좌/카드는 신규 선택 또는 변경 대상 불가 |
+| 계좌 변경 | 기존 계좌와 새 계좌의 날짜별 잔액 흐름을 모두 검증 |
 
 ---
 
@@ -261,6 +264,7 @@
 | 400 | TX_002 | 금액 오류 |
 | 400 | TX_007 | 카드 수입 거래 저장 불가 |
 | 400 | ACCOUNT_004 | 계좌 잔액 부족. 지출 금액이 현재 잔액을 초과함 |
+| 400 | WALLET_001 | 삭제된 지갑의 거래는 수정 불가 |
 | 401 | AUTH_002 | 인증 실패 또는 토큰 만료 |
 | 403 | AUTH_009 | 다른 사용자의 거래 접근 |
 | 404 | TX_003 | 존재하지 않는 계좌 |
@@ -396,6 +400,7 @@
     "wallet_type": "ACCOUNT",
     "wallet_id": 1,
     "wallet_name": "생활비 통장",
+    "wallet_deleted": false,
     "category_id": 3,
     "category_name": "식비",
     "transaction_type": "EXPENSE",
@@ -408,6 +413,22 @@
   "error": null
 }
 ```
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| transaction_id | number | 거래 ID |
+| wallet_type | string | ACCOUNT/CARD |
+| wallet_id | number | 계좌 또는 카드 ID |
+| wallet_name | string | 계좌명 또는 카드명 |
+| wallet_deleted | boolean | 지갑 아카이브 여부. true면 수정 불가, 삭제만 가능 |
+| category_id | number | 카테고리 ID |
+| category_name | string | 카테고리명 |
+| transaction_type | string | INCOME/EXPENSE |
+| amount | number | 거래 금액 |
+| memo | string/null | 메모 |
+| transaction_date | string | 거래일 |
+| created_at | string | 생성일시 |
+| updated_at | string | 수정일시 |
 
 ---
 
@@ -453,6 +474,7 @@
         "wallet_type": "ACCOUNT",
         "wallet_id": 1,
         "wallet_name": "생활비 통장",
+        "wallet_deleted": false,
         "category_id": 3,
         "category_name": "식비",
         "transaction_type": "EXPENSE",
@@ -531,6 +553,7 @@ Authorization: Bearer {access_token}
         "wallet_type": "ACCOUNT",
         "wallet_id": 1,
         "wallet_name": "생활비 통장",
+        "wallet_deleted": false,
         "category_id": 3,
         "category_name": "식비",
         "transaction_type": "EXPENSE",

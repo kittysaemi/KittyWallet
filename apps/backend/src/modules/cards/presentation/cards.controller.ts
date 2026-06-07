@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Put, Query } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Post, Put, Query } from "@nestjs/common";
 import { CurrentUser, JwtPayload } from "../../../common/decorators/current-user.decorator";
 import { CardsService } from "../application/cards.service";
 import { CardListQueryDto } from "./dto/request/card-list-query.dto";
@@ -22,6 +22,19 @@ export class CardsController {
       cardName: dto.card_name,
       iconId: BigInt(dto.icon_id),
       useYn: dto.use_yn
+    });
+  }
+
+  @Delete(":id")
+  archiveCard(
+    @CurrentUser() user: JwtPayload,
+    @Param("id") id: string,
+    @Body() body: { delete_transactions?: boolean }
+  ) {
+    return this.cardsService.archiveCard({
+      cardId: BigInt(id),
+      userId: BigInt(user.sub),
+      deleteTransactions: body.delete_transactions ?? false
     });
   }
 

@@ -142,6 +142,7 @@ Authorization: Bearer {access_token}
         "wallet_type": "ACCOUNT",
         "wallet_id": 1,
         "wallet_name": "생활비 통장",
+        "wallet_deleted": false,
         "category_id": 3,
         "category_name": "식비",
         "transaction_type": "EXPENSE",
@@ -209,6 +210,7 @@ Authorization: Bearer {access_token}
 | wallet_type | string | ACCOUNT/CARD |
 | wallet_id | number | 계좌 또는 카드 ID |
 | wallet_name | string | 계좌명 또는 카드명 |
+| wallet_deleted | boolean | 지갑 아카이브 여부. true면 수정 불가, 삭제만 가능 |
 | category_id | number | 카테고리 ID |
 | category_name | string | 카테고리명 |
 | transaction_type | string | INCOME/EXPENSE |
@@ -328,6 +330,7 @@ Authorization: Bearer {access_token}
         "wallet_type": "ACCOUNT",
         "wallet_id": 1,
         "wallet_name": "생활비 통장",
+        "wallet_deleted": false,
         "category_id": 3,
         "category_name": "식비",
         "transaction_type": "EXPENSE",

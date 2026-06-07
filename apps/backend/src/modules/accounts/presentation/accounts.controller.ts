@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Put, Query } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Post, Put, Query } from "@nestjs/common";
 import { CurrentUser, JwtPayload } from "../../../common/decorators/current-user.decorator";
 import { AccountsService } from "../application/accounts.service";
 import { AccountListQueryDto } from "./dto/request/account-list-query.dto";
@@ -12,7 +12,8 @@ export class AccountsController {
   @Get()
   getAccounts(@CurrentUser() user: JwtPayload, @Query() query: AccountListQueryDto) {
     const useYn = query.use_yn === undefined ? undefined : query.use_yn === "true";
-    const includeBalance = query.include_balance === undefined ? true : query.include_balance === "true";
+    const includeBalance =
+      query.include_balance === undefined ? true : query.include_balance === "true";
     return this.accountsService.getAccounts(BigInt(user.sub), useYn, includeBalance);
   }
 
@@ -23,7 +24,22 @@ export class AccountsController {
       accountName: dto.account_name,
       initialBalance: dto.initial_balance,
       iconId: BigInt(dto.icon_id),
-      useYn: dto.use_yn
+      useYn: dto.use_yn,
+      allowNegativeBalance: dto.allow_negative_balance,
+      negativeBalanceLimit: dto.negative_balance_limit
+    });
+  }
+
+  @Delete(":id")
+  archiveAccount(
+    @CurrentUser() user: JwtPayload,
+    @Param("id") id: string,
+    @Body() body: { delete_transactions?: boolean }
+  ) {
+    return this.accountsService.archiveAccount({
+      accountId: BigInt(id),
+      userId: BigInt(user.sub),
+      deleteTransactions: body.delete_transactions ?? false
     });
   }
 

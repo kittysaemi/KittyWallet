@@ -23,7 +23,8 @@ describe("CardsService", () => {
     findDuplicateName: jest.fn(),
     findAvailableIcon: jest.fn(),
     create: jest.fn(),
-    update: jest.fn()
+    update: jest.fn(),
+    archive: jest.fn()
   } as unknown as jest.Mocked<CardsRepository>;
 
   const service = new CardsService(cardsRepository);
@@ -72,5 +73,47 @@ describe("CardsService", () => {
     await expect(
       service.updateCard({ cardId: BigInt(1), userId: BigInt(1), useYn: false })
     ).resolves.toEqual({ card_id: 1, use_yn: false });
+  });
+
+  it("archives card successfully", async () => {
+    cardsRepository.findById.mockResolvedValue(makeCard() as any);
+    cardsRepository.archive.mockResolvedValue(undefined);
+
+    await expect(
+      service.archiveCard({ cardId: BigInt(1), userId: BigInt(1), deleteTransactions: false })
+    ).resolves.toBeUndefined();
+
+    expect(cardsRepository.archive).toHaveBeenCalledWith(BigInt(1), BigInt(1), false);
+  });
+
+  it("archives card and deletes transactions when delete_transactions=true", async () => {
+    cardsRepository.findById.mockResolvedValue(makeCard() as any);
+    cardsRepository.archive.mockResolvedValue(undefined);
+
+    await service.archiveCard({ cardId: BigInt(1), userId: BigInt(1), deleteTransactions: true });
+
+    expect(cardsRepository.archive).toHaveBeenCalledWith(BigInt(1), BigInt(1), true);
+  });
+
+  it("returns 404 when archiving non-existent card", async () => {
+    cardsRepository.findById.mockResolvedValue(null);
+
+    await expect(
+      service.archiveCard({ cardId: BigInt(99), userId: BigInt(1), deleteTransactions: false })
+    ).rejects.toMatchObject({
+      code: "CARD_002",
+      statusCode: HttpStatus.NOT_FOUND
+    } satisfies Partial<AppException>);
+  });
+
+  it("returns 404 when archiving already-archived card", async () => {
+    cardsRepository.findById.mockResolvedValue(makeCard({ deletedYn: true }) as any);
+
+    await expect(
+      service.archiveCard({ cardId: BigInt(1), userId: BigInt(1), deleteTransactions: false })
+    ).rejects.toMatchObject({
+      code: "CARD_002",
+      statusCode: HttpStatus.NOT_FOUND
+    } satisfies Partial<AppException>);
   });
 });
