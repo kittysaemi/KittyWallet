@@ -1,0 +1,3 @@
+ALTER TABLE "ACCOUNT"
+ADD COLUMN "allow_negative_balance" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN "negative_balance_limit" DECIMAL(15,0) NOT NULL DEFAULT 0;

@@ -51,6 +51,8 @@ const successAccounts = {
         icon_id: 10,
         initial_balance: 100000,
         current_balance: 120000,
+        allow_negative_balance: false,
+        negative_balance_limit: 0,
         use_yn: true,
         created_at: "2026-06-02T00:00:00Z",
         updated_at: "2026-06-02T00:00:00Z"
@@ -61,6 +63,8 @@ const successAccounts = {
         icon_id: 11,
         initial_balance: 0,
         current_balance: 0,
+        allow_negative_balance: true,
+        negative_balance_limit: 300000,
         use_yn: false,
         created_at: "2026-06-02T00:00:00Z",
         updated_at: "2026-06-02T00:00:00Z"
@@ -127,9 +131,42 @@ describe("AccountsPage", () => {
 
     expect(screen.getByLabelText("계좌명")).toHaveAttribute("maxLength", "15");
     expect(screen.getByLabelText("초기 잔액")).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "신규 계좌 마이너스 허용" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "계좌 아이콘 선택" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "등록" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "취소" })).toBeInTheDocument();
+  });
+
+  it("passes negative balance setting when creating an account", async () => {
+    mockedAccountApi.getAccounts.mockResolvedValue(successAccounts);
+    mockedAccountApi.createAccount.mockResolvedValue({
+      success: true,
+      data: { account_id: 3 },
+      error: null
+    });
+    mockedIconApi.getIcons.mockResolvedValue(visibleIcons);
+
+    render(<AccountsPage />, { wrapper: createWrapper() });
+
+    await userEvent.click(await screen.findByRole("button", { name: "계좌 등록" }));
+    await userEvent.click(screen.getByRole("button", { name: "계좌 아이콘 선택" }));
+    await userEvent.click(await screen.findByRole("button", { name: "아이콘 선택: wallet" }));
+    await userEvent.type(screen.getByLabelText("계좌명"), "마이너스통장");
+    await userEvent.type(screen.getByLabelText("초기 잔액"), "0");
+    await userEvent.click(screen.getByRole("switch", { name: "신규 계좌 마이너스 허용" }));
+    await userEvent.type(screen.getByLabelText("신규 계좌 마이너스 한도"), "300000");
+    await userEvent.click(screen.getByRole("button", { name: "등록" }));
+
+    await waitFor(() =>
+      expect(mockedAccountApi.createAccount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          account_name: "마이너스통장",
+          allow_negative_balance: true,
+          negative_balance_limit: 300000
+        }),
+        expect.anything()
+      )
+    );
   });
 
   it("closes and resets inline account create form from cancel action", async () => {

@@ -145,15 +145,17 @@ model CategoryUserSetting {
 }
 
 model Account {
-  accountId      BigInt   @id @default(autoincrement()) @map("account_id")
-  userId         BigInt   @map("user_id")
-  iconId         BigInt   @map("icon_id")
-  accountName    String   @map("account_name") @db.VarChar(50)
-  initialBalance Decimal  @map("initial_balance") @db.Decimal(15, 0)
-  currentBalance Decimal  @map("current_balance") @db.Decimal(15, 0)
-  useYn          Boolean  @default(true) @map("use_yn")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  accountId            BigInt   @id @default(autoincrement()) @map("account_id")
+  userId               BigInt   @map("user_id")
+  iconId               BigInt   @map("icon_id")
+  accountName          String   @map("account_name") @db.VarChar(50)
+  initialBalance       Decimal  @map("initial_balance") @db.Decimal(15, 0)
+  currentBalance       Decimal  @map("current_balance") @db.Decimal(15, 0)
+  allowNegativeBalance Boolean  @default(false) @map("allow_negative_balance")
+  negativeBalanceLimit Decimal  @default(0) @map("negative_balance_limit") @db.Decimal(15, 0)
+  useYn                Boolean  @default(true) @map("use_yn")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [userId])
   icon Icon @relation(fields: [iconId], references: [iconId])

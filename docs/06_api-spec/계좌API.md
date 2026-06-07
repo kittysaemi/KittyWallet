@@ -42,6 +42,8 @@
 
 - initial_balance 사용
 - current_balance 자동 계산
+- allow_negative_balance 기본값 false
+- negative_balance_limit 기본값 0, 0 이상
 - use_yn 기반 사용 여부 관리
 - icon_id 필수
 - 사용자별 계좌 분리
@@ -64,6 +66,8 @@
   "account_name": "생활비 통장",
   "initial_balance": 500000,
   "icon_id": 1,
+  "allow_negative_balance": false,
+  "negative_balance_limit": 0,
   "use_yn": true
 }
 ```
@@ -73,6 +77,8 @@
 | account_name | string | Y | 계좌명. 사용자 내 중복 불가 |
 | initial_balance | number | Y | 초기 잔액. 0 이상 |
 | icon_id | number | Y | 계좌 아이콘 ID |
+| allow_negative_balance | boolean | N | 마이너스 잔액 허용 여부. 기본값 false |
+| negative_balance_limit | number | N | 마이너스 한도. 0 이상. `allow_negative_balance=false`면 0 처리 |
 | use_yn | boolean | N | 계좌 사용 여부. 기본값 true |
 
 ---
@@ -83,6 +89,8 @@
 |---|---|
 | 중복 계좌명 | 불가 |
 | 잔액 수정 | 거래 기준 자동 계산 |
+| 마이너스 허용 | 계좌별 설정 가능 |
+| 마이너스 한도 | 0 이상. 미허용 계좌는 0 처리 |
 | 사용 여부 | OFF 시 선택 불가 |
 | 계좌명 길이 | 한글 기준 15자 이하 |
 
@@ -135,6 +143,8 @@
 {
   "account_name": "생활비 통장",
   "icon_id": 1,
+  "allow_negative_balance": true,
+  "negative_balance_limit": 300000,
   "use_yn": false
 }
 ```
@@ -143,6 +153,8 @@
 |---|---|---|---|
 | account_name | string | N | 변경할 계좌명 |
 | icon_id | number | N | 변경할 아이콘 ID |
+| allow_negative_balance | boolean | N | 마이너스 잔액 허용 여부 |
+| negative_balance_limit | number | N | 마이너스 한도. 0 이상. `allow_negative_balance=false`면 0 처리 |
 | use_yn | boolean | N | 계좌 사용 여부. false면 거래 등록 선택 목록에서 제외 |
 
 ---
@@ -219,6 +231,8 @@
         "icon_id": 1,
         "initial_balance": 500000,
         "current_balance": 420000,
+        "allow_negative_balance": false,
+        "negative_balance_limit": 0,
         "use_yn": true,
         "created_at": "2026-05-30T02:00:00Z",
         "updated_at": "2026-05-30T02:10:00Z"
@@ -237,6 +251,8 @@
 | icon_id | number | 계좌 아이콘 ID |
 | initial_balance | number | 초기 잔액 |
 | current_balance | number/null | 현재 잔액. `include_balance=false`면 null |
+| allow_negative_balance | boolean | 마이너스 잔액 허용 여부 |
+| negative_balance_limit | number | 마이너스 한도 |
 | use_yn | boolean | 계좌 사용 여부 |
 | created_at | string | 생성 시각, UTC ISO-8601 |
 | updated_at | string | 최종 수정 시각, UTC ISO-8601 |

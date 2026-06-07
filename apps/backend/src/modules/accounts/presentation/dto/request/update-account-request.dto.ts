@@ -14,4 +14,13 @@ export class UpdateAccountRequestDto {
   @IsOptional()
   @IsBoolean()
   use_yn?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  allow_negative_balance?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  negative_balance_limit?: number;
 }

@@ -1,5 +1,13 @@
 import { Injectable } from "@nestjs/common";
-import { Account, Card, Category, Prisma, Transaction, TransactionType, WalletType } from "@prisma/client";
+import {
+  Account,
+  Card,
+  Category,
+  Prisma,
+  Transaction,
+  TransactionType,
+  WalletType
+} from "@prisma/client";
 import { PrismaService } from "../../../database/prisma.service";
 
 export type TransactionWithCategory = Transaction & { category: Category };
@@ -26,6 +34,11 @@ export interface CreateTransactionInput {
   memo?: string | null;
   syncedAt?: Date | null;
 }
+
+export type AccountBalanceTransaction = Pick<
+  Transaction,
+  "transactionId" | "transactionType" | "amount" | "transactionDate"
+>;
 
 @Injectable()
 export class TransactionsRepository {
@@ -104,6 +117,33 @@ export class TransactionsRepository {
   findAccount(accountId: bigint, userId: bigint): Promise<Account | null> {
     return this.prisma.account.findFirst({
       where: { accountId, userId, useYn: true }
+    });
+  }
+
+  findOwnedAccount(accountId: bigint, userId: bigint): Promise<Account | null> {
+    return this.prisma.account.findFirst({
+      where: { accountId, userId }
+    });
+  }
+
+  findAccountTransactionsForBalance(
+    accountId: bigint,
+    userId: bigint
+  ): Promise<AccountBalanceTransaction[]> {
+    return this.prisma.transaction.findMany({
+      where: {
+        userId,
+        walletType: "ACCOUNT",
+        walletId: accountId,
+        deletedYn: false
+      },
+      select: {
+        transactionId: true,
+        transactionType: true,
+        amount: true,
+        transactionDate: true
+      },
+      orderBy: [{ transactionDate: "asc" }, { transactionId: "asc" }]
     });
   }
 

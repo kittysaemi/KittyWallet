@@ -13,6 +13,8 @@ describe("AccountsService", () => {
     accountName: "생활비 통장",
     initialBalance: { toNumber: () => 500000 },
     currentBalance: { toNumber: () => 500000 },
+    allowNegativeBalance: false,
+    negativeBalanceLimit: { toNumber: () => 0 },
     useYn: true,
     createdAt: now,
     updatedAt: now,
@@ -45,6 +47,8 @@ describe("AccountsService", () => {
           icon_id: 10,
           initial_balance: 500000,
           current_balance: 500000,
+          allow_negative_balance: false,
+          negative_balance_limit: 0,
           use_yn: true,
           created_at: "2026-01-01T00:00:00.000Z",
           updated_at: "2026-01-01T00:00:00.000Z"
@@ -104,8 +108,13 @@ describe("AccountsService", () => {
   it("sets current_balance equal to initial_balance on create", async () => {
     accountsRepository.findDuplicateName.mockResolvedValue(null);
     accountsRepository.findAvailableIcon.mockResolvedValue({
-      iconId: BigInt(10), userId: null, iconDictionaryId: BigInt(20),
-      show: true, isDefault: true, createdAt: now, updatedAt: now
+      iconId: BigInt(10),
+      userId: null,
+      iconDictionaryId: BigInt(20),
+      show: true,
+      isDefault: true,
+      createdAt: now,
+      updatedAt: now
     } as any);
     accountsRepository.create.mockResolvedValue(makeAccount() as any);
 
@@ -117,7 +126,71 @@ describe("AccountsService", () => {
     });
 
     expect(accountsRepository.create).toHaveBeenCalledWith(
-      expect.objectContaining({ initialBalance: 500000, currentBalance: 500000 })
+      expect.objectContaining({
+        initialBalance: 500000,
+        currentBalance: 500000,
+        allowNegativeBalance: false,
+        negativeBalanceLimit: 0
+      })
+    );
+  });
+
+  it("creates account with negative balance setting", async () => {
+    accountsRepository.findDuplicateName.mockResolvedValue(null);
+    accountsRepository.findAvailableIcon.mockResolvedValue({
+      iconId: BigInt(10),
+      userId: null,
+      iconDictionaryId: BigInt(20),
+      show: true,
+      isDefault: true,
+      createdAt: now,
+      updatedAt: now
+    } as any);
+    accountsRepository.create.mockResolvedValue(
+      makeAccount({
+        allowNegativeBalance: true,
+        negativeBalanceLimit: { toNumber: () => 300000 }
+      }) as any
+    );
+
+    await service.createAccount({
+      userId: BigInt(1),
+      accountName: "마이너스 통장",
+      initialBalance: 0,
+      iconId: BigInt(10),
+      allowNegativeBalance: true,
+      negativeBalanceLimit: 300000
+    });
+
+    expect(accountsRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        allowNegativeBalance: true,
+        negativeBalanceLimit: 300000
+      })
+    );
+  });
+
+  it("normalizes negative balance limit to 0 when negative balance is disabled", async () => {
+    accountsRepository.findById.mockResolvedValue(
+      makeAccount({
+        allowNegativeBalance: true,
+        negativeBalanceLimit: { toNumber: () => 300000 }
+      }) as any
+    );
+    accountsRepository.update.mockResolvedValue(makeAccount() as any);
+
+    await service.updateAccount({
+      accountId: BigInt(1),
+      userId: BigInt(1),
+      allowNegativeBalance: false
+    });
+
+    expect(accountsRepository.update).toHaveBeenCalledWith(
+      BigInt(1),
+      expect.objectContaining({
+        allowNegativeBalance: false,
+        negativeBalanceLimit: 0
+      })
     );
   });
 

@@ -8,6 +8,8 @@ export interface AccountItem {
   icon_id: number;
   initial_balance: number;
   current_balance: number | null;
+  allow_negative_balance: boolean;
+  negative_balance_limit: number;
   use_yn: boolean;
   created_at: string;
   updated_at: string;
@@ -19,6 +21,8 @@ interface CreateAccountCommand {
   initialBalance: number;
   iconId: bigint;
   useYn?: boolean;
+  allowNegativeBalance?: boolean;
+  negativeBalanceLimit?: number;
 }
 
 interface UpdateAccountCommand {
@@ -27,6 +31,8 @@ interface UpdateAccountCommand {
   accountName?: string;
   iconId?: bigint;
   useYn?: boolean;
+  allowNegativeBalance?: boolean;
+  negativeBalanceLimit?: number;
 }
 
 @Injectable()
@@ -56,6 +62,10 @@ export class AccountsService {
         HttpStatus.BAD_REQUEST
       );
     }
+    const negativeSetting = this.normalizeNegativeSetting(
+      command.allowNegativeBalance,
+      command.negativeBalanceLimit
+    );
 
     const account = await this.accountsRepository.create({
       user: { connect: { userId: command.userId } },
@@ -63,6 +73,8 @@ export class AccountsService {
       accountName,
       initialBalance: command.initialBalance,
       currentBalance: command.initialBalance,
+      allowNegativeBalance: negativeSetting.allowNegativeBalance,
+      negativeBalanceLimit: negativeSetting.negativeBalanceLimit,
       useYn: command.useYn ?? true
     });
 
@@ -75,7 +87,9 @@ export class AccountsService {
     if (
       command.accountName === undefined &&
       command.iconId === undefined &&
-      command.useYn === undefined
+      command.useYn === undefined &&
+      command.allowNegativeBalance === undefined &&
+      command.negativeBalanceLimit === undefined
     ) {
       throw new AppException(
         "VALIDATION_001",
@@ -93,6 +107,8 @@ export class AccountsService {
       accountName?: string;
       icon?: { connect: { iconId: bigint } };
       useYn?: boolean;
+      allowNegativeBalance?: boolean;
+      negativeBalanceLimit?: number;
     } = {};
 
     if (command.accountName !== undefined) {
@@ -108,6 +124,15 @@ export class AccountsService {
 
     if (command.useYn !== undefined) {
       data.useYn = command.useYn;
+    }
+
+    if (command.allowNegativeBalance !== undefined || command.negativeBalanceLimit !== undefined) {
+      const negativeSetting = this.normalizeNegativeSetting(
+        command.allowNegativeBalance ?? account.allowNegativeBalance,
+        command.negativeBalanceLimit ?? account.negativeBalanceLimit.toNumber()
+      );
+      data.allowNegativeBalance = negativeSetting.allowNegativeBalance;
+      data.negativeBalanceLimit = negativeSetting.negativeBalanceLimit;
     }
 
     const updated = await this.accountsRepository.update(account.accountId, data);
@@ -148,6 +173,25 @@ export class AccountsService {
     }
   }
 
+  private normalizeNegativeSetting(
+    allowNegativeBalance = false,
+    negativeBalanceLimit = 0
+  ): { allowNegativeBalance: boolean; negativeBalanceLimit: number } {
+    if (negativeBalanceLimit < 0) {
+      throw new AppException(
+        "VALIDATION_001",
+        "마이너스 한도는 0 이상이어야 합니다.",
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    if (!allowNegativeBalance) {
+      return { allowNegativeBalance: false, negativeBalanceLimit: 0 };
+    }
+
+    return { allowNegativeBalance: true, negativeBalanceLimit };
+  }
+
   private toItem(
     account: {
       accountId: bigint;
@@ -155,6 +199,8 @@ export class AccountsService {
       iconId: bigint;
       initialBalance: { toNumber(): number };
       currentBalance: { toNumber(): number };
+      allowNegativeBalance: boolean;
+      negativeBalanceLimit: { toNumber(): number };
       useYn: boolean;
       createdAt: Date;
       updatedAt: Date;
@@ -167,6 +213,8 @@ export class AccountsService {
       icon_id: Number(account.iconId),
       initial_balance: account.initialBalance.toNumber(),
       current_balance: includeBalance ? account.currentBalance.toNumber() : null,
+      allow_negative_balance: account.allowNegativeBalance,
+      negative_balance_limit: account.negativeBalanceLimit.toNumber(),
       use_yn: account.useYn,
       created_at: account.createdAt.toISOString(),
       updated_at: account.updatedAt.toISOString()

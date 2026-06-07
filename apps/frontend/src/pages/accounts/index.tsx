@@ -42,6 +42,8 @@ const AccountsPage: React.FC = () => {
   const [newName, setNewName] = React.useState("");
   const [newBalance, setNewBalance] = React.useState("");
   const [newIconId, setNewIconId] = React.useState<number | undefined>();
+  const [newAllowNegative, setNewAllowNegative] = React.useState(false);
+  const [newNegativeLimit, setNewNegativeLimit] = React.useState("");
   const [editingId, setEditingId] = React.useState<number | null>(null);
   const [editingName, setEditingName] = React.useState("");
   const [errors, setErrors] = React.useState<Record<string, string>>({});
@@ -70,6 +72,8 @@ const AccountsPage: React.FC = () => {
       setNewName("");
       setNewBalance("");
       setNewIconId(undefined);
+      setNewAllowNegative(false);
+      setNewNegativeLimit("");
       setErrors({});
       await refreshAccounts();
     }
@@ -105,18 +109,23 @@ const AccountsPage: React.FC = () => {
   const saveCreate = () => {
     const name = accountNameSchema.safeParse(newName);
     const balance = Number(newBalance);
+    const negativeLimit = Number(newNegativeLimit || "0");
     const nextErrors: Record<string, string> = {};
     if (!name.success)
       nextErrors.newName = name.error.errors[0]?.message ?? "입력값을 확인해주세요.";
     if (newBalance === "" || Number.isNaN(balance)) nextErrors.newBalance = "잔액을 입력해주세요.";
     if (balance < 0) nextErrors.newBalance = "초기 잔액은 0 이상이어야 합니다.";
+    if (Number.isNaN(negativeLimit) || negativeLimit < 0)
+      nextErrors.newNegativeLimit = "마이너스 한도는 0 이상이어야 합니다.";
     if (!newIconId) nextErrors.newIcon = "아이콘을 선택해주세요.";
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0 || !name.success || !newIconId) return;
     createMutation.mutate({
       account_name: name.data,
       initial_balance: balance,
-      icon_id: newIconId
+      icon_id: newIconId,
+      allow_negative_balance: newAllowNegative,
+      negative_balance_limit: newAllowNegative ? negativeLimit : 0
     });
   };
 
@@ -125,6 +134,8 @@ const AccountsPage: React.FC = () => {
     setNewName("");
     setNewBalance("");
     setNewIconId(undefined);
+    setNewAllowNegative(false);
+    setNewNegativeLimit("");
     setErrors({});
   };
 
@@ -166,6 +177,35 @@ const AccountsPage: React.FC = () => {
   const toggleUseYn = (account: AccountItem) => {
     if (isPending) return;
     updateMutation.mutate({ id: account.account_id, data: { use_yn: !account.use_yn } });
+  };
+
+  const updateNegativeSetting = (
+    account: AccountItem,
+    allowNegativeBalance: boolean,
+    negativeBalanceLimit = account.negative_balance_limit
+  ) => {
+    if (isPending || !account.use_yn) return;
+    updateMutation.mutate({
+      id: account.account_id,
+      data: {
+        allow_negative_balance: allowNegativeBalance,
+        negative_balance_limit: allowNegativeBalance ? negativeBalanceLimit : 0
+      }
+    });
+  };
+
+  const saveNegativeLimit = (account: AccountItem, value: string) => {
+    const limit = Number(value || "0");
+    if (Number.isNaN(limit) || limit < 0) {
+      setErrors((prev) => ({
+        ...prev,
+        [`negative-${account.account_id}`]: "마이너스 한도는 0 이상이어야 합니다."
+      }));
+      return;
+    }
+    setErrors((prev) => ({ ...prev, [`negative-${account.account_id}`]: "" }));
+    if (limit === account.negative_balance_limit) return;
+    updateNegativeSetting(account, true, limit);
   };
 
   return (
@@ -235,6 +275,44 @@ const AccountsPage: React.FC = () => {
               placeholder="초기 잔액"
               className="min-h-11 rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none"
             />
+            <div className="rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] px-3 py-3">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-medium text-[var(--color-text-primary)]">
+                  마이너스 허용
+                </span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={newAllowNegative}
+                  aria-label="신규 계좌 마이너스 허용"
+                  onClick={() => setNewAllowNegative((prev) => !prev)}
+                  className={`inline-flex h-7 w-12 shrink-0 items-center rounded-full p-0.5 transition-colors ${
+                    newAllowNegative
+                      ? "bg-[var(--color-primary)]"
+                      : "bg-[var(--color-border-primary)]"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-6 w-6 rounded-full bg-white shadow transition-transform ${
+                      newAllowNegative ? "translate-x-5" : "translate-x-0"
+                    }`}
+                  />
+                </button>
+              </div>
+              {newAllowNegative && (
+                <input
+                  aria-label="신규 계좌 마이너스 한도"
+                  inputMode="numeric"
+                  value={newNegativeLimit ? Number(newNegativeLimit).toLocaleString() : ""}
+                  onChange={(event) => {
+                    const raw = event.target.value.replace(/,/g, "").replace(/[^0-9]/g, "");
+                    setNewNegativeLimit(raw);
+                  }}
+                  placeholder="마이너스 한도"
+                  className="mt-3 min-h-11 w-full rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none"
+                />
+              )}
+            </div>
             {Object.values(errors).some(Boolean) && (
               <div className="space-y-1">
                 {Object.values(errors)
@@ -389,6 +467,66 @@ const AccountsPage: React.FC = () => {
                         {errors[`name-${account.account_id}`]}
                       </p>
                     )}
+                    <div
+                      className="mt-3 rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] px-3 py-3"
+                      onClick={(event) => event.stopPropagation()}
+                      onKeyDown={(event) => event.stopPropagation()}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span
+                          className={`text-sm font-medium ${
+                            inactive ? "text-[var(--gray-500)]" : "text-[var(--color-text-primary)]"
+                          }`}
+                        >
+                          마이너스 허용
+                        </span>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={account.allow_negative_balance}
+                          aria-label={`${account.account_name} 마이너스 허용`}
+                          disabled={inactive || isPending}
+                          onClick={() =>
+                            updateNegativeSetting(account, !account.allow_negative_balance)
+                          }
+                          className={`inline-flex h-7 w-12 shrink-0 items-center rounded-full p-0.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                            account.allow_negative_balance
+                              ? "bg-[var(--color-primary)]"
+                              : "bg-[var(--color-border-primary)]"
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-6 w-6 rounded-full bg-white shadow transition-transform ${
+                              account.allow_negative_balance ? "translate-x-5" : "translate-x-0"
+                            }`}
+                          />
+                        </button>
+                      </div>
+                      {account.allow_negative_balance && (
+                        <input
+                          aria-label={`${account.account_name} 마이너스 한도`}
+                          inputMode="numeric"
+                          defaultValue={account.negative_balance_limit.toLocaleString()}
+                          disabled={inactive || isPending}
+                          onBlur={(event) =>
+                            saveNegativeLimit(
+                              account,
+                              event.target.value.replace(/,/g, "").replace(/[^0-9]/g, "")
+                            )
+                          }
+                          onChange={(event) => {
+                            const raw = event.target.value.replace(/,/g, "").replace(/[^0-9]/g, "");
+                            event.target.value = raw ? Number(raw).toLocaleString() : "";
+                          }}
+                          className="mt-3 min-h-11 w-full rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none disabled:opacity-50"
+                        />
+                      )}
+                      {errors[`negative-${account.account_id}`] && (
+                        <p className="mt-1 text-xs text-[var(--color-danger)]">
+                          {errors[`negative-${account.account_id}`]}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
