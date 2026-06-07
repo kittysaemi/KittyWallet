@@ -18,6 +18,7 @@ import type {
   CategoryTopStatisticsData,
   MonthlyDailyItem,
   PeriodStatisticsItem,
+  SankeyStatisticsData,
   SummaryStatisticsData
 } from "../../entities/statistics/model/statistics.types";
 import { iconApi } from "../../entities/icon/api/iconApi";
@@ -26,14 +27,15 @@ import { IconRenderer } from "../../shared/ui/IconRenderer";
 
 Chart.register(CategoryScale, LinearScale, LineController, LineElement, PointElement, Filler, Tooltip);
 
-type StatTab = "spending" | "summary" | "top5" | "heatmap";
+type StatTab = "spending" | "summary" | "top5" | "heatmap" | "sankey";
 type ViewMode = "MONTH" | "WEEK";
 
 const TABS: { id: StatTab; label: string }[] = [
   { id: "spending", label: "소비 통계" },
   { id: "summary", label: "월간 요약" },
   { id: "top5", label: "Top 5" },
-  { id: "heatmap", label: "달력 히트맵" }
+  { id: "heatmap", label: "달력 히트맵" },
+  { id: "sankey", label: "지출 흐름" }
 ];
 
 interface ChartItem {
@@ -474,6 +476,301 @@ const HeatmapContent: React.FC<{
   );
 };
 
+/* ── Sankey 레이아웃 ──────────────────────────────────── */
+
+const SVG_W = 340;
+const SVG_H = 360;
+const NODE_W = 60;
+const COL_X: [number, number, number] = [10, 140, 270];
+const NODE_GAP = 8;
+const PAD_V = 12;
+const MIN_NODE_H = 18;
+
+const CAT_COLORS = ["#A78BFA", "#34D399", "#FBBF24", "#F472B6", "#38BDF8", "#94A3B8"];
+const BASE_COLORS: Record<string, string> = {
+  total: "#F28A9B",
+  account: "#60A5FA",
+  card: "#F87171"
+};
+
+interface SankeyLayoutNode {
+  id: string; name: string; value: number;
+  x: number; y: number; h: number; color: string;
+}
+interface SankeyLayoutLink {
+  source: string; target: string; value: number;
+  path: string; color: string;
+}
+
+function buildSankeyLayout(
+  data: SankeyStatisticsData
+): { nodes: SankeyLayoutNode[]; links: SankeyLayoutLink[] } | null {
+  try {
+    const { total_expense, nodes, links } = data;
+    if (total_expense === 0 || nodes.length === 0) return null;
+
+    const scale = (SVG_H - 2 * PAD_V) / total_expense;
+
+    const col0 = nodes.filter(n => n.id === "total");
+    const col1 = nodes
+      .filter(n => n.id === "account" || n.id === "card")
+      .sort((a, b) => b.value - a.value);
+    const col2base = nodes
+      .filter(n => n.id.startsWith("cat_") && n.id !== "cat_other")
+      .sort((a, b) => b.value - a.value);
+    const col2other = nodes.filter(n => n.id === "cat_other");
+    const col2 = [...col2base, ...col2other];
+
+    function positionCol(
+      colNodes: typeof nodes,
+      colIdx: 0 | 1 | 2
+    ): SankeyLayoutNode[] {
+      let y = PAD_V;
+      return colNodes.map((n, i) => {
+        const h = Math.max(MIN_NODE_H, n.value * scale);
+        const color =
+          colIdx === 2
+            ? CAT_COLORS[i % CAT_COLORS.length]
+            : (BASE_COLORS[n.id] ?? "#94A3B8");
+        const node: SankeyLayoutNode = {
+          id: n.id, name: n.name, value: n.value,
+          x: COL_X[colIdx], y, h, color
+        };
+        y += h + NODE_GAP;
+        return node;
+      });
+    }
+
+    const layoutNodes: SankeyLayoutNode[] = [
+      ...positionCol(col0, 0),
+      ...positionCol(col1, 1),
+      ...positionCol(col2, 2)
+    ];
+
+    const nodeMap = new Map(layoutNodes.map(n => [n.id, n]));
+    const srcUsed = new Map(layoutNodes.map(n => [n.id, 0]));
+    const tgtUsed = new Map(layoutNodes.map(n => [n.id, 0]));
+
+    const layoutLinks: SankeyLayoutLink[] = [];
+    for (const lk of links) {
+      const src = nodeMap.get(lk.source);
+      const tgt = nodeMap.get(lk.target);
+      if (!src || !tgt) continue;
+
+      const lh = Math.max(2, lk.value * scale);
+      const sy = src.y + (srcUsed.get(lk.source) ?? 0);
+      const ty = tgt.y + (tgtUsed.get(lk.target) ?? 0);
+      srcUsed.set(lk.source, (srcUsed.get(lk.source) ?? 0) + lh);
+      tgtUsed.set(lk.target, (tgtUsed.get(lk.target) ?? 0) + lh);
+
+      const x1 = src.x + NODE_W;
+      const x2 = tgt.x;
+      const mx = (x1 + x2) / 2;
+      const path =
+        `M${x1},${sy} C${mx},${sy} ${mx},${ty} ${x2},${ty}` +
+        ` L${x2},${ty + lh} C${mx},${ty + lh} ${mx},${sy + lh} ${x1},${sy + lh}Z`;
+
+      const color = lk.source === "total" ? (tgt.color) : src.color;
+      layoutLinks.push({ source: lk.source, target: lk.target, value: lk.value, path, color });
+    }
+
+    return { nodes: layoutNodes, links: layoutLinks };
+  } catch {
+    return null;
+  }
+}
+
+function truncateLabel(s: string, max: number): string {
+  return s.length > max ? `${s.slice(0, max)}…` : s;
+}
+
+// sankey 탭
+const SankeyContent: React.FC<{
+  data: SankeyStatisticsData | null;
+  isLoading: boolean;
+  isError: boolean;
+  onRetry: () => void;
+}> = ({ data, isLoading, isError, onRetry }) => {
+  const [selectedId, setSelectedId] = React.useState<string | null>(null);
+
+  const layout = React.useMemo(
+    () => (data ? buildSankeyLayout(data) : null),
+    [data]
+  );
+
+  if (isLoading) return <TabSkeleton />;
+  if (isError) return <ErrorCard onRetry={onRetry} />;
+  if (!data || data.total_expense === 0 || !layout)
+    return <EmptyCard message="선택한 달에 지출 데이터가 없습니다." />;
+
+  const total = data.total_expense;
+
+  const selectedNode = layout.nodes.find(n => n.id === selectedId);
+  const selectedLinkKey = selectedNode ? null : selectedId;
+  const selectedLink = selectedLinkKey
+    ? layout.links.find(l => `${l.source}→${l.target}` === selectedLinkKey)
+    : undefined;
+
+  function handleNodeClick(id: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    setSelectedId(prev => (prev === id ? null : id));
+  }
+
+  function handleLinkClick(lk: SankeyLayoutLink, e: React.MouseEvent) {
+    e.stopPropagation();
+    const key = `${lk.source}→${lk.target}`;
+    setSelectedId(prev => (prev === key ? null : key));
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <section className={`${cardClass} p-4`} aria-label="지출 흐름 Sankey 다이어그램">
+        <h2 className="mb-1 text-base font-bold text-[var(--color-text-primary)]">지출 흐름</h2>
+        <p className="mb-3 text-xs text-[var(--color-text-secondary)]">
+          총 지출 → 결제수단 → 카테고리 · 노드/링크 터치 시 상세 표시
+        </p>
+
+        {/* 컬럼 헤더 */}
+        <div className="mb-1 flex justify-between text-[10px] font-semibold text-[var(--color-text-secondary)]">
+          <span>총 지출</span>
+          <span>결제수단</span>
+          <span>카테고리</span>
+        </div>
+
+        <div>
+          <svg
+            viewBox={`0 0 ${SVG_W} ${SVG_H}`}
+            width="100%"
+            style={{ display: "block" }}
+            role="img"
+            aria-label="지출 흐름 Sankey 차트"
+            onClick={() => setSelectedId(null)}
+          >
+            {/* 링크 (노드 아래 레이어) */}
+            {layout.links.map(lk => {
+              const key = `${lk.source}→${lk.target}`;
+              const isSel = selectedId === key;
+              return (
+                <path
+                  key={key}
+                  d={lk.path}
+                  fill={lk.color}
+                  fillOpacity={isSel ? 0.75 : 0.35}
+                  style={{ cursor: "pointer" }}
+                  onClick={e => handleLinkClick(lk, e)}
+                >
+                  <title>{`${lk.source} → ${lk.target}: ${formatAmount(lk.value)}`}</title>
+                </path>
+              );
+            })}
+
+            {/* 노드 */}
+            {layout.nodes.map(node => {
+              const isSel = selectedId === node.id;
+              const showName = node.h >= 18;
+              const showRatio = node.h >= 32;
+              const ratio = ((node.value / total) * 100).toFixed(1);
+              const maxChars = Math.floor(NODE_W / 8);
+
+              return (
+                <g
+                  key={node.id}
+                  onClick={e => handleNodeClick(node.id, e)}
+                  style={{ cursor: "pointer" }}
+                >
+                  <rect
+                    x={node.x}
+                    y={node.y}
+                    width={NODE_W}
+                    height={node.h}
+                    fill={node.color}
+                    fillOpacity={isSel ? 1 : 0.88}
+                    rx={3}
+                    stroke={isSel ? "#fff" : "none"}
+                    strokeWidth={1.5}
+                  />
+                  {showName && (
+                    <text
+                      x={node.x + NODE_W / 2}
+                      y={node.y + (showRatio ? node.h / 2 - 4 : node.h / 2 + 4)}
+                      textAnchor="middle"
+                      fontSize={9}
+                      fontWeight="700"
+                      fill="#fff"
+                      style={{ userSelect: "none", pointerEvents: "none" }}
+                    >
+                      {truncateLabel(node.name, maxChars)}
+                    </text>
+                  )}
+                  {showRatio && (
+                    <text
+                      x={node.x + NODE_W / 2}
+                      y={node.y + node.h / 2 + 9}
+                      textAnchor="middle"
+                      fontSize={8}
+                      fill="rgba(255,255,255,0.85)"
+                      style={{ userSelect: "none", pointerEvents: "none" }}
+                    >
+                      {ratio}%
+                    </text>
+                  )}
+                  <title>{`${node.name}: ${formatAmount(node.value)} (${ratio}%)`}</title>
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+
+        {/* 선택 정보 패널 */}
+        {(selectedNode ?? selectedLink) && (
+          <div className="mt-3 rounded-xl bg-[var(--color-bg-secondary)] px-3 py-2.5">
+            {selectedNode && (
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span
+                    className="h-3 w-3 shrink-0 rounded-sm"
+                    style={{ background: selectedNode.color }}
+                  />
+                  <span className="truncate text-sm font-medium text-[var(--color-text-primary)]">
+                    {selectedNode.name}
+                  </span>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+                    {formatAmount(selectedNode.value)}
+                  </p>
+                  <p className="text-xs text-[var(--color-text-secondary)]">
+                    {((selectedNode.value / total) * 100).toFixed(1)}%
+                  </p>
+                </div>
+              </div>
+            )}
+            {selectedLink && (() => {
+              const srcNode = layout.nodes.find(n => n.id === selectedLink.source);
+              const tgtNode = layout.nodes.find(n => n.id === selectedLink.target);
+              return (
+                <div className="flex items-center justify-between gap-3">
+                  <span className="min-w-0 truncate text-sm text-[var(--color-text-secondary)]">
+                    {srcNode?.name} → {tgtNode?.name}
+                  </span>
+                  <div className="shrink-0 text-right">
+                    <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+                      {formatAmount(selectedLink.value)}
+                    </p>
+                    <p className="text-xs text-[var(--color-text-secondary)]">
+                      {((selectedLink.value / total) * 100).toFixed(1)}%
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+};
+
 /* ── 메인 페이지 ───────────────────────────────────────── */
 
 const StatisticsPage: React.FC = () => {
@@ -484,7 +781,7 @@ const StatisticsPage: React.FC = () => {
 
   // 탭 상태
   const rawTab = searchParams.get("tab") ?? "spending";
-  const activeTab: StatTab = (["spending", "summary", "top5", "heatmap"] as const).includes(
+  const activeTab: StatTab = (["spending", "summary", "top5", "heatmap", "sankey"] as const).includes(
     rawTab as StatTab
   )
     ? (rawTab as StatTab)
@@ -556,6 +853,14 @@ const StatisticsPage: React.FC = () => {
     staleTime: 30 * 1000,
     retry: isOffline ? false : 2,
     enabled: activeTab === "heatmap"
+  });
+
+  const sankeyQuery = useQuery({
+    queryKey: ["statistics", "sankey", monthValue],
+    queryFn: () => statisticsApi.getSankeyStatistics({ month: monthValue }),
+    staleTime: 30 * 1000,
+    retry: isOffline ? false : 2,
+    enabled: activeTab === "sankey"
   });
 
   const iconsQuery = useQuery({
@@ -671,6 +976,9 @@ const StatisticsPage: React.FC = () => {
         break;
       case "heatmap":
         void calendarQuery.refetch();
+        break;
+      case "sankey":
+        void sankeyQuery.refetch();
         break;
     }
   }
@@ -809,6 +1117,15 @@ const StatisticsPage: React.FC = () => {
             data={calendarQuery.data?.data ?? null}
             isLoading={calendarQuery.isLoading}
             isError={calendarQuery.isError}
+            onRetry={refresh}
+          />
+        )}
+
+        {activeTab === "sankey" && (
+          <SankeyContent
+            data={sankeyQuery.data?.data ?? null}
+            isLoading={sankeyQuery.isLoading}
+            isError={sankeyQuery.isError}
             onRetry={refresh}
           />
         )}

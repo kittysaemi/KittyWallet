@@ -9,6 +9,7 @@ import type {
   MonthlyStatisticsParams,
   PeriodStatisticsData,
   PeriodStatisticsParams,
+  SankeyStatisticsData,
   SummaryStatisticsData,
   VisualizationParams
 } from "../model/statistics.types";
@@ -64,6 +65,15 @@ export const statisticsApi = {
     params?: VisualizationParams
   ): Promise<ApiResponse<CalendarStatisticsData>> => {
     const res = await apiClient.get<ApiResponse<CalendarStatisticsData>>("/statistics/calendar", {
+      params
+    });
+    return res.data;
+  },
+
+  getSankeyStatistics: async (
+    params?: VisualizationParams
+  ): Promise<ApiResponse<SankeyStatisticsData>> => {
+    const res = await apiClient.get<ApiResponse<SankeyStatisticsData>>("/statistics/sankey", {
       params
     });
     return res.data;
