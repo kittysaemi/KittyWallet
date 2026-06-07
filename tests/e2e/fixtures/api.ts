@@ -28,6 +28,8 @@ const testAccount = {
   icon_id: 3001,
   initial_balance: 500000,
   current_balance: 500000,
+  allow_negative_balance: false,
+  negative_balance_limit: 0,
   use_yn: true,
   created_at: "2026-06-04T00:00:00.000Z",
   updated_at: "2026-06-04T00:00:00.000Z"
