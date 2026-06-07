@@ -122,4 +122,23 @@ export interface CalendarStatisticsData {
   daily_items: CalendarDailyItem[];
 }
 
+export interface SankeyNode {
+  id: string;
+  name: string;
+  value: number;
+}
+
+export interface SankeyLink {
+  source: string;
+  target: string;
+  value: number;
+}
+
+export interface SankeyStatisticsData {
+  month: string;
+  total_expense: number;
+  nodes: SankeyNode[];
+  links: SankeyLink[];
+}
+
 export type { ApiResponse };
