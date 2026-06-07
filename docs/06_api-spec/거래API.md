@@ -264,6 +264,7 @@
 | 400 | TX_002 | 금액 오류 |
 | 400 | TX_007 | 카드 수입 거래 저장 불가 |
 | 400 | ACCOUNT_004 | 계좌 잔액 부족. 지출 금액이 현재 잔액을 초과함 |
+| 400 | WALLET_001 | 삭제된 지갑의 거래는 수정 불가 |
 | 401 | AUTH_002 | 인증 실패 또는 토큰 만료 |
 | 403 | AUTH_009 | 다른 사용자의 거래 접근 |
 | 404 | TX_003 | 존재하지 않는 계좌 |
@@ -399,6 +400,7 @@
     "wallet_type": "ACCOUNT",
     "wallet_id": 1,
     "wallet_name": "생활비 통장",
+    "wallet_deleted": false,
     "category_id": 3,
     "category_name": "식비",
     "transaction_type": "EXPENSE",
@@ -411,6 +413,22 @@
   "error": null
 }
 ```
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| transaction_id | number | 거래 ID |
+| wallet_type | string | ACCOUNT/CARD |
+| wallet_id | number | 계좌 또는 카드 ID |
+| wallet_name | string | 계좌명 또는 카드명 |
+| wallet_deleted | boolean | 지갑 아카이브 여부. true면 수정 불가, 삭제만 가능 |
+| category_id | number | 카테고리 ID |
+| category_name | string | 카테고리명 |
+| transaction_type | string | INCOME/EXPENSE |
+| amount | number | 거래 금액 |
+| memo | string/null | 메모 |
+| transaction_date | string | 거래일 |
+| created_at | string | 생성일시 |
+| updated_at | string | 수정일시 |
 
 ---
 
@@ -456,6 +474,7 @@
         "wallet_type": "ACCOUNT",
         "wallet_id": 1,
         "wallet_name": "생활비 통장",
+        "wallet_deleted": false,
         "category_id": 3,
         "category_name": "식비",
         "transaction_type": "EXPENSE",
@@ -534,6 +553,7 @@ Authorization: Bearer {access_token}
         "wallet_type": "ACCOUNT",
         "wallet_id": 1,
         "wallet_name": "생활비 통장",
+        "wallet_deleted": false,
         "category_id": 3,
         "category_name": "식비",
         "transaction_type": "EXPENSE",

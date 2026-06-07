@@ -32,5 +32,15 @@ export const accountApi = {
       data
     );
     return res.data;
+  },
+
+  deleteAccount: async (
+    accountId: number,
+    deleteTransactions: boolean
+  ): Promise<ApiResponse<null>> => {
+    const res = await apiClient.delete<ApiResponse<null>>(`/accounts/${accountId}`, {
+      data: { delete_transactions: deleteTransactions }
+    });
+    return res.data;
   }
 };

@@ -10,6 +10,7 @@ export class AccountsRepository {
     return this.prisma.account.findMany({
       where: {
         userId,
+        deletedYn: false,
         ...(useYn === undefined ? {} : { useYn })
       },
       orderBy: { accountId: "asc" }
@@ -31,6 +32,7 @@ export class AccountsRepository {
       where: {
         accountName,
         userId,
+        deletedYn: false,
         ...(excludeId === undefined ? {} : { accountId: { not: excludeId } })
       }
     });
@@ -55,5 +57,29 @@ export class AccountsRepository {
       where: { accountId },
       data
     });
+  }
+
+  async archive(
+    accountId: bigint,
+    userId: bigint,
+    deleteTransactions: boolean,
+    prismaClient?: Prisma.TransactionClient
+  ): Promise<void> {
+    const tx = prismaClient ?? this.prisma;
+    if (deleteTransactions) {
+      await (tx as typeof this.prisma).transaction.updateMany({
+        where: { walletId: accountId, walletType: "ACCOUNT", userId, deletedYn: false },
+        data: { deletedYn: true }
+      });
+      await (tx as typeof this.prisma).account.updateMany({
+        where: { accountId, userId },
+        data: { deletedYn: true, currentBalance: 0 }
+      });
+    } else {
+      await (tx as typeof this.prisma).account.updateMany({
+        where: { accountId, userId },
+        data: { deletedYn: true }
+      });
+    }
   }
 }

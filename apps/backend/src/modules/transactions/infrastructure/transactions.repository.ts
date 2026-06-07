@@ -100,29 +100,39 @@ export class TransactionsRepository {
     });
   }
 
-  findAccountsByIds(ids: bigint[]): Promise<Pick<Account, "accountId" | "accountName">[]> {
+  findAccountsByIds(
+    ids: bigint[]
+  ): Promise<Pick<Account, "accountId" | "accountName" | "deletedYn">[]> {
     return this.prisma.account.findMany({
       where: { accountId: { in: ids } },
-      select: { accountId: true, accountName: true }
+      select: { accountId: true, accountName: true, deletedYn: true }
     });
   }
 
-  findCardsByIds(ids: bigint[]): Promise<Pick<Card, "cardId" | "cardName">[]> {
+  findCardsByIds(
+    ids: bigint[]
+  ): Promise<Pick<Card, "cardId" | "cardName" | "deletedYn">[]> {
     return this.prisma.card.findMany({
       where: { cardId: { in: ids } },
-      select: { cardId: true, cardName: true }
+      select: { cardId: true, cardName: true, deletedYn: true }
     });
   }
 
   findAccount(accountId: bigint, userId: bigint): Promise<Account | null> {
     return this.prisma.account.findFirst({
-      where: { accountId, userId, useYn: true }
+      where: { accountId, userId, useYn: true, deletedYn: false }
     });
   }
 
   findOwnedAccount(accountId: bigint, userId: bigint): Promise<Account | null> {
     return this.prisma.account.findFirst({
       where: { accountId, userId }
+    });
+  }
+
+  findOwnedCard(cardId: bigint, userId: bigint): Promise<Card | null> {
+    return this.prisma.card.findFirst({
+      where: { cardId, userId }
     });
   }
 
@@ -149,7 +159,7 @@ export class TransactionsRepository {
 
   findCard(cardId: bigint, userId: bigint): Promise<Card | null> {
     return this.prisma.card.findFirst({
-      where: { cardId, userId, useYn: true }
+      where: { cardId, userId, useYn: true, deletedYn: false }
     });
   }
 

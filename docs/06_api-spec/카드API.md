@@ -44,7 +44,8 @@
 - use_yn 사용 여부 지원
 - 카드 거래는 통계 데이터 반영
 - 사용자별 카드 데이터 분리
-- 카드 삭제 API는 제공하지 않으며, `PUT /api/v1/cards/{id}`에서 `use_yn=false`로 비활성화한다
+- 비활성화: `PUT /api/v1/cards/{id}`에서 `use_yn=false`로 처리
+- 아카이브(영구 삭제): `DELETE /api/v1/cards/{id}`로 처리. 아카이브된 카드명은 재사용 가능
 
 ---
 
@@ -139,9 +140,9 @@
 
 ## 비활성화 처리
 
-카드 삭제는 지원하지 않는다. 카드 사용 중지는 본 API에 `use_yn=false`를 전달해 처리한다.
+카드 사용 중지는 본 API에 `use_yn=false`를 전달해 처리한다.
 
-비활성화된 카드는 거래 등록 선택 목록에서 제외하지만, 기존 카드 거래 내역과 통계 산출 기준은 유지한다. 연결 거래 유무와 관계없이 물리 삭제 또는 `DELETE /api/v1/cards/{id}` API는 제공하지 않는다.
+비활성화된 카드는 거래 등록 선택 목록에서 제외하지만, 기존 카드 거래 내역과 통계 산출 기준은 유지한다.
 
 `PATCH /api/v1/cards/{id}`는 카드 수정 API로 사용하지 않는다.
 
@@ -177,7 +178,72 @@
 | API | 처리 기준 |
 |---|---|
 | PATCH /api/v1/cards/{id} | 사용하지 않음. 카드 수정은 `PUT /api/v1/cards/{id}` 사용 |
-| DELETE /api/v1/cards/{id} | 제공하지 않음. 카드 사용 중지는 `use_yn=false` 비활성화 사용 |
+
+---
+
+# 카드 아카이브 API
+
+## Endpoint
+
+`DELETE /api/v1/cards/{id}`
+
+---
+
+## Path Parameters
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| id | number | Y | 아카이브할 카드 ID |
+
+---
+
+## Request Body
+
+```json
+{
+  "delete_transactions": false
+}
+```
+
+| 필드 | 타입 | 필수 | 기본값 | 설명 |
+|---|---|---|---|---|
+| delete_transactions | boolean | N | false | true면 연결 거래도 함께 소프트 삭제 |
+
+---
+
+## 비즈니스 규칙
+
+| 항목 | 처리 규칙 |
+|---|---|
+| 아카이브 방식 | `deleted_yn=true` 설정. 물리 삭제 아님 |
+| 거래 보존 | `delete_transactions=false`(기본값)이면 연결 거래 보존. 보존된 거래는 조회 및 삭제만 가능, 수정 불가 |
+| 거래 삭제 | `delete_transactions=true`이면 연결 거래 전체 소프트 삭제 |
+| 카드명 재사용 | 아카이브된 카드명은 동일 사용자 내 재등록 시 사용 가능 |
+| 이미 아카이브된 카드 | `CARD_002` 반환 |
+
+---
+
+## Response
+
+```json
+{
+  "success": true,
+  "data": null,
+  "error": null
+}
+```
+
+---
+
+## 오류 처리
+
+| HTTP Status | 코드 | 설명 |
+|---|---|---|
+| 401 | AUTH_002 | 인증 토큰 없음 또는 유효하지 않음 |
+| 403 | AUTH_009 | 다른 사용자 카드 접근 |
+| 404 | CARD_002 | 카드 없음 또는 이미 아카이브됨 |
+
+---
 
 # 카드 목록 조회 API
 

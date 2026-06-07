@@ -25,6 +25,11 @@ function fmt(n: number): string {
   return n.toLocaleString("ko-KR");
 }
 
+function formatDate(dateStr: string): string {
+  const d = new Date(`${dateStr}T00:00:00`);
+  return `${d.getMonth() + 1}월 ${d.getDate()}일 (${["일", "월", "화", "수", "목", "금", "토"][d.getDay()]})`;
+}
+
 // ─── Skeleton ────────────────────────────────────────────────
 const SkeletonCard: React.FC<{ rows?: number; tall?: boolean }> = ({ rows = 2, tall }) => (
   <div className={`${cardClass} p-5 ${tall ? "h-28" : ""}`}>
@@ -65,7 +70,16 @@ const TxRow: React.FC<TxRowProps> = ({ tx, iconMap, categoryIconMap }) => {
         <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">
           {tx.category_name}
         </p>
-        <p className="truncate text-xs text-[var(--color-text-secondary)]">{tx.wallet_name}</p>
+        <p className="flex items-center gap-1 truncate text-xs text-[var(--color-text-secondary)]">
+          <span className="shrink-0">{formatDate(tx.transaction_date)}</span>
+          <span className="shrink-0 text-[var(--color-text-caption)]">·</span>
+          <span className="truncate">{tx.wallet_name}</span>
+          {tx.wallet_deleted && (
+            <span className="shrink-0 inline-block rounded px-1 py-0.5 text-[10px] font-medium leading-none bg-[var(--color-bg-secondary)] text-[var(--color-text-caption)]">
+              삭제된 지갑
+            </span>
+          )}
+        </p>
       </div>
       <p className={`shrink-0 text-sm font-semibold ${isIncome ? "text-blue-500" : "text-red-500"}`}>
         {isIncome ? "+" : "-"}{fmt(tx.amount)}원
@@ -258,7 +272,7 @@ const DashboardPage: React.FC = () => {
         ) : data ? (
           <div className={`${cardClass} mb-4 px-5 py-4`}>
             <div className="mb-2 flex items-center justify-between">
-              <p className="text-xs font-medium text-[var(--color-text-secondary)]">최근 거래</p>
+              <p className="text-xs font-medium text-[var(--color-text-secondary)]">최근 내역</p>
               <Link
                 to="/transactions"
                 className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"

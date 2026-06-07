@@ -73,6 +73,7 @@ export interface TransactionItem {
   wallet_type: string;
   wallet_id: number;
   wallet_name: string;
+  wallet_deleted: boolean;
   category_id: number;
   category_name: string;
   transaction_type: string;
@@ -100,6 +101,32 @@ export class TransactionsService {
     );
     if (!existing) {
       throw new AppException("TX_005", "거래 내역을 찾을 수 없습니다.", HttpStatus.NOT_FOUND);
+    }
+
+    if (existing.walletType === "ACCOUNT") {
+      const account = await this.transactionsRepository.findOwnedAccount(
+        existing.walletId,
+        command.userId
+      );
+      if (account?.deletedYn) {
+        throw new AppException(
+          "WALLET_001",
+          "삭제된 지갑의 거래는 수정할 수 없습니다.",
+          HttpStatus.BAD_REQUEST
+        );
+      }
+    } else {
+      const card = await this.transactionsRepository.findOwnedCard(
+        existing.walletId,
+        command.userId
+      );
+      if (card?.deletedYn) {
+        throw new AppException(
+          "WALLET_001",
+          "삭제된 지갑의 거래는 수정할 수 없습니다.",
+          HttpStatus.BAD_REQUEST
+        );
+      }
     }
 
     const hasUpdate =
@@ -251,6 +278,29 @@ export class TransactionsService {
       throw new AppException("TX_005", "거래 내역을 찾을 수 없습니다.", HttpStatus.NOT_FOUND);
     }
 
+    if (existing.walletType === "ACCOUNT") {
+      const account = await this.transactionsRepository.findOwnedAccount(
+        existing.walletId,
+        userId
+      );
+      if (account?.deletedYn) {
+        throw new AppException(
+          "WALLET_001",
+          "삭제된 지갑의 거래는 삭제할 수 없습니다.",
+          HttpStatus.BAD_REQUEST
+        );
+      }
+    } else {
+      const card = await this.transactionsRepository.findOwnedCard(existing.walletId, userId);
+      if (card?.deletedYn) {
+        throw new AppException(
+          "WALLET_001",
+          "삭제된 지갑의 거래는 삭제할 수 없습니다.",
+          HttpStatus.BAD_REQUEST
+        );
+      }
+    }
+
     let balanceChange: { accountId: bigint; delta: number } | undefined;
     if (existing.walletType === "ACCOUNT") {
       const restoreDelta =
@@ -258,9 +308,12 @@ export class TransactionsService {
           ? -existing.amount.toNumber()
           : existing.amount.toNumber();
       balanceChange = { accountId: existing.walletId, delta: restoreDelta };
-      await this.assertAccountDailyBalanceAllowed(userId, existing.walletId, {
-        excludeTransactionId: existing.transactionId
-      });
+
+      if (existing.transactionType === "INCOME") {
+        await this.assertAccountDailyBalanceAllowed(userId, existing.walletId, {
+          excludeTransactionId: existing.transactionId
+        });
+      }
     }
 
     const deleted = await this.transactionsRepository.softDeleteWithBalance(
@@ -346,27 +399,32 @@ export class TransactionsService {
       cardIds.length > 0 ? this.transactionsRepository.findCardsByIds(cardIds) : []
     ]);
 
-    const accountMap = new Map(accounts.map((a) => [String(a.accountId), a.accountName]));
-    const cardMap = new Map(cards.map((c) => [String(c.cardId), c.cardName]));
+    const accountMap = new Map(
+      accounts.map((a) => [String(a.accountId), { name: a.accountName, deleted: a.deletedYn }])
+    );
+    const cardMap = new Map(
+      cards.map((c) => [String(c.cardId), { name: c.cardName, deleted: c.deletedYn }])
+    );
 
     return transactions.map((t) => this.toItem(t, accountMap, cardMap));
   }
 
   private toItem(
     t: TransactionWithCategory,
-    accountMap: Map<string, string>,
-    cardMap: Map<string, string>
+    accountMap: Map<string, { name: string; deleted: boolean }>,
+    cardMap: Map<string, { name: string; deleted: boolean }>
   ): TransactionItem {
-    const walletName =
+    const wallet =
       t.walletType === "ACCOUNT"
-        ? (accountMap.get(String(t.walletId)) ?? "")
-        : (cardMap.get(String(t.walletId)) ?? "");
+        ? accountMap.get(String(t.walletId))
+        : cardMap.get(String(t.walletId));
 
     return {
       transaction_id: Number(t.transactionId),
       wallet_type: t.walletType,
       wallet_id: Number(t.walletId),
-      wallet_name: walletName,
+      wallet_name: wallet?.name ?? "",
+      wallet_deleted: wallet?.deleted ?? false,
       category_id: Number(t.categoryId),
       category_name: t.category.categoryName,
       transaction_type: t.transactionType,

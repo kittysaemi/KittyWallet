@@ -1,6 +1,7 @@
 import React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
+import { AxiosError } from "axios";
+import { Plus, X } from "lucide-react";
 import { z } from "zod";
 import { accountApi } from "../../entities/account/api/accountApi";
 import type { AccountItem } from "../../entities/account/model/account.types";
@@ -35,6 +36,56 @@ const AccountListSkeleton: React.FC = () => (
   </div>
 );
 
+const ArchiveDialog: React.FC<{
+  name: string;
+  isDeleting: boolean;
+  onConfirm: (deleteTransactions: boolean) => void;
+  onCancel: () => void;
+}> = ({ name, isDeleting, onConfirm, onCancel }) => (
+  <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 pb-8 sm:items-center sm:pb-0">
+    <div className="w-full max-w-[400px] rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] p-6 shadow-xl">
+      <h2 className="mb-2 text-base font-bold text-[var(--color-text-primary)]">
+        {name} 삭제
+      </h2>
+      <p className="mb-1 text-sm text-[var(--color-text-secondary)]">
+        삭제하면 목록에서 사라지며 복구할 수 없습니다.
+      </p>
+      <p className="mb-4 text-sm text-[var(--color-text-secondary)]">
+        거래 내역을 어떻게 처리할까요?
+      </p>
+      <div className="flex flex-col gap-2">
+        <button
+          type="button"
+          disabled={isDeleting}
+          onClick={() => onConfirm(true)}
+          className="min-h-11 w-full rounded-xl bg-[var(--color-danger)] text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+        >
+          {isDeleting ? "삭제 중..." : "거래 내역 포함 삭제"}
+        </button>
+        <button
+          type="button"
+          disabled={isDeleting}
+          onClick={() => onConfirm(false)}
+          className="min-h-11 w-full rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] text-sm font-medium text-[var(--color-text-primary)] transition hover:bg-[var(--color-bg-primary)] disabled:opacity-50"
+        >
+          {isDeleting ? "삭제 중..." : "거래 내역 유지하고 삭제"}
+        </button>
+        <p className="text-center text-xs text-[var(--color-text-caption)]">
+          유지된 거래 내역은 통계에 반영되나 수정·삭제가 불가합니다.
+        </p>
+        <button
+          type="button"
+          disabled={isDeleting}
+          onClick={onCancel}
+          className="min-h-11 w-full rounded-xl text-sm font-medium text-[var(--color-text-secondary)] disabled:opacity-50"
+        >
+          취소
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
 const AccountsPage: React.FC = () => {
   const queryClient = useQueryClient();
   const isOffline = !navigator.onLine;
@@ -48,6 +99,7 @@ const AccountsPage: React.FC = () => {
   const [editingName, setEditingName] = React.useState("");
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [pickerTarget, setPickerTarget] = React.useState<PickerTarget>(null);
+  const [archiveTarget, setArchiveTarget] = React.useState<AccountItem | null>(null);
 
   const accountsQuery = useQuery({
     queryKey: ["accounts"],
@@ -76,6 +128,13 @@ const AccountsPage: React.FC = () => {
       setNewNegativeLimit("");
       setErrors({});
       await refreshAccounts();
+    },
+    onError: (err: unknown) => {
+      const msg =
+        err instanceof AxiosError
+          ? (err.response?.data as { error?: { message?: string } })?.error?.message
+          : undefined;
+      setErrors((prev) => ({ ...prev, newName: msg ?? "계좌 등록에 실패했습니다." }));
     }
   });
 
@@ -95,6 +154,18 @@ const AccountsPage: React.FC = () => {
     }
   });
 
+  const archiveMutation = useMutation({
+    mutationFn: ({ id, deleteTransactions }: { id: number; deleteTransactions: boolean }) =>
+      accountApi.deleteAccount(id, deleteTransactions),
+    onSuccess: async () => {
+      setArchiveTarget(null);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["accounts"] }),
+        queryClient.invalidateQueries({ queryKey: ["transactions"] })
+      ]);
+    }
+  });
+
   const iconMap = React.useMemo(() => {
     const map = new Map<number, IconItem>();
     iconsQuery.data?.data?.items.forEach((icon) => map.set(icon.icon_id, icon));
@@ -104,7 +175,7 @@ const AccountsPage: React.FC = () => {
   const accounts = accountsQuery.data?.data?.items ?? [];
   const isLoading = accountsQuery.isLoading;
   const isError = accountsQuery.isError || (accountsQuery.data && !accountsQuery.data.success);
-  const isPending = createMutation.isPending || updateMutation.isPending;
+  const isPending = createMutation.isPending || updateMutation.isPending || archiveMutation.isPending;
 
   const saveCreate = () => {
     const name = accountNameSchema.safeParse(newName);
@@ -140,7 +211,7 @@ const AccountsPage: React.FC = () => {
   };
 
   const startEditName = (account: AccountItem) => {
-    if (!account.use_yn || isPending) return;
+    if (isPending) return;
     setEditingId(account.account_id);
     setEditingName(account.account_name);
   };
@@ -169,43 +240,8 @@ const AccountsPage: React.FC = () => {
       setPickerTarget(null);
       return;
     }
-    if (!pickerTarget.item.use_yn) return;
     updateMutation.mutate({ id: pickerTarget.item.account_id, data: { icon_id: icon.icon_id } });
     setPickerTarget(null);
-  };
-
-  const toggleUseYn = (account: AccountItem) => {
-    if (isPending) return;
-    updateMutation.mutate({ id: account.account_id, data: { use_yn: !account.use_yn } });
-  };
-
-  const updateNegativeSetting = (
-    account: AccountItem,
-    allowNegativeBalance: boolean,
-    negativeBalanceLimit = account.negative_balance_limit
-  ) => {
-    if (isPending || !account.use_yn) return;
-    updateMutation.mutate({
-      id: account.account_id,
-      data: {
-        allow_negative_balance: allowNegativeBalance,
-        negative_balance_limit: allowNegativeBalance ? negativeBalanceLimit : 0
-      }
-    });
-  };
-
-  const saveNegativeLimit = (account: AccountItem, value: string) => {
-    const limit = Number(value || "0");
-    if (Number.isNaN(limit) || limit < 0) {
-      setErrors((prev) => ({
-        ...prev,
-        [`negative-${account.account_id}`]: "마이너스 한도는 0 이상이어야 합니다."
-      }));
-      return;
-    }
-    setErrors((prev) => ({ ...prev, [`negative-${account.account_id}`]: "" }));
-    if (limit === account.negative_balance_limit) return;
-    updateNegativeSetting(account, true, limit);
   };
 
   return (
@@ -277,9 +313,14 @@ const AccountsPage: React.FC = () => {
             />
             <div className="rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] px-3 py-3">
               <div className="flex items-center justify-between gap-3">
-                <span className="text-sm font-medium text-[var(--color-text-primary)]">
-                  마이너스 허용
-                </span>
+                <div>
+                  <span className="text-sm font-medium text-[var(--color-text-primary)]">
+                    마이너스 통장
+                  </span>
+                  <p className="text-xs text-[var(--color-text-caption)]">
+                    등록 후 변경 불가
+                  </p>
+                </div>
                 <button
                   type="button"
                   role="switch"
@@ -378,34 +419,19 @@ const AccountsPage: React.FC = () => {
         {!isLoading && !isError && accounts.length > 0 && (
           <div className="flex flex-col gap-3" aria-label="계좌 목록">
             {accounts.map((account) => {
-              const inactive = !account.use_yn;
               const isEditing = editingId === account.account_id;
               const icon = iconMap.get(account.icon_id);
               return (
                 <div
                   key={account.account_id}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`${account.account_name} ${account.use_yn ? "비활성화" : "활성화"}`}
-                  onClick={() => toggleUseYn(account)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") toggleUseYn(account);
-                  }}
-                  className={`${cardClass} flex w-full cursor-pointer items-center gap-4 p-4 text-left transition hover:bg-[var(--color-bg-secondary)] active:bg-[var(--color-bg-secondary)]`}
+                  className={`${cardClass} relative flex items-center gap-4 p-4`}
                 >
                   <button
                     type="button"
                     aria-label={`${account.account_name} 아이콘 변경`}
-                    disabled={inactive || isPending}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setPickerTarget({ type: "edit", item: account });
-                    }}
-                    className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-bg-secondary)] disabled:cursor-not-allowed ${
-                      inactive
-                        ? "text-[var(--gray-500)] grayscale"
-                        : "text-[var(--color-text-primary)]"
-                    }`}
+                    disabled={isPending}
+                    onClick={() => setPickerTarget({ type: "edit", item: account })}
+                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] disabled:cursor-not-allowed"
                   >
                     {icon ? (
                       <IconRenderer
@@ -417,14 +443,13 @@ const AccountsPage: React.FC = () => {
                       <span className="text-xl">💳</span>
                     )}
                   </button>
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1 pr-8">
                     {isEditing ? (
                       <input
                         aria-label={`${account.account_name} 이름 수정`}
                         value={editingName}
                         maxLength={15}
                         autoFocus
-                        onClick={(event) => event.stopPropagation()}
                         onChange={(event) => setEditingName(event.target.value)}
                         onBlur={() => saveName(account)}
                         onKeyDown={(event) => {
@@ -441,25 +466,21 @@ const AccountsPage: React.FC = () => {
                       <button
                         type="button"
                         aria-label={`${account.account_name} 이름 변경`}
-                        disabled={inactive || isPending}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          startEditName(account);
-                        }}
-                        className={`truncate cursor-pointer select-none text-left font-semibold disabled:cursor-not-allowed ${
-                          inactive ? "text-[var(--gray-500)]" : "text-[var(--color-text-primary)]"
-                        }`}
+                        disabled={isPending}
+                        onClick={() => startEditName(account)}
+                        className="truncate cursor-pointer select-none text-left font-semibold text-[var(--color-text-primary)] disabled:cursor-not-allowed"
                       >
                         {account.account_name}
                       </button>
                     )}
                     {account.current_balance !== null && (
-                      <p
-                        className={`mt-0.5 text-sm ${
-                          inactive ? "text-[var(--gray-500)]" : "text-[var(--color-text-secondary)]"
-                        }`}
-                      >
+                      <p className="mt-0.5 text-sm text-[var(--color-text-secondary)]">
                         {account.current_balance.toLocaleString()}원
+                      </p>
+                    )}
+                    {account.allow_negative_balance && (
+                      <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                        마이너스 통장 · 한도 {account.negative_balance_limit.toLocaleString()}원
                       </p>
                     )}
                     {errors[`name-${account.account_id}`] && (
@@ -467,73 +488,23 @@ const AccountsPage: React.FC = () => {
                         {errors[`name-${account.account_id}`]}
                       </p>
                     )}
-                    <div
-                      className="mt-3 rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] px-3 py-3"
-                      onClick={(event) => event.stopPropagation()}
-                      onKeyDown={(event) => event.stopPropagation()}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <span
-                          className={`text-sm font-medium ${
-                            inactive ? "text-[var(--gray-500)]" : "text-[var(--color-text-primary)]"
-                          }`}
-                        >
-                          마이너스 허용
-                        </span>
-                        <button
-                          type="button"
-                          role="switch"
-                          aria-checked={account.allow_negative_balance}
-                          aria-label={`${account.account_name} 마이너스 허용`}
-                          disabled={inactive || isPending}
-                          onClick={() =>
-                            updateNegativeSetting(account, !account.allow_negative_balance)
-                          }
-                          className={`inline-flex h-7 w-12 shrink-0 items-center rounded-full p-0.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-                            account.allow_negative_balance
-                              ? "bg-[var(--color-primary)]"
-                              : "bg-[var(--color-border-primary)]"
-                          }`}
-                        >
-                          <span
-                            className={`inline-block h-6 w-6 rounded-full bg-white shadow transition-transform ${
-                              account.allow_negative_balance ? "translate-x-5" : "translate-x-0"
-                            }`}
-                          />
-                        </button>
-                      </div>
-                      {account.allow_negative_balance && (
-                        <input
-                          aria-label={`${account.account_name} 마이너스 한도`}
-                          inputMode="numeric"
-                          defaultValue={account.negative_balance_limit.toLocaleString()}
-                          disabled={inactive || isPending}
-                          onBlur={(event) =>
-                            saveNegativeLimit(
-                              account,
-                              event.target.value.replace(/,/g, "").replace(/[^0-9]/g, "")
-                            )
-                          }
-                          onChange={(event) => {
-                            const raw = event.target.value.replace(/,/g, "").replace(/[^0-9]/g, "");
-                            event.target.value = raw ? Number(raw).toLocaleString() : "";
-                          }}
-                          className="mt-3 min-h-11 w-full rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none disabled:opacity-50"
-                        />
-                      )}
-                      {errors[`negative-${account.account_id}`] && (
-                        <p className="mt-1 text-xs text-[var(--color-danger)]">
-                          {errors[`negative-${account.account_id}`]}
-                        </p>
-                      )}
-                    </div>
                   </div>
+                  <button
+                    type="button"
+                    aria-label={`${account.account_name} 삭제`}
+                    disabled={isPending}
+                    onClick={() => setArchiveTarget(account)}
+                    className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full text-[var(--color-text-caption)] transition hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-danger)] disabled:cursor-not-allowed"
+                  >
+                    <X size={16} aria-hidden="true" />
+                  </button>
                 </div>
               );
             })}
           </div>
         )}
       </div>
+
       <IconPickerSheet
         title="계좌 아이콘 선택"
         isOpen={pickerTarget !== null}
@@ -541,6 +512,17 @@ const AccountsPage: React.FC = () => {
         onClose={() => setPickerTarget(null)}
         onSelect={selectIcon}
       />
+
+      {archiveTarget && (
+        <ArchiveDialog
+          name={archiveTarget.account_name}
+          isDeleting={archiveMutation.isPending}
+          onConfirm={(deleteTransactions) =>
+            archiveMutation.mutate({ id: archiveTarget.account_id, deleteTransactions })
+          }
+          onCancel={() => setArchiveTarget(null)}
+        />
+      )}
     </div>
   );
 };

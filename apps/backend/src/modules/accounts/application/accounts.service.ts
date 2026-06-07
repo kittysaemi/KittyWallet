@@ -31,8 +31,6 @@ interface UpdateAccountCommand {
   accountName?: string;
   iconId?: bigint;
   useYn?: boolean;
-  allowNegativeBalance?: boolean;
-  negativeBalanceLimit?: number;
 }
 
 @Injectable()
@@ -81,15 +79,29 @@ export class AccountsService {
     return { account_id: Number(account.accountId) };
   }
 
+  async archiveAccount(command: {
+    accountId: bigint;
+    userId: bigint;
+    deleteTransactions: boolean;
+  }): Promise<void> {
+    const account = await this.accountsRepository.findById(command.accountId, command.userId);
+    if (!account || account.deletedYn) {
+      throw new AppException("ACCOUNT_002", "계좌를 찾을 수 없습니다.", HttpStatus.NOT_FOUND);
+    }
+    await this.accountsRepository.archive(
+      command.accountId,
+      command.userId,
+      command.deleteTransactions
+    );
+  }
+
   async updateAccount(
     command: UpdateAccountCommand
   ): Promise<{ account_id: number; use_yn: boolean }> {
     if (
       command.accountName === undefined &&
       command.iconId === undefined &&
-      command.useYn === undefined &&
-      command.allowNegativeBalance === undefined &&
-      command.negativeBalanceLimit === undefined
+      command.useYn === undefined
     ) {
       throw new AppException(
         "VALIDATION_001",
@@ -107,8 +119,6 @@ export class AccountsService {
       accountName?: string;
       icon?: { connect: { iconId: bigint } };
       useYn?: boolean;
-      allowNegativeBalance?: boolean;
-      negativeBalanceLimit?: number;
     } = {};
 
     if (command.accountName !== undefined) {
@@ -124,15 +134,6 @@ export class AccountsService {
 
     if (command.useYn !== undefined) {
       data.useYn = command.useYn;
-    }
-
-    if (command.allowNegativeBalance !== undefined || command.negativeBalanceLimit !== undefined) {
-      const negativeSetting = this.normalizeNegativeSetting(
-        command.allowNegativeBalance ?? account.allowNegativeBalance,
-        command.negativeBalanceLimit ?? account.negativeBalanceLimit.toNumber()
-      );
-      data.allowNegativeBalance = negativeSetting.allowNegativeBalance;
-      data.negativeBalanceLimit = negativeSetting.negativeBalanceLimit;
     }
 
     const updated = await this.accountsRepository.update(account.accountId, data);

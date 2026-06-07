@@ -28,6 +28,7 @@ export interface DashboardTransaction {
   wallet_type: "ACCOUNT" | "CARD";
   wallet_id: number;
   wallet_name: string;
+  wallet_deleted: boolean;
   category_id: number;
   category_name: string;
   transaction_type: "INCOME" | "EXPENSE";

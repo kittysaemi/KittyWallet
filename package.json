@@ -23,7 +23,10 @@
     "type-check": "npm run build:packages && npm run type-check --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "test:e2e": "playwright test",
-    "docker:dev": "docker compose up --build"
+    "docker:dev": "docker compose up --build",
+    "docker:db": "docker compose up -d postgres",
+    "db:migrate": "npm run prisma:migrate -w @kittywallet/backend",
+    "db:setup": "npm run docker:db && npm run db:migrate"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",

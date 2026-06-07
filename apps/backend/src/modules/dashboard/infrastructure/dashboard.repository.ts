@@ -22,6 +22,8 @@ export interface RecentTransactionData {
   transaction_id: number;
   wallet_type: string;
   wallet_id: number;
+  wallet_name: string;
+  wallet_deleted: boolean;
   category_id: number;
   category_name: string;
   transaction_type: string;
@@ -134,19 +136,21 @@ export class DashboardRepository {
       accountIds.length > 0
         ? this.prisma.account.findMany({
             where: { accountId: { in: accountIds } },
-            select: { accountId: true, accountName: true }
+            select: { accountId: true, accountName: true, deletedYn: true }
           })
         : [],
       cardIds.length > 0
         ? this.prisma.card.findMany({
             where: { cardId: { in: cardIds } },
-            select: { cardId: true, cardName: true }
+            select: { cardId: true, cardName: true, deletedYn: true }
           })
         : []
     ]);
 
     const accountMap = new Map(accounts.map((a) => [String(a.accountId), a.accountName]));
+    const accountDeletedMap = new Map(accounts.map((a) => [String(a.accountId), a.deletedYn]));
     const cardMap = new Map(cards.map((c) => [String(c.cardId), c.cardName]));
+    const cardDeletedMap = new Map(cards.map((c) => [String(c.cardId), c.deletedYn]));
 
     return transactions.map((t) => ({
       transaction_id: Number(t.transactionId),
@@ -156,6 +160,10 @@ export class DashboardRepository {
         t.walletType === "ACCOUNT"
           ? (accountMap.get(String(t.walletId)) ?? "")
           : (cardMap.get(String(t.walletId)) ?? ""),
+      wallet_deleted:
+        t.walletType === "ACCOUNT"
+          ? (accountDeletedMap.get(String(t.walletId)) ?? false)
+          : (cardDeletedMap.get(String(t.walletId)) ?? false),
       category_id: Number(t.categoryId),
       category_name: t.category.categoryName,
       transaction_type: t.transactionType,

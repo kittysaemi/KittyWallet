@@ -1,6 +1,7 @@
 import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AxiosError } from "axios";
 import { ChevronLeft, Trash2 } from "lucide-react";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import { TransactionForm } from "../../features/transactions/TransactionForm";
@@ -9,13 +10,19 @@ const DeleteConfirmDialog: React.FC<{
   onConfirm: () => void;
   onCancel: () => void;
   isDeleting: boolean;
-}> = ({ onConfirm, onCancel, isDeleting }) => (
+  errorMessage?: string;
+}> = ({ onConfirm, onCancel, isDeleting, errorMessage }) => (
   <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 pb-8 sm:items-center sm:pb-0">
     <div className="w-full max-w-[400px] rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] p-6 shadow-xl">
       <h2 className="mb-2 text-base font-bold text-[var(--color-text-primary)]">거래 삭제</h2>
-      <p className="mb-6 text-sm text-[var(--color-text-secondary)]">
+      <p className="mb-4 text-sm text-[var(--color-text-secondary)]">
         이 거래를 삭제하시겠습니까? 삭제된 거래는 복구할 수 없습니다.
       </p>
+      {errorMessage && (
+        <p className="mb-4 rounded-xl border border-[var(--color-danger)] bg-[var(--color-danger-soft)] px-3 py-2 text-sm text-[var(--color-danger)]">
+          {errorMessage}
+        </p>
+      )}
       <div className="flex gap-3">
         <button
           type="button"
@@ -50,6 +57,8 @@ const TransactionEditPage: React.FC = () => {
     enabled: !!id
   });
 
+  const [deleteError, setDeleteError] = React.useState<string>("");
+
   const deleteMutation = useMutation({
     mutationFn: () => transactionApi.deleteTransaction(Number(id)),
     onSuccess: () => {
@@ -57,10 +66,29 @@ const TransactionEditPage: React.FC = () => {
       void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       void queryClient.invalidateQueries({ queryKey: ["accounts"] });
       navigate("/transactions", { replace: true });
+    },
+    onError: (err: unknown) => {
+      const code =
+        err instanceof AxiosError
+          ? (err.response?.data as { error?: { code?: string } })?.error?.code
+          : undefined;
+      if (code === "ACCOUNT_004") {
+        setDeleteError(
+          "이 수입을 삭제하면 계좌 잔액이 마이너스가 됩니다. 관련 지출을 먼저 삭제하거나 수정해주세요."
+        );
+      } else {
+        setDeleteError("거래 삭제에 실패했습니다. 다시 시도해주세요.");
+      }
     }
   });
 
   const transaction = transactionQuery.data?.data;
+
+  React.useEffect(() => {
+    if (transaction?.wallet_deleted) {
+      navigate(`/transactions/${id}`, { replace: true });
+    }
+  }, [transaction?.wallet_deleted, id, navigate]);
 
   if (transactionQuery.isLoading) {
     return (
@@ -94,6 +122,8 @@ const TransactionEditPage: React.FC = () => {
     );
   }
 
+  const walletDeleted = transaction.wallet_deleted;
+
   return (
     <>
       <div className="min-h-screen bg-[var(--color-bg-primary)]">
@@ -110,21 +140,32 @@ const TransactionEditPage: React.FC = () => {
               </button>
               <h1 className="font-gamja text-2xl text-[var(--color-text-primary)]">거래 수정</h1>
             </div>
-            <button
-              type="button"
-              onClick={() => setShowDeleteDialog(true)}
-              className="flex h-9 w-9 items-center justify-center rounded-xl text-[var(--color-danger)] transition hover:bg-[var(--color-danger-soft)]"
-              aria-label="거래 삭제"
-            >
-              <Trash2 size={18} />
-            </button>
+            {!walletDeleted && (
+              <button
+                type="button"
+                onClick={() => setShowDeleteDialog(true)}
+                className="flex h-9 w-9 items-center justify-center rounded-xl text-[var(--color-danger)] transition hover:bg-[var(--color-danger-soft)]"
+                aria-label="거래 삭제"
+              >
+                <Trash2 size={18} />
+              </button>
+            )}
           </div>
+
+          {walletDeleted && (
+            <div className="mb-4 rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] px-4 py-3">
+              <p className="text-sm text-[var(--color-text-secondary)]">
+                삭제된 지갑의 내역이라 수정이 불가능합니다.
+              </p>
+            </div>
+          )}
 
           <div className="rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] p-5 shadow-[0_4px_16px_var(--color-card-shadow)]">
             <TransactionForm
               initialData={transaction}
               transactionId={transaction.transaction_id}
               onSuccess={() => navigate("/transactions", { replace: true })}
+              readOnly={walletDeleted}
             />
           </div>
         </div>
@@ -132,9 +173,10 @@ const TransactionEditPage: React.FC = () => {
 
       {showDeleteDialog && (
         <DeleteConfirmDialog
-          onConfirm={() => deleteMutation.mutate()}
-          onCancel={() => setShowDeleteDialog(false)}
+          onConfirm={() => { setDeleteError(""); deleteMutation.mutate(); }}
+          onCancel={() => { setShowDeleteDialog(false); setDeleteError(""); }}
           isDeleting={deleteMutation.isPending}
+          errorMessage={deleteError}
         />
       )}
     </>

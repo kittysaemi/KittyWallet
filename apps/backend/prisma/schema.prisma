@@ -154,15 +154,17 @@ model Account {
   allowNegativeBalance Boolean  @default(false) @map("allow_negative_balance")
   negativeBalanceLimit Decimal  @default(0) @map("negative_balance_limit") @db.Decimal(15, 0)
   useYn                Boolean  @default(true) @map("use_yn")
+  deletedYn            Boolean  @default(false) @map("deleted_yn")
   createdAt            DateTime @default(now()) @map("created_at")
   updatedAt            DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [userId])
   icon Icon @relation(fields: [iconId], references: [iconId])
 
-  @@unique([userId, accountName], map: "ACCOUNT_user_id_account_name_key")
   @@index([userId])
+  @@index([userId, accountName])
   @@index([useYn])
+  @@index([deletedYn])
   @@map("ACCOUNT")
 }
 
@@ -172,15 +174,17 @@ model Card {
   iconId    BigInt   @map("icon_id")
   cardName  String   @map("card_name") @db.VarChar(50)
   useYn     Boolean  @default(true) @map("use_yn")
+  deletedYn Boolean  @default(false) @map("deleted_yn")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [userId])
   icon Icon @relation(fields: [iconId], references: [iconId])
 
-  @@unique([userId, cardName], map: "CARD_user_id_card_name_key")
   @@index([userId])
+  @@index([userId, cardName])
   @@index([useYn])
+  @@index([deletedYn])
   @@map("CARD")
 }
 

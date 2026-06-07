@@ -60,12 +60,12 @@ function formatDate(dateStr: string): string {
 function groupByDate(items: TransactionItem[]): Map<string, TransactionItem[]> {
   const map = new Map<string, TransactionItem[]>();
   for (const item of items) {
-    const key = item.transaction_date;
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(item);
+    if (!map.has(item.transaction_date)) map.set(item.transaction_date, []);
+    map.get(item.transaction_date)!.push(item);
   }
   return map;
 }
+
 
 interface TransactionRowProps {
   item: TransactionItem;
@@ -104,7 +104,14 @@ const TransactionRow: React.FC<TransactionRowProps> = ({ item, iconMap, category
         <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">
           {item.category_name}
         </p>
-        <p className="truncate text-xs text-[var(--color-text-secondary)]">{item.wallet_name}</p>
+        <p className="flex items-center gap-1 text-xs text-[var(--color-text-secondary)]">
+          <span className="truncate">{item.wallet_name}</span>
+          {item.wallet_deleted && (
+            <span className="shrink-0 inline-block rounded px-1 py-0.5 text-[10px] font-medium leading-none bg-[var(--color-bg-secondary)] text-[var(--color-text-caption)]">
+              삭제된 지갑
+            </span>
+          )}
+        </p>
       </div>
       <p
         className={`shrink-0 text-sm font-semibold ${
@@ -331,7 +338,6 @@ const BrowseTab: React.FC<BrowseTabProps> = ({
   }
 
   const items = query.data?.data?.items ?? [];
-  const grouped = groupByDate(items);
 
   const inputClass =
     "w-full rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-caption)] focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary-soft)]";
@@ -412,7 +418,7 @@ const BrowseTab: React.FC<BrowseTabProps> = ({
           )}
           {!query.isLoading && !query.isError && items.length === 0 && <EmptyCard />}
           {items.length > 0 && (
-            <ResultList items={items} grouped={grouped} iconMap={iconsForBrowse} categoryIconMap={categoriesIconMap} />
+            <ResultList items={items} iconMap={iconsForBrowse} categoryIconMap={categoriesIconMap} />
           )}
         </>
       )}
@@ -452,8 +458,6 @@ const KeywordTab: React.FC<{ iconMap: Map<number, IconItem>; categoryIconMap: Ma
         tx.category_name.toLowerCase().includes(kw)
     );
   }, [query.data, submittedKeyword]);
-
-  const grouped = groupByDate(filtered);
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -518,7 +522,7 @@ const KeywordTab: React.FC<{ iconMap: Map<number, IconItem>; categoryIconMap: Ma
           {query.isError && !query.data && <ErrorCard onRetry={() => query.refetch()} />}
           {!query.isLoading && !query.isError && filtered.length === 0 && <EmptyCard />}
           {filtered.length > 0 && (
-            <ResultList items={filtered} grouped={grouped} iconMap={iconMap} categoryIconMap={categoryIconMap} />
+            <ResultList items={filtered} iconMap={iconMap} categoryIconMap={categoryIconMap} />
           )}
         </>
       )}
@@ -564,26 +568,42 @@ const ErrorCard: React.FC<{ onRetry: () => void }> = ({ onRetry }) => (
 
 const ResultList: React.FC<{
   items: TransactionItem[];
-  grouped: Map<string, TransactionItem[]>;
   iconMap: Map<number, IconItem>;
   categoryIconMap: Map<number, number>;
-}> = ({ items, grouped, iconMap, categoryIconMap }) => (
-  <div className="flex flex-col gap-4">
-    <p className="px-1 text-xs text-[var(--color-text-secondary)]">총 {items.length}건</p>
-    {Array.from(grouped.entries()).map(([date, txList]) => (
-      <div key={date}>
-        <p className="mb-2 px-1 text-xs font-medium text-[var(--color-text-secondary)]">
-          {formatDate(date)}
-        </p>
-        <div className="flex flex-col gap-2">
-          {txList.map((tx) => (
-            <TransactionRow key={tx.transaction_id} item={tx} iconMap={iconMap} categoryIconMap={categoryIconMap} />
-          ))}
-        </div>
-      </div>
-    ))}
-  </div>
-);
+}> = ({ items, iconMap, categoryIconMap }) => {
+  const grouped = groupByDate(items);
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="px-1 text-xs text-[var(--color-text-secondary)]">총 {items.length}건</p>
+      {Array.from(grouped.entries()).map(([date, txList]) => {
+        const income = txList.filter((t) => t.transaction_type === "INCOME").reduce((s, t) => s + t.amount, 0);
+        const expense = txList.filter((t) => t.transaction_type === "EXPENSE").reduce((s, t) => s + t.amount, 0);
+        return (
+          <div key={date}>
+            <div className="mb-2 flex items-center justify-between px-1">
+              <p className="text-xs font-medium text-[var(--color-text-secondary)]">
+                {formatDate(date)}
+              </p>
+              <div className="flex items-center gap-2 text-xs font-medium">
+                {income > 0 && (
+                  <span className="text-blue-500">+{income.toLocaleString("ko-KR")}원</span>
+                )}
+                {expense > 0 && (
+                  <span className="text-[var(--color-text-primary)]">-{expense.toLocaleString("ko-KR")}원</span>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-col gap-2">
+              {txList.map((tx) => (
+                <TransactionRow key={tx.transaction_id} item={tx} iconMap={iconMap} categoryIconMap={categoryIconMap} />
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
 
 // 메인 페이지
 const TransactionSearchPage: React.FC = () => {
