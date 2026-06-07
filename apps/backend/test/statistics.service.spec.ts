@@ -324,6 +324,64 @@ describe("StatisticsService", () => {
     expect(result.links).toEqual([]);
   });
 
+  it("applies wallet_type filter to monthly statistics", async () => {
+    statisticsRepository.groupAmountsByTransactionType.mockResolvedValue([
+      { transactionType: "EXPENSE", amount: decimal(80000), transactionCount: 3 }
+    ]);
+    statisticsRepository.groupDailyAmountsByTransactionType.mockResolvedValue([]);
+
+    await service.getMonthlyStatistics({ userId: BigInt(1), month: "2026-06", walletType: "CARD" });
+
+    expect(statisticsRepository.groupAmountsByTransactionType).toHaveBeenCalledWith(
+      expect.objectContaining({ walletType: "CARD" })
+    );
+  });
+
+  it("applies wallet_type filter to category top statistics", async () => {
+    statisticsRepository.groupAmountsByCategory.mockResolvedValue([
+      {
+        categoryId: BigInt(1),
+        amount: decimal(50000),
+        transactionCount: 2,
+        category: { categoryName: "식비", iconId: BigInt(1) }
+      }
+    ]);
+
+    await service.getCategoryTopStatistics({ userId: BigInt(1), month: "2026-06", walletType: "ACCOUNT" });
+
+    expect(statisticsRepository.groupAmountsByCategory).toHaveBeenCalledWith(
+      expect.objectContaining({ walletType: "ACCOUNT" })
+    );
+  });
+
+  it("groups period statistics by day when groupBy is not specified", async () => {
+    statisticsRepository.groupDailyAmountsByTransactionType.mockResolvedValue([
+      {
+        transactionDate: new Date("2026-06-01T00:00:00.000Z"),
+        transactionType: "EXPENSE",
+        amount: decimal(15000),
+        transactionCount: 1
+      },
+      {
+        transactionDate: new Date("2026-06-02T00:00:00.000Z"),
+        transactionType: "INCOME",
+        amount: decimal(30000),
+        transactionCount: 1
+      }
+    ]);
+
+    const result = await service.getPeriodStatistics({
+      userId: BigInt(1),
+      startDate: "2026-06-01",
+      endDate: "2026-06-07"
+    });
+
+    expect(result.items[0].period).toBe("2026-06-01");
+    expect(result.items[1].period).toBe("2026-06-02");
+    expect(result.income_amount).toBe(30000);
+    expect(result.expense_amount).toBe(15000);
+  });
+
   it("rejects card income category statistics", async () => {
     await expect(
       service.getCategoryStatistics({
