@@ -10,7 +10,10 @@ vi.mock("../../entities/statistics/api/statisticsApi", () => ({
   statisticsApi: {
     getMonthlyStatistics: vi.fn(),
     getCategoryStatistics: vi.fn(),
-    getPeriodStatistics: vi.fn()
+    getPeriodStatistics: vi.fn(),
+    getSummaryStatistics: vi.fn(),
+    getCategoryTopStatistics: vi.fn(),
+    getCalendarStatistics: vi.fn()
   }
 }));
 
@@ -66,6 +69,7 @@ const createWrapper = () => {
 describe("StatisticsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
     mockedStatisticsApi.getMonthlyStatistics.mockResolvedValue({
       success: true,
       data: {
@@ -76,22 +80,71 @@ describe("StatisticsPage", () => {
         net_amount: 210000,
         transaction_count: 4,
         daily_items: [
+          { date: "2026-06-01", income_amount: 0, expense_amount: 40000, transaction_count: 1 },
+          { date: "2026-06-02", income_amount: 300000, expense_amount: 50000, transaction_count: 3 }
+        ]
+      },
+      error: null
+    });
+
+    mockedStatisticsApi.getSummaryStatistics.mockResolvedValue({
+      success: true,
+      data: {
+        month: "2026-06",
+        income_amount: 300000,
+        expense_amount: 90000,
+        net_amount: 210000,
+        transaction_count: 4,
+        top_category: {
+          category_id: 1,
+          category_name: "식비",
+          icon_id: 10,
+          amount: 60000
+        }
+      },
+      error: null
+    });
+
+    mockedStatisticsApi.getCategoryTopStatistics.mockResolvedValue({
+      success: true,
+      data: {
+        month: "2026-06",
+        total_expense: 90000,
+        items: [
           {
-            date: "2026-06-01",
-            income_amount: 0,
-            expense_amount: 40000,
-            transaction_count: 1
+            rank: 1,
+            category_id: 1,
+            category_name: "식비",
+            icon_id: 10,
+            amount: 60000,
+            ratio: 66.67
           },
           {
-            date: "2026-06-02",
-            income_amount: 300000,
-            expense_amount: 50000,
-            transaction_count: 3
+            rank: 2,
+            category_id: 2,
+            category_name: "교통",
+            icon_id: 11,
+            amount: 30000,
+            ratio: 33.33
           }
         ]
       },
       error: null
     });
+
+    mockedStatisticsApi.getCalendarStatistics.mockResolvedValue({
+      success: true,
+      data: {
+        month: "2026-06",
+        max_daily_expense: 50000,
+        daily_items: [
+          { date: "2026-06-01", expense_amount: 40000 },
+          { date: "2026-06-02", expense_amount: 50000 }
+        ]
+      },
+      error: null
+    });
+
     mockedStatisticsApi.getCategoryStatistics.mockResolvedValue({
       success: true,
       data: {
@@ -111,6 +164,7 @@ describe("StatisticsPage", () => {
       },
       error: null
     });
+
     mockedStatisticsApi.getPeriodStatistics.mockResolvedValue({
       success: true,
       data: {
@@ -132,19 +186,53 @@ describe("StatisticsPage", () => {
     });
   });
 
-  it("renders monthly summary, Chart.js canvas, and category statistics", async () => {
+  it("renders monthly summary card with income, expense, and top category", async () => {
+    render(<StatisticsPage />, { wrapper: createWrapper() });
+
+    expect(await screen.findByLabelText("월간 요약")).toBeInTheDocument();
+    expect(screen.getByText("300,000원")).toBeInTheDocument();
+    expect(screen.getAllByText("식비").length).toBeGreaterThan(0);
+    expect(screen.getByText("최고 지출")).toBeInTheDocument();
+  });
+
+  it("renders spending chart section", async () => {
     render(<StatisticsPage />, { wrapper: createWrapper() });
 
     expect(await screen.findByText("소비 흐름")).toBeInTheDocument();
-    expect(screen.getByText("300,000원")).toBeInTheDocument();
-    expect(screen.getAllByText("90,000원")).toHaveLength(2);
-    expect(screen.getByText("식비")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "월별 소비 흐름 차트" })).toBeInTheDocument();
+  });
+
+  it("renders Top 5 category section in MONTH mode", async () => {
+    render(<StatisticsPage />, { wrapper: createWrapper() });
+
+    expect(await screen.findByLabelText("Top 5 카테고리")).toBeInTheDocument();
+    expect(screen.getByText("Top 5 카테고리")).toBeInTheDocument();
+    expect(screen.getByText("교통")).toBeInTheDocument();
+  });
+
+  it("renders calendar heatmap in MONTH mode", async () => {
+    render(<StatisticsPage />, { wrapper: createWrapper() });
+
+    expect(await screen.findByLabelText("달력 히트맵")).toBeInTheDocument();
+    expect(screen.getByText("달력 히트맵")).toBeInTheDocument();
+  });
+
+  it("shows selected date expense when calendar cell is clicked", async () => {
+    render(<StatisticsPage />, { wrapper: createWrapper() });
+
+    await screen.findByLabelText("달력 히트맵");
+    const dayCell = screen.getByRole("button", { name: /1일 지출/ });
+    await userEvent.click(dayCell);
+
+    expect(screen.getByText("1일 지출:")).toBeInTheDocument();
+    expect(screen.getByText("40,000원")).toBeInTheDocument();
   });
 
   it("renders loading UI while statistics are pending", () => {
     mockedStatisticsApi.getMonthlyStatistics.mockReturnValue(new Promise(() => undefined));
-    mockedStatisticsApi.getCategoryStatistics.mockReturnValue(new Promise(() => undefined));
+    mockedStatisticsApi.getSummaryStatistics.mockReturnValue(new Promise(() => undefined));
+    mockedStatisticsApi.getCategoryTopStatistics.mockReturnValue(new Promise(() => undefined));
+    mockedStatisticsApi.getCalendarStatistics.mockReturnValue(new Promise(() => undefined));
 
     render(<StatisticsPage />, { wrapper: createWrapper() });
 
@@ -161,6 +249,20 @@ describe("StatisticsPage", () => {
     expect(screen.getByText("45,000원")).toBeInTheDocument();
   });
 
+  it("does not render MONTH-only sections in WEEK mode", async () => {
+    render(<StatisticsPage />, { wrapper: createWrapper() });
+
+    await userEvent.click(await screen.findByRole("button", { name: "주별" }));
+
+    await waitFor(() => expect(mockedStatisticsApi.getPeriodStatistics).toHaveBeenCalled());
+    await screen.findByText("120,000원");
+
+    expect(screen.queryByLabelText("월간 요약")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Top 5 카테고리")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("달력 히트맵")).not.toBeInTheDocument();
+    expect(screen.getByText("카테고리별 소비")).toBeInTheDocument();
+  });
+
   it("renders empty state when statistics have no items", async () => {
     mockedStatisticsApi.getMonthlyStatistics.mockResolvedValueOnce({
       success: true,
@@ -175,14 +277,9 @@ describe("StatisticsPage", () => {
       },
       error: null
     });
-    mockedStatisticsApi.getCategoryStatistics.mockResolvedValueOnce({
+    mockedStatisticsApi.getCategoryTopStatistics.mockResolvedValueOnce({
       success: true,
-      data: {
-        start_date: "2026-06-01",
-        end_date: "2026-06-30",
-        total_amount: 0,
-        items: []
-      },
+      data: { month: "2026-06", total_expense: 0, items: [] },
       error: null
     });
 
