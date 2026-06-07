@@ -106,6 +106,61 @@ describe("AccountsService", () => {
     } satisfies Partial<AppException>);
   });
 
+  it("rejects negative negative_balance_limit on create", async () => {
+    accountsRepository.findDuplicateName.mockResolvedValue(null);
+    accountsRepository.findAvailableIcon.mockResolvedValue({
+      iconId: BigInt(10),
+      userId: null,
+      iconDictionaryId: BigInt(20),
+      show: true,
+      isDefault: true,
+      createdAt: now,
+      updatedAt: now
+    } as any);
+
+    await expect(
+      service.createAccount({
+        userId: BigInt(1),
+        accountName: "마이너스 통장",
+        initialBalance: 0,
+        iconId: BigInt(10),
+        allowNegativeBalance: true,
+        negativeBalanceLimit: -1
+      })
+    ).rejects.toMatchObject({
+      code: "VALIDATION_001",
+      statusCode: HttpStatus.BAD_REQUEST
+    } satisfies Partial<AppException>);
+  });
+
+  it("defaults to allowNegativeBalance=false and negativeBalanceLimit=0 when not specified", async () => {
+    accountsRepository.findDuplicateName.mockResolvedValue(null);
+    accountsRepository.findAvailableIcon.mockResolvedValue({
+      iconId: BigInt(10),
+      userId: null,
+      iconDictionaryId: BigInt(20),
+      show: true,
+      isDefault: true,
+      createdAt: now,
+      updatedAt: now
+    } as any);
+    accountsRepository.create.mockResolvedValue(makeAccount() as any);
+
+    await service.createAccount({
+      userId: BigInt(1),
+      accountName: "기본 통장",
+      initialBalance: 0,
+      iconId: BigInt(10)
+    });
+
+    expect(accountsRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        allowNegativeBalance: false,
+        negativeBalanceLimit: 0
+      })
+    );
+  });
+
   it("sets current_balance equal to initial_balance on create", async () => {
     accountsRepository.findDuplicateName.mockResolvedValue(null);
     accountsRepository.findAvailableIcon.mockResolvedValue({

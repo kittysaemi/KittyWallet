@@ -74,7 +74,8 @@ describe("TransactionsService", () => {
     create: jest.fn(),
     createWithAccountBalanceUpdate: jest.fn(),
     update: jest.fn(),
-    softDelete: jest.fn()
+    softDelete: jest.fn(),
+    softDeleteWithBalance: jest.fn()
   } as unknown as jest.Mocked<TransactionsRepository>;
 
   const service = new TransactionsService(transactionsRepository);
@@ -367,6 +368,168 @@ describe("TransactionsService", () => {
     } satisfies Partial<AppException>);
   });
 
+  it("rejects update when date change exceeds negative balance limit", async () => {
+    transactionsRepository.findById = jest.fn().mockResolvedValue(
+      makeTransaction({
+        transactionId: BigInt(100),
+        walletType: "ACCOUNT",
+        walletId: BigInt(1),
+        transactionType: "EXPENSE",
+        amount: { toNumber: () => 150000 },
+        transactionDate: new Date("2026-05-03")
+      }) as any
+    );
+    transactionsRepository.findOwnedAccount.mockResolvedValue(
+      makeAccount({
+        allowNegativeBalance: true,
+        negativeBalanceLimit: { toNumber: () => 300000 },
+        initialBalance: { toNumber: () => 0 },
+        currentBalance: { toNumber: () => -350000 }
+      }) as any
+    );
+    transactionsRepository.findAccount.mockResolvedValue(
+      makeAccount({
+        allowNegativeBalance: true,
+        negativeBalanceLimit: { toNumber: () => 300000 },
+        initialBalance: { toNumber: () => 0 }
+      }) as any
+    );
+    transactionsRepository.findAccountTransactionsForBalance.mockResolvedValue([
+      makeTransaction({
+        transactionId: BigInt(101),
+        transactionType: "EXPENSE",
+        amount: { toNumber: () => 200000 },
+        transactionDate: new Date("2026-05-01")
+      }),
+      makeTransaction({
+        transactionId: BigInt(100),
+        transactionType: "EXPENSE",
+        amount: { toNumber: () => 150000 },
+        transactionDate: new Date("2026-05-03")
+      })
+    ] as any);
+
+    await expect(
+      service.updateTransaction({
+        transactionId: BigInt(100),
+        userId: BigInt(1),
+        transactionDate: "2026-05-01"
+      })
+    ).rejects.toMatchObject({
+      code: "ACCOUNT_004",
+      statusCode: HttpStatus.BAD_REQUEST
+    } satisfies Partial<AppException>);
+  });
+
+  it("rejects update when amount increase exceeds account balance", async () => {
+    transactionsRepository.findById = jest.fn().mockResolvedValue(
+      makeTransaction({
+        transactionId: BigInt(100),
+        walletType: "ACCOUNT",
+        walletId: BigInt(1),
+        transactionType: "EXPENSE",
+        amount: { toNumber: () => 100000 },
+        transactionDate: new Date("2026-05-01")
+      }) as any
+    );
+    transactionsRepository.findOwnedAccount.mockResolvedValue(
+      makeAccount({
+        allowNegativeBalance: false,
+        initialBalance: { toNumber: () => 150000 },
+        currentBalance: { toNumber: () => 50000 }
+      }) as any
+    );
+    transactionsRepository.findAccount.mockResolvedValue(
+      makeAccount({ initialBalance: { toNumber: () => 150000 } }) as any
+    );
+    transactionsRepository.findAccountTransactionsForBalance.mockResolvedValue([
+      makeTransaction({
+        transactionId: BigInt(100),
+        transactionType: "EXPENSE",
+        amount: { toNumber: () => 100000 },
+        transactionDate: new Date("2026-05-01")
+      })
+    ] as any);
+
+    await expect(
+      service.updateTransaction({
+        transactionId: BigInt(100),
+        userId: BigInt(1),
+        amount: 200000
+      })
+    ).rejects.toMatchObject({
+      code: "ACCOUNT_004",
+      statusCode: HttpStatus.BAD_REQUEST
+    } satisfies Partial<AppException>);
+  });
+
+  it("rejects update when type change from INCOME to EXPENSE causes balance violation", async () => {
+    transactionsRepository.findById = jest.fn().mockResolvedValue(
+      makeTransaction({
+        transactionId: BigInt(100),
+        walletType: "ACCOUNT",
+        walletId: BigInt(1),
+        transactionType: "INCOME",
+        amount: { toNumber: () => 100000 },
+        transactionDate: new Date("2026-05-01")
+      }) as any
+    );
+    transactionsRepository.findOwnedAccount.mockResolvedValue(
+      makeAccount({
+        allowNegativeBalance: false,
+        initialBalance: { toNumber: () => 50000 },
+        currentBalance: { toNumber: () => 150000 }
+      }) as any
+    );
+    transactionsRepository.findAccount.mockResolvedValue(
+      makeAccount({ initialBalance: { toNumber: () => 50000 } }) as any
+    );
+    transactionsRepository.findAccountTransactionsForBalance.mockResolvedValue([]);
+
+    await expect(
+      service.updateTransaction({
+        transactionId: BigInt(100),
+        userId: BigInt(1),
+        transactionType: "EXPENSE"
+      })
+    ).rejects.toMatchObject({
+      code: "ACCOUNT_004",
+      statusCode: HttpStatus.BAD_REQUEST
+    } satisfies Partial<AppException>);
+  });
+
+  it("rejects update when wallet change would overdraw destination account", async () => {
+    transactionsRepository.findById = jest.fn().mockResolvedValue(
+      makeTransaction({
+        transactionId: BigInt(100),
+        walletType: "ACCOUNT",
+        walletId: BigInt(1),
+        transactionType: "EXPENSE",
+        amount: { toNumber: () => 200000 },
+        transactionDate: new Date("2026-05-01")
+      }) as any
+    );
+    transactionsRepository.findOwnedAccount
+      .mockResolvedValueOnce(makeAccount({ accountId: BigInt(1), initialBalance: { toNumber: () => 500000 } }) as any)
+      .mockResolvedValueOnce(makeAccount({ accountId: BigInt(1), initialBalance: { toNumber: () => 500000 } }) as any)
+      .mockResolvedValueOnce(makeAccount({ accountId: BigInt(2), allowNegativeBalance: false, initialBalance: { toNumber: () => 100000 } }) as any);
+    transactionsRepository.findAccount.mockResolvedValue(
+      makeAccount({ accountId: BigInt(2), initialBalance: { toNumber: () => 100000 } }) as any
+    );
+    transactionsRepository.findAccountTransactionsForBalance.mockResolvedValue([]);
+
+    await expect(
+      service.updateTransaction({
+        transactionId: BigInt(100),
+        userId: BigInt(1),
+        walletId: BigInt(2)
+      })
+    ).rejects.toMatchObject({
+      code: "ACCOUNT_004",
+      statusCode: HttpStatus.BAD_REQUEST
+    } satisfies Partial<AppException>);
+  });
+
   it("rejects non-existent card", async () => {
     transactionsRepository.findCategory.mockResolvedValue(makeCategory() as any);
     transactionsRepository.findCard.mockResolvedValue(null);
@@ -397,5 +560,62 @@ describe("TransactionsService", () => {
     expect(result.transaction_id).toBe(100);
     expect(transactionsRepository.create).toHaveBeenCalled();
     expect(transactionsRepository.createWithAccountBalanceUpdate).not.toHaveBeenCalled();
+  });
+
+  it("deletes EXPENSE transaction and restores account balance with positive delta", async () => {
+    transactionsRepository.findById.mockResolvedValue(
+      makeTransaction({
+        transactionId: BigInt(100),
+        walletType: "ACCOUNT",
+        walletId: BigInt(1),
+        transactionType: "EXPENSE",
+        amount: { toNumber: () => 15000 }
+      }) as any
+    );
+    transactionsRepository.findOwnedAccount.mockResolvedValue(makeAccount() as any);
+    transactionsRepository.softDeleteWithBalance.mockResolvedValue(
+      makeTransaction({ deletedYn: true }) as any
+    );
+
+    await service.deleteTransaction(BigInt(100), BigInt(1));
+
+    expect(transactionsRepository.softDeleteWithBalance).toHaveBeenCalledWith(
+      BigInt(100),
+      expect.objectContaining({ accountId: BigInt(1), delta: 15000 })
+    );
+  });
+
+  it("rejects INCOME transaction deletion when removal would cause balance violation", async () => {
+    transactionsRepository.findById.mockResolvedValue(
+      makeTransaction({
+        transactionId: BigInt(100),
+        walletType: "ACCOUNT",
+        walletId: BigInt(1),
+        transactionType: "INCOME",
+        amount: { toNumber: () => 50000 },
+        transactionDate: new Date("2026-05-01")
+      }) as any
+    );
+    transactionsRepository.findOwnedAccount.mockResolvedValue(
+      makeAccount({ allowNegativeBalance: false, initialBalance: { toNumber: () => 0 } }) as any
+    );
+    transactionsRepository.findAccount.mockResolvedValue(
+      makeAccount({ allowNegativeBalance: false, initialBalance: { toNumber: () => 0 } }) as any
+    );
+    transactionsRepository.findAccountTransactionsForBalance.mockResolvedValue([
+      makeTransaction({
+        transactionId: BigInt(101),
+        transactionType: "EXPENSE",
+        amount: { toNumber: () => 30000 },
+        transactionDate: new Date("2026-05-02")
+      })
+    ] as any);
+
+    await expect(
+      service.deleteTransaction(BigInt(100), BigInt(1))
+    ).rejects.toMatchObject({
+      code: "ACCOUNT_004",
+      statusCode: HttpStatus.BAD_REQUEST
+    } satisfies Partial<AppException>);
   });
 });
