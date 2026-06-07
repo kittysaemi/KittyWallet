@@ -11,7 +11,8 @@ vi.mock("../../entities/card/api/cardApi", () => ({
   cardApi: {
     getCards: vi.fn(),
     createCard: vi.fn(),
-    updateCard: vi.fn()
+    updateCard: vi.fn(),
+    deleteCard: vi.fn()
   }
 }));
 
@@ -100,7 +101,7 @@ describe("CardsPage", () => {
     vi.clearAllMocks();
   });
 
-  it("renders cards and disables editing for inactive cards", async () => {
+  it("renders card list with archive button per row", async () => {
     mockedCardApi.getCards.mockResolvedValue(successCards);
     mockedIconApi.getIcons.mockResolvedValue(visibleIcons);
 
@@ -109,8 +110,9 @@ describe("CardsPage", () => {
     expect(await screen.findByText("생활카드")).toBeInTheDocument();
     expect(screen.getByText("보관카드")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "생활카드 이름 변경" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "보관카드 이름 변경" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "보관카드 아이콘 변경" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "보관카드 이름 변경" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "생활카드 삭제" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "보관카드 삭제" })).toBeInTheDocument();
   });
 
   it("opens inline create form with 15 character name limit", async () => {
@@ -140,22 +142,17 @@ describe("CardsPage", () => {
     expect(screen.queryByLabelText("카드명")).not.toBeInTheDocument();
   });
 
-  it("toggles card visibility from the row area", async () => {
+  it("opens archive dialog when card delete button is clicked", async () => {
     mockedCardApi.getCards.mockResolvedValue(successCards);
-    mockedCardApi.updateCard.mockResolvedValue({
-      success: true,
-      data: { card_id: 1, use_yn: false },
-      error: null
-    });
     mockedIconApi.getIcons.mockResolvedValue(visibleIcons);
 
     render(<CardsPage />, { wrapper: createWrapper() });
 
-    await userEvent.click(await screen.findByRole("button", { name: "생활카드 비활성화" }));
+    await userEvent.click(await screen.findByRole("button", { name: "생활카드 삭제" }));
 
-    await waitFor(() =>
-      expect(mockedCardApi.updateCard).toHaveBeenCalledWith(1, { use_yn: false })
-    );
+    expect(await screen.findByRole("button", { name: "거래 내역 포함 삭제" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "거래 내역 유지하고 삭제" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "취소" })).toBeInTheDocument();
   });
 
   it("edits active card name inline and opens icon picker popup", async () => {

@@ -11,7 +11,8 @@ vi.mock("../../entities/account/api/accountApi", () => ({
   accountApi: {
     getAccounts: vi.fn(),
     createAccount: vi.fn(),
-    updateAccount: vi.fn()
+    updateAccount: vi.fn(),
+    deleteAccount: vi.fn()
   }
 }));
 
@@ -108,7 +109,7 @@ describe("AccountsPage", () => {
     vi.clearAllMocks();
   });
 
-  it("renders accounts and disables editing for inactive accounts", async () => {
+  it("renders account list with archive button per row", async () => {
     mockedAccountApi.getAccounts.mockResolvedValue(successAccounts);
     mockedIconApi.getIcons.mockResolvedValue(visibleIcons);
 
@@ -117,8 +118,9 @@ describe("AccountsPage", () => {
     expect(await screen.findByText("월급통장")).toBeInTheDocument();
     expect(screen.getByText("비상금")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "월급통장 이름 변경" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "비상금 이름 변경" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "비상금 아이콘 변경" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "비상금 이름 변경" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "월급통장 삭제" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "비상금 삭제" })).toBeInTheDocument();
   });
 
   it("opens inline create form with 15 character name limit", async () => {
@@ -182,22 +184,17 @@ describe("AccountsPage", () => {
     expect(screen.queryByLabelText("계좌명")).not.toBeInTheDocument();
   });
 
-  it("toggles account visibility from the row area", async () => {
+  it("opens archive dialog when account delete button is clicked", async () => {
     mockedAccountApi.getAccounts.mockResolvedValue(successAccounts);
-    mockedAccountApi.updateAccount.mockResolvedValue({
-      success: true,
-      data: { account_id: 1, use_yn: false },
-      error: null
-    });
     mockedIconApi.getIcons.mockResolvedValue(visibleIcons);
 
     render(<AccountsPage />, { wrapper: createWrapper() });
 
-    await userEvent.click(await screen.findByRole("button", { name: "월급통장 비활성화" }));
+    await userEvent.click(await screen.findByRole("button", { name: "월급통장 삭제" }));
 
-    await waitFor(() =>
-      expect(mockedAccountApi.updateAccount).toHaveBeenCalledWith(1, { use_yn: false })
-    );
+    expect(await screen.findByRole("button", { name: "거래 내역 포함 삭제" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "거래 내역 유지하고 삭제" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "취소" })).toBeInTheDocument();
   });
 
   it("edits active account name inline and opens icon picker popup", async () => {

@@ -27,7 +27,8 @@ describe("AccountsService", () => {
     findDuplicateName: jest.fn(),
     findAvailableIcon: jest.fn(),
     create: jest.fn(),
-    update: jest.fn()
+    update: jest.fn(),
+    archive: jest.fn()
   } as unknown as jest.Mocked<AccountsRepository>;
 
   const service = new AccountsService(accountsRepository);
@@ -170,27 +171,20 @@ describe("AccountsService", () => {
     );
   });
 
-  it("normalizes negative balance limit to 0 when negative balance is disabled", async () => {
-    accountsRepository.findById.mockResolvedValue(
-      makeAccount({
-        allowNegativeBalance: true,
-        negativeBalanceLimit: { toNumber: () => 300000 }
-      }) as any
-    );
-    accountsRepository.update.mockResolvedValue(makeAccount() as any);
+  it("updates account name successfully", async () => {
+    accountsRepository.findById.mockResolvedValue(makeAccount() as any);
+    accountsRepository.findDuplicateName.mockResolvedValue(null);
+    accountsRepository.update.mockResolvedValue(makeAccount({ accountName: "새 통장" }) as any);
 
     await service.updateAccount({
       accountId: BigInt(1),
       userId: BigInt(1),
-      allowNegativeBalance: false
+      accountName: "새 통장"
     });
 
     expect(accountsRepository.update).toHaveBeenCalledWith(
       BigInt(1),
-      expect.objectContaining({
-        allowNegativeBalance: false,
-        negativeBalanceLimit: 0
-      })
+      expect.objectContaining({ accountName: "새 통장" })
     );
   });
 
@@ -220,5 +214,47 @@ describe("AccountsService", () => {
         useYn: false
       })
     ).resolves.toEqual({ account_id: 1, use_yn: false });
+  });
+
+  it("archives account successfully", async () => {
+    accountsRepository.findById.mockResolvedValue(makeAccount() as any);
+    accountsRepository.archive.mockResolvedValue(undefined);
+
+    await expect(
+      service.archiveAccount({ accountId: BigInt(1), userId: BigInt(1), deleteTransactions: false })
+    ).resolves.toBeUndefined();
+
+    expect(accountsRepository.archive).toHaveBeenCalledWith(BigInt(1), BigInt(1), false);
+  });
+
+  it("archives account and deletes transactions when delete_transactions=true", async () => {
+    accountsRepository.findById.mockResolvedValue(makeAccount() as any);
+    accountsRepository.archive.mockResolvedValue(undefined);
+
+    await service.archiveAccount({ accountId: BigInt(1), userId: BigInt(1), deleteTransactions: true });
+
+    expect(accountsRepository.archive).toHaveBeenCalledWith(BigInt(1), BigInt(1), true);
+  });
+
+  it("returns 404 when archiving non-existent account", async () => {
+    accountsRepository.findById.mockResolvedValue(null);
+
+    await expect(
+      service.archiveAccount({ accountId: BigInt(99), userId: BigInt(1), deleteTransactions: false })
+    ).rejects.toMatchObject({
+      code: "ACCOUNT_002",
+      statusCode: HttpStatus.NOT_FOUND
+    } satisfies Partial<AppException>);
+  });
+
+  it("returns 404 when archiving already-archived account", async () => {
+    accountsRepository.findById.mockResolvedValue(makeAccount({ deletedYn: true }) as any);
+
+    await expect(
+      service.archiveAccount({ accountId: BigInt(1), userId: BigInt(1), deleteTransactions: false })
+    ).rejects.toMatchObject({
+      code: "ACCOUNT_002",
+      statusCode: HttpStatus.NOT_FOUND
+    } satisfies Partial<AppException>);
   });
 });

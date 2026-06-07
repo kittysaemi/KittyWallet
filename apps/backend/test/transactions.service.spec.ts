@@ -66,11 +66,15 @@ describe("TransactionsService", () => {
   const transactionsRepository = {
     findAccount: jest.fn(),
     findOwnedAccount: jest.fn(),
+    findOwnedCard: jest.fn(),
     findAccountTransactionsForBalance: jest.fn(),
     findCard: jest.fn(),
     findCategory: jest.fn(),
+    findById: jest.fn(),
     create: jest.fn(),
-    createWithAccountBalanceUpdate: jest.fn()
+    createWithAccountBalanceUpdate: jest.fn(),
+    update: jest.fn(),
+    softDelete: jest.fn()
   } as unknown as jest.Mocked<TransactionsRepository>;
 
   const service = new TransactionsService(transactionsRepository);
@@ -281,6 +285,38 @@ describe("TransactionsService", () => {
     await expect(
       service.createTransaction({ ...baseCommand, amount: 1000 })
     ).resolves.toMatchObject({ transaction_id: 100 });
+  });
+
+  it("rejects update when account is archived (WALLET_001)", async () => {
+    transactionsRepository.findById.mockResolvedValue(
+      makeTransaction({ walletType: "ACCOUNT" }) as any
+    );
+    transactionsRepository.findOwnedAccount.mockResolvedValue(
+      makeAccount({ deletedYn: true }) as any
+    );
+
+    await expect(
+      service.updateTransaction({ transactionId: BigInt(100), userId: BigInt(1), amount: 9000 })
+    ).rejects.toMatchObject({
+      code: "WALLET_001",
+      statusCode: HttpStatus.BAD_REQUEST
+    } satisfies Partial<AppException>);
+  });
+
+  it("rejects update when card is archived (WALLET_001)", async () => {
+    transactionsRepository.findById.mockResolvedValue(
+      makeTransaction({ walletType: "CARD", walletId: BigInt(2) }) as any
+    );
+    transactionsRepository.findOwnedCard.mockResolvedValue(
+      makeCard({ deletedYn: true }) as any
+    );
+
+    await expect(
+      service.updateTransaction({ transactionId: BigInt(100), userId: BigInt(1), amount: 9000 })
+    ).rejects.toMatchObject({
+      code: "WALLET_001",
+      statusCode: HttpStatus.BAD_REQUEST
+    } satisfies Partial<AppException>);
   });
 
   it("rejects update when moving transaction to past date breaks daily balance", async () => {
