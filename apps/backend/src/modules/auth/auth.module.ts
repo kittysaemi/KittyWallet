@@ -9,6 +9,7 @@ import { LoginUseCase } from './application/use-cases/login.use-case';
 import { RefreshTokenUseCase } from './application/use-cases/refresh-token.use-case';
 import { LogoutUseCase } from './application/use-cases/logout.use-case';
 import { RequestResetPasswordUseCase } from './application/use-cases/request-reset-password.use-case';
+import { ResetPasswordUseCase } from './application/use-cases/reset-password.use-case';
 import { MailService } from '../../infra/mail/mail.service';
 import { AuthRepository } from './infrastructure/repositories/auth.repository';
 import { AuthController } from './presentation/auth.controller';
@@ -34,6 +35,7 @@ import { AuthController } from './presentation/auth.controller';
     RefreshTokenUseCase,
     LogoutUseCase,
     RequestResetPasswordUseCase,
+    ResetPasswordUseCase,
     MailService,
   ],
   exports: [JwtModule],
