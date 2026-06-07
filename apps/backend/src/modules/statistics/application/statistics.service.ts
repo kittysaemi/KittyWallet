@@ -3,7 +3,8 @@ import { Prisma, TransactionType, WalletType } from "@prisma/client";
 import { AppException } from "../../../common/exceptions/app.exception";
 import {
   StatisticsRepository,
-  TransactionTypeAmountGroup
+  TransactionTypeAmountGroup,
+  WalletTypeCategoryGroup
 } from "../infrastructure/statistics.repository";
 
 interface BaseStatisticsCommand {
@@ -27,6 +28,10 @@ interface GetPeriodStatisticsCommand extends BaseStatisticsCommand {
   startDate: string;
   endDate: string;
   groupBy?: string;
+}
+
+interface GetVisualizationCommand extends BaseStatisticsCommand {
+  month?: string;
 }
 
 interface AmountSummary {
@@ -150,6 +155,219 @@ export class StatisticsService {
         transaction_count: item.transactionCount
       }))
     };
+  }
+
+  async getSummaryStatistics(command: GetVisualizationCommand) {
+    const month = command.month ?? new Date().toISOString().slice(0, 7);
+    const { startDate, endDate } = this.parseMonth(month);
+    const condition = {
+      userId: command.userId,
+      startDate,
+      endDate,
+      walletType: this.toWalletType(command.walletType),
+      walletId: command.walletId
+    };
+
+    const [summaryGroups, categoryGroups] = await Promise.all([
+      this.statisticsRepository.groupAmountsByTransactionType(condition),
+      this.statisticsRepository.groupAmountsByCategory({
+        ...condition,
+        transactionType: TransactionType.EXPENSE
+      })
+    ]);
+    const summary = this.summarizeTransactionTypeGroups(summaryGroups);
+    const topCategoryGroup = categoryGroups[0] ?? null;
+
+    return {
+      month,
+      income_amount: summary.incomeAmount,
+      expense_amount: summary.expenseAmount,
+      net_amount: summary.incomeAmount - summary.expenseAmount,
+      transaction_count: summary.transactionCount,
+      top_category: topCategoryGroup
+        ? {
+            category_id: Number(topCategoryGroup.categoryId),
+            category_name: topCategoryGroup.category?.categoryName ?? "",
+            icon_id: topCategoryGroup.category ? Number(topCategoryGroup.category.iconId) : null,
+            amount: this.toNumber(topCategoryGroup.amount)
+          }
+        : null
+    };
+  }
+
+  async getCategoryTopStatistics(command: GetVisualizationCommand) {
+    const month = command.month ?? new Date().toISOString().slice(0, 7);
+    const { startDate, endDate } = this.parseMonth(month);
+    const groups = await this.statisticsRepository.groupAmountsByCategory({
+      userId: command.userId,
+      startDate,
+      endDate,
+      walletType: this.toWalletType(command.walletType),
+      walletId: command.walletId,
+      transactionType: TransactionType.EXPENSE
+    });
+
+    const totalExpense = groups.reduce((sum, g) => sum + this.toNumber(g.amount), 0);
+    const top5 = groups.slice(0, 5);
+    const othersAmount = groups.slice(5).reduce((sum, g) => sum + this.toNumber(g.amount), 0);
+
+    const items = top5.map((g, i) => {
+      const amount = this.toNumber(g.amount);
+      return {
+        rank: i + 1,
+        category_id: Number(g.categoryId),
+        category_name: g.category?.categoryName ?? "",
+        icon_id: g.category ? Number(g.category.iconId) : null,
+        amount,
+        ratio: totalExpense > 0 ? Math.round((amount / totalExpense) * 10000) / 100 : 0
+      };
+    });
+
+    if (othersAmount > 0) {
+      items.push({
+        rank: null as unknown as number,
+        category_id: null as unknown as number,
+        category_name: "기타",
+        icon_id: null,
+        amount: othersAmount,
+        ratio: totalExpense > 0 ? Math.round((othersAmount / totalExpense) * 10000) / 100 : 0
+      });
+    }
+
+    return { month, total_expense: totalExpense, items };
+  }
+
+  async getCalendarStatistics(command: GetVisualizationCommand) {
+    const month = command.month ?? new Date().toISOString().slice(0, 7);
+    const { startDate, endDate } = this.parseMonth(month);
+    const dailyGroups = await this.statisticsRepository.groupDailyAmountsByTransactionType({
+      userId: command.userId,
+      startDate,
+      endDate,
+      walletType: this.toWalletType(command.walletType),
+      walletId: command.walletId,
+      transactionType: TransactionType.EXPENSE
+    });
+
+    const dailyMap = new Map<string, number>();
+    for (const group of dailyGroups) {
+      const dateKey = this.formatDate(group.transactionDate);
+      dailyMap.set(dateKey, (dailyMap.get(dateKey) ?? 0) + this.toNumber(group.amount));
+    }
+
+    const dailyItems = Array.from(dailyMap.entries()).map(([date, expense_amount]) => ({
+      date,
+      expense_amount
+    }));
+    const maxDailyExpense = dailyItems.reduce((max, item) => Math.max(max, item.expense_amount), 0);
+
+    return { month, max_daily_expense: maxDailyExpense, daily_items: dailyItems };
+  }
+
+  async getSankeyStatistics(command: GetVisualizationCommand) {
+    const month = command.month ?? new Date().toISOString().slice(0, 7);
+    const { startDate, endDate } = this.parseMonth(month);
+    const condition = {
+      userId: command.userId,
+      startDate,
+      endDate,
+      walletType: this.toWalletType(command.walletType),
+      walletId: command.walletId
+    };
+
+    const [crossGroups, categoryGroups] = await Promise.all([
+      this.statisticsRepository.groupExpensesByWalletTypeAndCategory(condition),
+      this.statisticsRepository.groupAmountsByCategory({
+        ...condition,
+        transactionType: TransactionType.EXPENSE
+      })
+    ]);
+
+    if (crossGroups.length === 0) {
+      return { month, total_expense: 0, nodes: [], links: [] };
+    }
+
+    const totalExpense = categoryGroups.reduce((sum, g) => sum + this.toNumber(g.amount), 0);
+
+    const walletTotals = new Map<string, number>();
+    for (const g of crossGroups) {
+      const key = g.walletType;
+      walletTotals.set(key, (walletTotals.get(key) ?? 0) + this.toNumber(g.amount));
+    }
+
+    const top5Categories = categoryGroups.slice(0, 5);
+    const top5Ids = new Set(top5Categories.map((g) => String(g.categoryId)));
+
+    const catTotals = new Map<string, number>();
+    let othersTotal = 0;
+    for (const g of crossGroups) {
+      const catKey = String(g.categoryId);
+      if (top5Ids.has(catKey)) {
+        catTotals.set(catKey, (catTotals.get(catKey) ?? 0) + this.toNumber(g.amount));
+      } else {
+        othersTotal += this.toNumber(g.amount);
+      }
+    }
+
+    const nodes = [
+      { id: "total", name: "총 지출", value: totalExpense },
+      ...Array.from(walletTotals.entries()).map(([walletType, value]) => ({
+        id: walletType.toLowerCase(),
+        name: walletType === "ACCOUNT" ? "계좌" : "카드",
+        value
+      })),
+      ...top5Categories.map((g) => ({
+        id: `cat_${g.categoryId}`,
+        name: g.category?.categoryName ?? "",
+        value: catTotals.get(String(g.categoryId)) ?? 0
+      })),
+      ...(othersTotal > 0 ? [{ id: "cat_other", name: "기타", value: othersTotal }] : [])
+    ];
+
+    const walletCatLinks = this.buildWalletCatLinks(crossGroups, top5Ids);
+
+    const links = [
+      ...Array.from(walletTotals.entries()).map(([walletType, value]) => ({
+        source: "total",
+        target: walletType.toLowerCase(),
+        value
+      })),
+      ...walletCatLinks
+    ];
+
+    return { month, total_expense: totalExpense, nodes, links };
+  }
+
+  private buildWalletCatLinks(
+    crossGroups: WalletTypeCategoryGroup[],
+    top5Ids: Set<string>
+  ): { source: string; target: string; value: number }[] {
+    const linkMap = new Map<string, number>();
+    const othersMap = new Map<string, number>();
+
+    for (const g of crossGroups) {
+      const walletKey = g.walletType.toLowerCase();
+      const catKey = String(g.categoryId);
+      const amount = this.toNumber(g.amount);
+
+      if (top5Ids.has(catKey)) {
+        const key = `${walletKey}|cat_${catKey}`;
+        linkMap.set(key, (linkMap.get(key) ?? 0) + amount);
+      } else {
+        othersMap.set(walletKey, (othersMap.get(walletKey) ?? 0) + amount);
+      }
+    }
+
+    const links = Array.from(linkMap.entries()).map(([key, value]) => {
+      const [source, target] = key.split("|");
+      return { source, target, value };
+    });
+
+    for (const [walletKey, value] of othersMap.entries()) {
+      links.push({ source: walletKey, target: "cat_other", value });
+    }
+
+    return links;
   }
 
   private summarizeTransactionTypeGroups(groups: TransactionTypeAmountGroup[]): AmountSummary {

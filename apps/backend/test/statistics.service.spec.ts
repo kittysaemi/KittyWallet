@@ -10,7 +10,8 @@ describe("StatisticsService", () => {
   const statisticsRepository = {
     groupAmountsByTransactionType: jest.fn(),
     groupDailyAmountsByTransactionType: jest.fn(),
-    groupAmountsByCategory: jest.fn()
+    groupAmountsByCategory: jest.fn(),
+    groupExpensesByWalletTypeAndCategory: jest.fn()
   } as unknown as jest.Mocked<StatisticsRepository>;
 
   const service = new StatisticsService(statisticsRepository);
@@ -183,6 +184,144 @@ describe("StatisticsService", () => {
       code: "STAT_002",
       statusCode: HttpStatus.BAD_REQUEST
     } satisfies Partial<AppException>);
+  });
+
+  it("returns summary statistics with top category", async () => {
+    statisticsRepository.groupAmountsByTransactionType.mockResolvedValue([
+      { transactionType: "INCOME", amount: decimal(500000), transactionCount: 2 },
+      { transactionType: "EXPENSE", amount: decimal(200000), transactionCount: 5 }
+    ]);
+    statisticsRepository.groupAmountsByCategory.mockResolvedValue([
+      {
+        categoryId: BigInt(1),
+        amount: decimal(150000),
+        transactionCount: 3,
+        category: { categoryName: "식비", iconId: BigInt(3) }
+      },
+      {
+        categoryId: BigInt(2),
+        amount: decimal(50000),
+        transactionCount: 2,
+        category: { categoryName: "교통", iconId: BigInt(5) }
+      }
+    ]);
+
+    const result = await service.getSummaryStatistics({ userId: BigInt(1), month: "2026-06" });
+
+    expect(result).toMatchObject({
+      month: "2026-06",
+      income_amount: 500000,
+      expense_amount: 200000,
+      net_amount: 300000,
+      transaction_count: 7,
+      top_category: { category_id: 1, category_name: "식비", icon_id: 3, amount: 150000 }
+    });
+  });
+
+  it("returns null top_category when no expense transactions", async () => {
+    statisticsRepository.groupAmountsByTransactionType.mockResolvedValue([]);
+    statisticsRepository.groupAmountsByCategory.mockResolvedValue([]);
+
+    const result = await service.getSummaryStatistics({ userId: BigInt(1), month: "2026-01" });
+
+    expect(result.top_category).toBeNull();
+    expect(result.expense_amount).toBe(0);
+  });
+
+  it("returns category-top with 기타 when more than 5 categories", async () => {
+    const makeGroup = (id: number, amount: number) => ({
+      categoryId: BigInt(id),
+      amount: decimal(amount),
+      transactionCount: 1,
+      category: { categoryName: `Cat${id}`, iconId: BigInt(id) }
+    });
+    statisticsRepository.groupAmountsByCategory.mockResolvedValue([
+      makeGroup(1, 60000),
+      makeGroup(2, 50000),
+      makeGroup(3, 40000),
+      makeGroup(4, 30000),
+      makeGroup(5, 20000),
+      makeGroup(6, 10000),
+      makeGroup(7, 5000)
+    ]);
+
+    const result = await service.getCategoryTopStatistics({ userId: BigInt(1), month: "2026-06" });
+
+    expect(result.items).toHaveLength(6);
+    expect(result.items[0].rank).toBe(1);
+    expect(result.items[4].rank).toBe(5);
+    const others = result.items[5];
+    expect(others.category_name).toBe("기타");
+    expect(others.rank).toBeNull();
+    expect(others.amount).toBe(15000);
+    expect(result.total_expense).toBe(215000);
+  });
+
+  it("returns category-top without 기타 when 5 or fewer categories", async () => {
+    statisticsRepository.groupAmountsByCategory.mockResolvedValue([
+      { categoryId: BigInt(1), amount: decimal(30000), transactionCount: 1, category: { categoryName: "Cat1", iconId: BigInt(1) } }
+    ]);
+
+    const result = await service.getCategoryTopStatistics({ userId: BigInt(1), month: "2026-06" });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items.some((i: { category_name: string }) => i.category_name === "기타")).toBe(false);
+  });
+
+  it("returns calendar statistics with max daily expense", async () => {
+    statisticsRepository.groupDailyAmountsByTransactionType.mockResolvedValue([
+      { transactionDate: new Date("2026-06-01T00:00:00.000Z"), transactionType: "EXPENSE", amount: decimal(30000), transactionCount: 1 },
+      { transactionDate: new Date("2026-06-03T00:00:00.000Z"), transactionType: "EXPENSE", amount: decimal(80000), transactionCount: 2 }
+    ]);
+
+    const result = await service.getCalendarStatistics({ userId: BigInt(1), month: "2026-06" });
+
+    expect(result.month).toBe("2026-06");
+    expect(result.max_daily_expense).toBe(80000);
+    expect(result.daily_items).toEqual([
+      { date: "2026-06-01", expense_amount: 30000 },
+      { date: "2026-06-03", expense_amount: 80000 }
+    ]);
+  });
+
+  it("returns empty calendar when no expense data", async () => {
+    statisticsRepository.groupDailyAmountsByTransactionType.mockResolvedValue([]);
+
+    const result = await service.getCalendarStatistics({ userId: BigInt(1), month: "2026-06" });
+
+    expect(result.max_daily_expense).toBe(0);
+    expect(result.daily_items).toEqual([]);
+  });
+
+  it("returns sankey nodes and links for mixed wallet/category data", async () => {
+    statisticsRepository.groupExpensesByWalletTypeAndCategory.mockResolvedValue([
+      { walletType: "ACCOUNT", categoryId: BigInt(1), amount: decimal(100000), category: { categoryName: "식비", iconId: BigInt(3) } },
+      { walletType: "CARD", categoryId: BigInt(1), amount: decimal(50000), category: { categoryName: "식비", iconId: BigInt(3) } },
+      { walletType: "CARD", categoryId: BigInt(2), amount: decimal(30000), category: { categoryName: "교통", iconId: BigInt(5) } }
+    ]);
+    statisticsRepository.groupAmountsByCategory.mockResolvedValue([
+      { categoryId: BigInt(1), amount: decimal(150000), transactionCount: 2, category: { categoryName: "식비", iconId: BigInt(3) } },
+      { categoryId: BigInt(2), amount: decimal(30000), transactionCount: 1, category: { categoryName: "교통", iconId: BigInt(5) } }
+    ]);
+
+    const result = await service.getSankeyStatistics({ userId: BigInt(1), month: "2026-06" });
+
+    expect(result.total_expense).toBe(180000);
+    expect(result.nodes.find((n: { id: string }) => n.id === "total")?.value).toBe(180000);
+    expect(result.nodes.find((n: { id: string }) => n.id === "account")?.value).toBe(100000);
+    expect(result.nodes.find((n: { id: string }) => n.id === "card")?.value).toBe(80000);
+    expect(result.links.some((l: { source: string; target: string }) => l.source === "total" && l.target === "account")).toBe(true);
+    expect(result.links.some((l: { source: string; target: string }) => l.source === "account" && l.target === "cat_1")).toBe(true);
+  });
+
+  it("returns empty sankey when no expense data", async () => {
+    statisticsRepository.groupExpensesByWalletTypeAndCategory.mockResolvedValue([]);
+    statisticsRepository.groupAmountsByCategory.mockResolvedValue([]);
+
+    const result = await service.getSankeyStatistics({ userId: BigInt(1), month: "2026-06" });
+
+    expect(result.nodes).toEqual([]);
+    expect(result.links).toEqual([]);
   });
 
   it("rejects card income category statistics", async () => {

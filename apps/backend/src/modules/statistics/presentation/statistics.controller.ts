@@ -4,6 +4,7 @@ import { StatisticsService } from "../application/statistics.service";
 import { CategoryStatisticsQueryDto } from "./dto/request/category-statistics-query.dto";
 import { MonthlyStatisticsQueryDto } from "./dto/request/monthly-statistics-query.dto";
 import { PeriodStatisticsQueryDto } from "./dto/request/period-statistics-query.dto";
+import { VisualizationQueryDto } from "./dto/request/visualization-query.dto";
 
 const DEFAULT_CATEGORY_LIMIT = 10;
 const MAX_CATEGORY_LIMIT = 50;
@@ -51,6 +52,46 @@ export class StatisticsController {
       walletType: query.wallet_type,
       walletId: query.wallet_id ? BigInt(query.wallet_id) : undefined,
       groupBy: query.group_by
+    });
+  }
+
+  @Get("summary")
+  getSummaryStatistics(@CurrentUser() user: JwtPayload, @Query() query: VisualizationQueryDto) {
+    return this.statisticsService.getSummaryStatistics({
+      userId: BigInt(user.sub),
+      month: query.month,
+      walletType: query.wallet_type,
+      walletId: query.wallet_id ? BigInt(query.wallet_id) : undefined
+    });
+  }
+
+  @Get("category-top")
+  getCategoryTopStatistics(@CurrentUser() user: JwtPayload, @Query() query: VisualizationQueryDto) {
+    return this.statisticsService.getCategoryTopStatistics({
+      userId: BigInt(user.sub),
+      month: query.month,
+      walletType: query.wallet_type,
+      walletId: query.wallet_id ? BigInt(query.wallet_id) : undefined
+    });
+  }
+
+  @Get("calendar")
+  getCalendarStatistics(@CurrentUser() user: JwtPayload, @Query() query: VisualizationQueryDto) {
+    return this.statisticsService.getCalendarStatistics({
+      userId: BigInt(user.sub),
+      month: query.month,
+      walletType: query.wallet_type,
+      walletId: query.wallet_id ? BigInt(query.wallet_id) : undefined
+    });
+  }
+
+  @Get("sankey")
+  getSankeyStatistics(@CurrentUser() user: JwtPayload, @Query() query: VisualizationQueryDto) {
+    return this.statisticsService.getSankeyStatistics({
+      userId: BigInt(user.sub),
+      month: query.month,
+      walletType: query.wallet_type,
+      walletId: query.wallet_id ? BigInt(query.wallet_id) : undefined
     });
   }
 }

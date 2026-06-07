@@ -80,12 +80,6 @@
     "expense_amount": 820000,
     "net_amount": 1680000,
     "transaction_count": 32,
-    "top_category": {
-      "category_id": 1,
-      "category_name": "식비",
-      "icon_id": 3,
-      "amount": 320000
-    },
     "daily_items": [
       {
         "date": "2026-05-01",
@@ -107,11 +101,6 @@
 | expense_amount | number | 지출 합계 |
 | net_amount | number | 수입 합계 - 지출 합계 |
 | transaction_count | number | 삭제되지 않은 거래 건수 |
-| top_category | object/null | 해당 월 최고 지출 카테고리. 지출 거래가 없으면 null |
-| top_category.category_id | number | 카테고리 ID |
-| top_category.category_name | string | 카테고리명 |
-| top_category.icon_id | number/null | 아이콘 ID |
-| top_category.amount | number | 해당 카테고리 지출 합계 |
 | daily_items | array | 일자별 합계 목록. 데이터가 없으면 빈 배열 |
 
 ---
@@ -282,6 +271,225 @@
 - 차트 데이터 캐싱 가능
 - 최근 통계 우선 로딩 권장
 - 캐시 데이터에는 조회 조건을 키로 포함한다.
+
+# 월간 요약 통계 API
+
+## Endpoint
+
+`GET /api/v1/statistics/summary`
+
+---
+
+## Query Parameters
+
+| 이름 | 타입 | 필수 | 기본값 | 설명 |
+|---|---|---|---|---|
+| month | string | N | 현재 월 | 조회 월. 사용자 로컬 캘린더 기준 `YYYY-MM` |
+| wallet_type | string | N | 전체 | `ACCOUNT`, `CARD` |
+| wallet_id | number | N | 전체 | 특정 계좌 또는 카드 ID. `wallet_type`과 함께 사용 |
+
+---
+
+## Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "month": "2026-05",
+    "income_amount": 2500000,
+    "expense_amount": 820000,
+    "net_amount": 1680000,
+    "transaction_count": 32,
+    "top_category": {
+      "category_id": 1,
+      "category_name": "식비",
+      "icon_id": 3,
+      "amount": 320000
+    }
+  },
+  "error": null
+}
+```
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| month | string | 조회 월 |
+| income_amount | number | 수입 합계 |
+| expense_amount | number | 지출 합계 |
+| net_amount | number | 수입 합계 - 지출 합계 |
+| transaction_count | number | 삭제되지 않은 거래 건수 |
+| top_category | object/null | 해당 월 최고 지출 카테고리. 지출 거래가 없으면 null |
+| top_category.category_id | number | 카테고리 ID |
+| top_category.category_name | string | 카테고리명 |
+| top_category.icon_id | number/null | 아이콘 ID |
+| top_category.amount | number | 해당 카테고리 지출 합계 |
+
+---
+
+## 오류 처리
+
+| HTTP Status | 코드 | 설명 |
+|---|---|---|
+| 400 | STAT_002 | 잘못된 월 또는 결제수단 조회 조건 |
+| 401 | AUTH_002 | 인증 토큰 없음 또는 유효하지 않음 |
+| 401 | AUTH_004 | 토큰 만료 |
+| 500 | STAT_001 | 통계 조회 실패 |
+
+---
+
+## 프론트 처리 주의사항
+
+- `top_category`가 null이면 최고 지출 카테고리 카드를 empty 상태로 표시한다.
+- 카드 월별 통계는 `expense_amount` 중심으로 표시하고 수입 선택 UI와 연결하지 않는다.
+
+# 카테고리 Top 5 통계 API
+
+## Endpoint
+
+`GET /api/v1/statistics/category-top`
+
+---
+
+## Query Parameters
+
+| 이름 | 타입 | 필수 | 기본값 | 설명 |
+|---|---|---|---|---|
+| month | string | N | 현재 월 | 조회 월. 사용자 로컬 캘린더 기준 `YYYY-MM` |
+| wallet_type | string | N | 전체 | `ACCOUNT`, `CARD` |
+| wallet_id | number | N | 전체 | 특정 계좌 또는 카드 ID. `wallet_type`과 함께 사용 |
+
+---
+
+## Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "month": "2026-05",
+    "total_expense": 820000,
+    "items": [
+      {
+        "rank": 1,
+        "category_id": 1,
+        "category_name": "식비",
+        "icon_id": 3,
+        "amount": 320000,
+        "ratio": 39.02
+      },
+      {
+        "rank": null,
+        "category_id": null,
+        "category_name": "기타",
+        "icon_id": null,
+        "amount": 150000,
+        "ratio": 18.29
+      }
+    ]
+  },
+  "error": null
+}
+```
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| month | string | 조회 월 |
+| total_expense | number | 해당 월 전체 지출 합계 |
+| items | array | Top 5 카테고리 + 기타 목록. 데이터가 없으면 빈 배열 |
+| items[].rank | number/null | 순위. `기타` 항목은 null |
+| items[].category_id | number/null | 카테고리 ID. `기타` 항목은 null |
+| items[].category_name | string | 카테고리명. 6위 이후는 `기타` |
+| items[].icon_id | number/null | 아이콘 ID. `기타` 항목은 null |
+| items[].amount | number | 지출 합계 |
+| items[].ratio | number | `total_expense` 대비 비율. 소수점 둘째 자리까지 반올림 |
+
+### 항목 구성 규칙
+
+- 지출 카테고리가 5개 이하이면 `기타` 항목을 포함하지 않는다.
+- 지출 카테고리가 6개 이상이면 6위 이후를 `기타`로 합산하여 목록 마지막에 추가한다.
+- 지출 거래가 없으면 `items`는 빈 배열이다.
+
+---
+
+## 오류 처리
+
+| HTTP Status | 코드 | 설명 |
+|---|---|---|
+| 400 | STAT_002 | 잘못된 월 또는 결제수단 조회 조건 |
+| 401 | AUTH_002 | 인증 토큰 없음 또는 유효하지 않음 |
+| 401 | AUTH_004 | 토큰 만료 |
+| 500 | STAT_001 | 통계 조회 실패 |
+
+---
+
+## 프론트 처리 주의사항
+
+- `items`가 빈 배열이면 empty UI를 표시한다.
+- `기타` 항목은 아이콘 없이 텍스트만 표시한다.
+
+# 달력 히트맵 통계 API
+
+## Endpoint
+
+`GET /api/v1/statistics/calendar`
+
+---
+
+## Query Parameters
+
+| 이름 | 타입 | 필수 | 기본값 | 설명 |
+|---|---|---|---|---|
+| month | string | N | 현재 월 | 조회 월. 사용자 로컬 캘린더 기준 `YYYY-MM` |
+| wallet_type | string | N | 전체 | `ACCOUNT`, `CARD` |
+| wallet_id | number | N | 전체 | 특정 계좌 또는 카드 ID. `wallet_type`과 함께 사용 |
+
+---
+
+## Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "month": "2026-05",
+    "max_daily_expense": 150000,
+    "daily_items": [
+      {
+        "date": "2026-05-01",
+        "expense_amount": 45000
+      }
+    ]
+  },
+  "error": null
+}
+```
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| month | string | 조회 월 |
+| max_daily_expense | number | 해당 월 일별 지출 최댓값. 색상 강도 계산 기준. 지출 없으면 0 |
+| daily_items | array | 지출이 있는 날짜 목록. 지출 없는 날짜는 포함하지 않음 |
+| daily_items[].date | string | 날짜 `YYYY-MM-DD` |
+| daily_items[].expense_amount | number | 해당 날짜 지출 합계 |
+
+---
+
+## 오류 처리
+
+| HTTP Status | 코드 | 설명 |
+|---|---|---|
+| 400 | STAT_002 | 잘못된 월 또는 결제수단 조회 조건 |
+| 401 | AUTH_002 | 인증 토큰 없음 또는 유효하지 않음 |
+| 401 | AUTH_004 | 토큰 만료 |
+| 500 | STAT_001 | 통계 조회 실패 |
+
+---
+
+## 프론트 처리 주의사항
+
+- `max_daily_expense`를 기준으로 각 날짜 셀의 색상 강도를 계산한다.
+- `daily_items`가 빈 배열이면 모든 날짜 셀을 동일한 기본 색상으로 표시한다.
 
 # Sankey 통계 API
 
