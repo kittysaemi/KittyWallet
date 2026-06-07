@@ -1,5 +1,13 @@
 import { apiClient } from '../../../shared/api/apiClient';
-import type { LoginRequest, SignupRequest, AuthData, SignupData, ApiResponse } from '../model/auth.types';
+import type {
+  LoginRequest,
+  RequestResetPasswordRequest,
+  ResetPasswordRequest,
+  SignupRequest,
+  AuthData,
+  SignupData,
+  ApiResponse,
+} from '../model/auth.types';
 
 export const authApi = {
   login: async (data: LoginRequest): Promise<ApiResponse<AuthData>> => {
@@ -9,6 +17,16 @@ export const authApi = {
 
   signup: async (data: SignupRequest): Promise<ApiResponse<SignupData>> => {
     const res = await apiClient.post<ApiResponse<SignupData>>('/auth/signup', data);
+    return res.data;
+  },
+
+  requestResetPassword: async (data: RequestResetPasswordRequest): Promise<ApiResponse<null>> => {
+    const res = await apiClient.post<ApiResponse<null>>('/auth/request-reset-password', data);
+    return res.data;
+  },
+
+  resetPassword: async (data: ResetPasswordRequest): Promise<ApiResponse<null>> => {
+    const res = await apiClient.post<ApiResponse<null>>('/auth/reset-password', data);
     return res.data;
   },
 
