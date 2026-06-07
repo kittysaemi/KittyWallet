@@ -15,9 +15,11 @@ import { LoginUseCase } from '../application/use-cases/login.use-case';
 import { LogoutUseCase } from '../application/use-cases/logout.use-case';
 import { RefreshTokenUseCase } from '../application/use-cases/refresh-token.use-case';
 import { RequestResetPasswordUseCase } from '../application/use-cases/request-reset-password.use-case';
+import { ResetPasswordUseCase } from '../application/use-cases/reset-password.use-case';
 import { SignupUseCase } from '../application/use-cases/signup.use-case';
 import { LoginRequestDto } from './dto/request/login-request.dto';
 import { RequestResetPasswordRequestDto } from './dto/request/request-reset-password-request.dto';
+import { ResetPasswordRequestDto } from './dto/request/reset-password-request.dto';
 import { SignupRequestDto } from './dto/request/signup-request.dto';
 
 const REFRESH_TOKEN_COOKIE = 'refresh_token';
@@ -31,6 +33,7 @@ export class AuthController {
     private readonly refreshTokenUseCase: RefreshTokenUseCase,
     private readonly logoutUseCase: LogoutUseCase,
     private readonly requestResetPasswordUseCase: RequestResetPasswordUseCase,
+    private readonly resetPasswordUseCase: ResetPasswordUseCase,
   ) {}
 
   @Public()
@@ -124,5 +127,17 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async requestResetPassword(@Body() dto: RequestResetPasswordRequestDto) {
     return this.requestResetPasswordUseCase.execute({ email: dto.email });
+  }
+
+  @Public()
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(@Body() dto: ResetPasswordRequestDto) {
+    return this.resetPasswordUseCase.execute({
+      email: dto.email,
+      resetToken: dto.reset_token,
+      newPassword: dto.new_password,
+      newPasswordConfirm: dto.new_password_confirm,
+    });
   }
 }

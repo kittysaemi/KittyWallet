@@ -32,6 +32,27 @@ export class AuthRepository {
     });
   }
 
+  async resetPasswordAndRevokeRefreshTokens(
+    userId: bigint,
+    password: string,
+  ): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { userId },
+        data: {
+          password,
+          resetToken: null,
+          resetTokenExpiresAt: null,
+        },
+      });
+
+      await tx.refreshToken.updateMany({
+        where: { userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    });
+  }
+
   createRefreshToken(data: Prisma.RefreshTokenCreateInput): Promise<RefreshToken> {
     return this.prisma.refreshToken.create({ data });
   }
