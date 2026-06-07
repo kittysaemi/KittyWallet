@@ -96,6 +96,15 @@ export const LoginForm: React.FC = () => {
         로그인
       </Button>
       <p className="text-center text-sm text-[var(--color-text-secondary)]">
+        비밀번호를 잊으셨나요?{" "}
+        <Link
+          to="/reset-password"
+          className="font-semibold text-[var(--color-text-primary)] underline decoration-[var(--color-primary)] underline-offset-4"
+        >
+          재설정
+        </Link>
+      </p>
+      <p className="text-center text-sm text-[var(--color-text-secondary)]">
         계정이 없으신가요?{" "}
         <Link
           to="/signup"

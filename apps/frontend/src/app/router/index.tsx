@@ -16,6 +16,7 @@ import CategoriesPage from "../../pages/categories";
 import IconsPage from "../../pages/icons";
 import LoginPage from "../../pages/login";
 import SignupPage from "../../pages/signup";
+import ResetPasswordPage from "../../pages/reset-password";
 import SettingsPage from "../../pages/settings";
 import AppSettingsPage from "../../pages/settings/app";
 
@@ -74,6 +75,14 @@ export const AppRouter: React.FC = () => (
       element={
         <PublicOnlyRoute>
           <SignupPage />
+        </PublicOnlyRoute>
+      }
+    />
+    <Route
+      path="/reset-password"
+      element={
+        <PublicOnlyRoute>
+          <ResetPasswordPage />
         </PublicOnlyRoute>
       }
     />

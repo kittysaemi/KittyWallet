@@ -10,6 +10,17 @@ export interface SignupRequest {
   nickname: string;
 }
 
+export interface RequestResetPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  email: string;
+  reset_token: string;
+  new_password: string;
+  new_password_confirm: string;
+}
+
 export interface AuthUser {
   userId: number;
   nickname: string;
