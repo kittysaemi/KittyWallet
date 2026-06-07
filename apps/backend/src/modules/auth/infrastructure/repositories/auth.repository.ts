@@ -18,6 +18,20 @@ export class AuthRepository {
     return this.prisma.user.create({ data });
   }
 
+  updatePasswordResetToken(
+    userId: bigint,
+    resetToken: string,
+    resetTokenExpiresAt: Date,
+  ): Promise<User> {
+    return this.prisma.user.update({
+      where: { userId },
+      data: {
+        resetToken,
+        resetTokenExpiresAt,
+      },
+    });
+  }
+
   createRefreshToken(data: Prisma.RefreshTokenCreateInput): Promise<RefreshToken> {
     return this.prisma.refreshToken.create({ data });
   }
