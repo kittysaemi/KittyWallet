@@ -133,6 +133,20 @@ const CATEGORY_TOP_DATA = {
   error: null
 };
 
+const CATEGORY_DATA = {
+  success: true,
+  data: {
+    start_date: "2026-06-01",
+    end_date: "2026-06-07",
+    total_amount: 60000,
+    items: [
+      { category_id: 1, category_name: "식비", icon_id: null, amount: 45000, transaction_count: 2, ratio: 75.0 },
+      { category_id: 2, category_name: "교통", icon_id: null, amount: 15000, transaction_count: 1, ratio: 25.0 }
+    ]
+  },
+  error: null
+};
+
 const CALENDAR_DATA = {
   success: true,
   data: {
@@ -177,6 +191,7 @@ describe("StatisticsPage", () => {
     mockedStatisticsApi.getPeriodStatistics.mockResolvedValue(PERIOD_DATA);
     mockedStatisticsApi.getSummaryStatistics.mockResolvedValue(SUMMARY_DATA);
     mockedStatisticsApi.getCategoryTopStatistics.mockResolvedValue(CATEGORY_TOP_DATA);
+    mockedStatisticsApi.getCategoryStatistics.mockResolvedValue(CATEGORY_DATA);
     mockedStatisticsApi.getCalendarStatistics.mockResolvedValue(CALENDAR_DATA);
     mockedStatisticsApi.getSankeyStatistics.mockResolvedValue(SANKEY_DATA);
     mockedIconApi.getIcons.mockResolvedValue(ICON_EMPTY);
@@ -281,5 +296,30 @@ describe("StatisticsPage", () => {
     await userEvent.click(await screen.findByRole("button", { name: "지출 흐름" }));
 
     expect(await screen.findByText("통계 데이터가 없습니다")).toBeInTheDocument();
+  });
+
+  it("shows error card when spending statistics API fails", async () => {
+    // navigator.onLine=false → component uses retry:false, so query fails immediately
+    const onLineSpy = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+    mockedStatisticsApi.getMonthlyStatistics.mockRejectedValue(new Error("Network Error"));
+
+    render(<StatisticsPage />, { wrapper: createWrapper() });
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(screen.getByText("통계 데이터를 불러오지 못했습니다.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "다시 시도" })).toBeInTheDocument();
+
+    onLineSpy.mockRestore();
+  });
+
+  it("Top5 tab uses category statistics when switched to weekly mode", async () => {
+    render(<StatisticsPage />, { wrapper: createWrapper() });
+
+    await userEvent.click(await screen.findByRole("button", { name: "Top 5" }));
+    await userEvent.click(await screen.findByRole("button", { name: "주별" }));
+
+    await waitFor(() => expect(mockedStatisticsApi.getCategoryStatistics).toHaveBeenCalled());
+    expect(await screen.findByLabelText("Top 5 카테고리")).toBeInTheDocument();
+    expect(screen.getAllByText("식비").length).toBeGreaterThanOrEqual(1);
   });
 });
