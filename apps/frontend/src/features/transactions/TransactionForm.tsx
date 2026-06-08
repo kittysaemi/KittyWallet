@@ -226,14 +226,14 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const [apiError, setApiError] = React.useState<string>("");
 
   const accountsQuery = useQuery({
-    queryKey: ["accounts", "active"],
-    queryFn: () => accountApi.getAccounts({ use_yn: true, include_balance: true }),
+    queryKey: ["accounts"],
+    queryFn: () => accountApi.getAccounts({ include_balance: true }),
     staleTime: 0,
     refetchOnMount: "always"
   });
   const cardsQuery = useQuery({
-    queryKey: ["cards", "active"],
-    queryFn: () => cardApi.getCards({ use_yn: true }),
+    queryKey: ["cards"],
+    queryFn: () => cardApi.getCards(),
     staleTime: 60 * 1000
   });
   const categoriesQuery = useQuery({

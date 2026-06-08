@@ -220,26 +220,37 @@ export class TransactionsService {
       }
     }
 
-    const accountIdsToValidate = Array.from(
-      new Set(balanceChanges.map((change) => change.accountId.toString()))
-    ).map((accountId) => BigInt(accountId));
+    const needsBalanceValidation =
+      effTransactionType === "EXPENSE" ||
+      (effTransactionType === "INCOME" &&
+        oldTransactionType === "INCOME" &&
+        effWalletType === "ACCOUNT" &&
+        (effAmount < oldAmount ||
+          effDate > existing.transactionDate ||
+          effWalletId !== oldWalletId));
 
-    await Promise.all(
-      accountIdsToValidate.map((accountId) =>
-        this.assertAccountDailyBalanceAllowed(command.userId, accountId, {
-          excludeTransactionId: existing.transactionId,
-          candidate:
-            effWalletType === "ACCOUNT" && accountId === effWalletId
-              ? {
-                  transactionId: existing.transactionId,
-                  transactionType: effTransactionType,
-                  amount: effAmount,
-                  transactionDate: effDate
-                }
-              : undefined
-        })
-      )
-    );
+    if (needsBalanceValidation) {
+      const accountIdsToValidate = Array.from(
+        new Set(balanceChanges.map((change) => change.accountId.toString()))
+      ).map((accountId) => BigInt(accountId));
+
+      await Promise.all(
+        accountIdsToValidate.map((accountId) =>
+          this.assertAccountDailyBalanceAllowed(command.userId, accountId, {
+            excludeTransactionId: existing.transactionId,
+            candidate:
+              effWalletType === "ACCOUNT" && accountId === effWalletId
+                ? {
+                    transactionId: existing.transactionId,
+                    transactionType: effTransactionType,
+                    amount: effAmount,
+                    transactionDate: effDate
+                  }
+                : undefined
+          })
+        )
+      );
+    }
 
     const updateData: Prisma.TransactionUpdateInput = {
       ...(effWalletType !== existing.walletType ? { walletType: effWalletType } : {}),
@@ -276,29 +287,6 @@ export class TransactionsService {
     const existing = await this.transactionsRepository.findById(transactionId, userId);
     if (!existing) {
       throw new AppException("TX_005", "거래 내역을 찾을 수 없습니다.", HttpStatus.NOT_FOUND);
-    }
-
-    if (existing.walletType === "ACCOUNT") {
-      const account = await this.transactionsRepository.findOwnedAccount(
-        existing.walletId,
-        userId
-      );
-      if (account?.deletedYn) {
-        throw new AppException(
-          "WALLET_001",
-          "삭제된 지갑의 거래는 삭제할 수 없습니다.",
-          HttpStatus.BAD_REQUEST
-        );
-      }
-    } else {
-      const card = await this.transactionsRepository.findOwnedCard(existing.walletId, userId);
-      if (card?.deletedYn) {
-        throw new AppException(
-          "WALLET_001",
-          "삭제된 지갑의 거래는 삭제할 수 없습니다.",
-          HttpStatus.BAD_REQUEST
-        );
-      }
     }
 
     let balanceChange: { accountId: bigint; delta: number } | undefined;
@@ -470,13 +458,15 @@ export class TransactionsService {
         throw new AppException("TX_003", "존재하지 않는 계좌입니다.", HttpStatus.NOT_FOUND);
       }
 
-      await this.assertAccountDailyBalanceAllowed(command.userId, account.accountId, {
-        candidate: {
-          transactionType: command.transactionType,
-          amount: command.amount,
-          transactionDate
-        }
-      });
+      if (command.transactionType === "EXPENSE") {
+        await this.assertAccountDailyBalanceAllowed(command.userId, account.accountId, {
+          candidate: {
+            transactionType: command.transactionType,
+            amount: command.amount,
+            transactionDate
+          }
+        });
+      }
 
       const balanceDelta = command.transactionType === "INCOME" ? command.amount : -command.amount;
 
