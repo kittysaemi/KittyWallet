@@ -108,15 +108,15 @@ const TransactionDetailPage: React.FC = () => {
   });
 
   const accountsQuery = useQuery({
-    queryKey: ["accounts", "active"],
-    queryFn: () => accountApi.getAccounts({ use_yn: true }),
+    queryKey: ["accounts"],
+    queryFn: () => accountApi.getAccounts(),
     staleTime: 5 * 60 * 1000,
     enabled: txQuery.data?.data?.wallet_type === "ACCOUNT"
   });
 
   const cardsQuery = useQuery({
-    queryKey: ["cards", "active"],
-    queryFn: () => cardApi.getCards({ use_yn: true }),
+    queryKey: ["cards"],
+    queryFn: () => cardApi.getCards(),
     staleTime: 5 * 60 * 1000,
     enabled: txQuery.data?.data?.wallet_type === "CARD"
   });

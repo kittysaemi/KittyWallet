@@ -71,7 +71,7 @@ const ArchiveDialog: React.FC<{
           {isDeleting ? "삭제 중..." : "거래 내역 유지하고 삭제"}
         </button>
         <p className="text-center text-xs text-[var(--color-text-caption)]">
-          유지된 거래 내역은 통계에 반영되나 수정·삭제가 불가합니다.
+          유지된 거래 내역은 통계에 반영되나 수정이 불가합니다.
         </p>
         <button
           type="button"
@@ -161,7 +161,8 @@ const AccountsPage: React.FC = () => {
       setArchiveTarget(null);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["accounts"] }),
-        queryClient.invalidateQueries({ queryKey: ["transactions"] })
+        queryClient.invalidateQueries({ queryKey: ["transactions"] }),
+        queryClient.invalidateQueries({ queryKey: ["dashboard"] })
       ]);
     }
   });

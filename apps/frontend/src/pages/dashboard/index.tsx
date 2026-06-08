@@ -114,7 +114,7 @@ const DashboardPage: React.FC = () => {
   const query = useQuery({
     queryKey: ["dashboard"],
     queryFn: () => dashboardApi.getDashboard({ recent_limit: 5, summary_period: "MONTH" }),
-    staleTime: 60 * 1000,
+    staleTime: 0,
     retry: isOffline ? false : 2
   });
 

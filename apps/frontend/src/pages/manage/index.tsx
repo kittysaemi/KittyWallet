@@ -259,7 +259,6 @@ const AccountsTab: React.FC = () => {
       setPickerTarget(null);
       return;
     }
-    if (!pickerTarget.item.use_yn) return;
     updateMutation.mutate({ id: pickerTarget.item.account_id, data: { icon_id: icon.icon_id } });
     setPickerTarget(null);
   };
