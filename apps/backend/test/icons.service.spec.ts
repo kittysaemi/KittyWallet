@@ -89,6 +89,21 @@ describe("IconsService", () => {
     } satisfies Partial<AppException>);
   });
 
+  it("rejects icon codes that cannot be resolved by provider", async () => {
+    iconsRepository.findDictionaryByIconCode.mockResolvedValue(null);
+    iconProviderAdapter.resolveByIconCode.mockReturnValue(null);
+
+    await expect(
+      service.createIcon({ userId: BigInt(1), iconCode: "icon-not-registered" })
+    ).rejects.toMatchObject({
+      code: "ICON_003",
+      statusCode: HttpStatus.BAD_REQUEST
+    } satisfies Partial<AppException>);
+
+    expect(iconsRepository.upsertDictionary).not.toHaveBeenCalled();
+    expect(iconsRepository.createUserIcon).not.toHaveBeenCalled();
+  });
+
   it("returns provider search options", async () => {
     iconsRepository.searchDictionaries.mockResolvedValue([]);
     iconProviderAdapter.search.mockReturnValue([
