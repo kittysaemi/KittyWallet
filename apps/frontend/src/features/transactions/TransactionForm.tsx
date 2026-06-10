@@ -456,6 +456,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           setAmountStr(raw ? parseInt(raw, 10).toLocaleString("ko-KR") : "");
           setErrors((err) => ({ ...err, amount: "" }));
         }}
+        onKeyDown={(e) => {
+          if (e.key === "." || e.key === ",") e.preventDefault();
+        }}
         error={errors.amount}
         disabled={isSaving}
         autoComplete="off"
