@@ -9,6 +9,7 @@ import {
   WalletType
 } from "@prisma/client";
 import { PrismaService } from "../../../database/prisma.service";
+import { BalanceViolationError } from "../domain/errors";
 
 export type TransactionWithCategory = Transaction & { category: Category };
 
@@ -209,10 +210,22 @@ export class TransactionsRepository {
           syncedAt: input.syncedAt ?? null
         }
       });
-      await tx.account.update({
-        where: { accountId },
-        data: { currentBalance: { increment: balanceDelta } }
-      });
+      if (balanceDelta < 0) {
+        const updated = await tx.account.update({
+          where: { accountId },
+          data: { currentBalance: { increment: balanceDelta } },
+          select: { currentBalance: true, allowNegativeBalance: true, negativeBalanceLimit: true }
+        });
+        const minimum = updated.allowNegativeBalance ? -updated.negativeBalanceLimit.toNumber() : 0;
+        if (updated.currentBalance.toNumber() < minimum) {
+          throw new BalanceViolationError();
+        }
+      } else {
+        await tx.account.update({
+          where: { accountId },
+          data: { currentBalance: { increment: balanceDelta } }
+        });
+      }
       return transaction;
     });
   }
@@ -228,10 +241,24 @@ export class TransactionsRepository {
         data: updateData
       });
       for (const change of balanceChanges) {
-        await tx.account.update({
-          where: { accountId: change.accountId },
-          data: { currentBalance: { increment: change.delta } }
-        });
+        if (change.delta < 0) {
+          const updated = await tx.account.update({
+            where: { accountId: change.accountId },
+            data: { currentBalance: { increment: change.delta } },
+            select: { currentBalance: true, allowNegativeBalance: true, negativeBalanceLimit: true }
+          });
+          const minimum = updated.allowNegativeBalance
+            ? -updated.negativeBalanceLimit.toNumber()
+            : 0;
+          if (updated.currentBalance.toNumber() < minimum) {
+            throw new BalanceViolationError();
+          }
+        } else {
+          await tx.account.update({
+            where: { accountId: change.accountId },
+            data: { currentBalance: { increment: change.delta } }
+          });
+        }
       }
       return transaction;
     });
@@ -243,10 +270,24 @@ export class TransactionsRepository {
   ): Promise<Transaction> {
     return this.prisma.$transaction(async (tx) => {
       if (balanceChange) {
-        await tx.account.update({
-          where: { accountId: balanceChange.accountId },
-          data: { currentBalance: { increment: balanceChange.delta } }
-        });
+        if (balanceChange.delta < 0) {
+          const updated = await tx.account.update({
+            where: { accountId: balanceChange.accountId },
+            data: { currentBalance: { increment: balanceChange.delta } },
+            select: { currentBalance: true, allowNegativeBalance: true, negativeBalanceLimit: true }
+          });
+          const minimum = updated.allowNegativeBalance
+            ? -updated.negativeBalanceLimit.toNumber()
+            : 0;
+          if (updated.currentBalance.toNumber() < minimum) {
+            throw new BalanceViolationError();
+          }
+        } else {
+          await tx.account.update({
+            where: { accountId: balanceChange.accountId },
+            data: { currentBalance: { increment: balanceChange.delta } }
+          });
+        }
       }
       return tx.transaction.update({
         where: { transactionId },

@@ -1,6 +1,7 @@
 import { HttpStatus, Injectable } from "@nestjs/common";
 import { Prisma, TransactionType, WalletType } from "@prisma/client";
 import { AppException } from "../../../common/exceptions/app.exception";
+import { BalanceViolationError } from "../domain/errors";
 import {
   AccountBalanceTransaction,
   FindTransactionsCondition,
@@ -266,11 +267,19 @@ export class TransactionsService {
       ...(command.transactionDate !== undefined ? { transactionDate: effDate } : {})
     };
 
-    const updated = await this.transactionsRepository.updateWithBalances(
-      command.transactionId,
-      updateData,
-      balanceChanges
-    );
+    let updated;
+    try {
+      updated = await this.transactionsRepository.updateWithBalances(
+        command.transactionId,
+        updateData,
+        balanceChanges
+      );
+    } catch (err) {
+      if (err instanceof BalanceViolationError) {
+        throw new AppException("ACCOUNT_004", err.message, HttpStatus.BAD_REQUEST);
+      }
+      throw err;
+    }
 
     return {
       transaction_id: Number(updated.transactionId),
@@ -304,10 +313,15 @@ export class TransactionsService {
       }
     }
 
-    const deleted = await this.transactionsRepository.softDeleteWithBalance(
-      transactionId,
-      balanceChange
-    );
+    let deleted;
+    try {
+      deleted = await this.transactionsRepository.softDeleteWithBalance(transactionId, balanceChange);
+    } catch (err) {
+      if (err instanceof BalanceViolationError) {
+        throw new AppException("ACCOUNT_004", err.message, HttpStatus.BAD_REQUEST);
+      }
+      throw err;
+    }
 
     return {
       transaction_id: Number(deleted.transactionId),
@@ -470,21 +484,29 @@ export class TransactionsService {
 
       const balanceDelta = command.transactionType === "INCOME" ? command.amount : -command.amount;
 
-      const transaction = await this.transactionsRepository.createWithAccountBalanceUpdate(
-        {
-          userId: command.userId,
-          categoryId: command.categoryId,
-          walletId: command.walletId,
-          transactionType: command.transactionType,
-          walletType: command.walletType,
-          amount: command.amount,
-          transactionDate,
-          memo: command.memo,
-          syncedAt: now
-        },
-        account.accountId,
-        balanceDelta
-      );
+      let transaction;
+      try {
+        transaction = await this.transactionsRepository.createWithAccountBalanceUpdate(
+          {
+            userId: command.userId,
+            categoryId: command.categoryId,
+            walletId: command.walletId,
+            transactionType: command.transactionType,
+            walletType: command.walletType,
+            amount: command.amount,
+            transactionDate,
+            memo: command.memo,
+            syncedAt: now
+          },
+          account.accountId,
+          balanceDelta
+        );
+      } catch (err) {
+        if (err instanceof BalanceViolationError) {
+          throw new AppException("ACCOUNT_004", err.message, HttpStatus.BAD_REQUEST);
+        }
+        throw err;
+      }
 
       return {
         transaction_id: Number(transaction.transactionId),

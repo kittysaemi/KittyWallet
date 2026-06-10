@@ -391,6 +391,28 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const isSaving = mutation.isPending || readOnly;
   const isLoading = accountsQuery.isLoading || cardsQuery.isLoading || iconsQuery.isLoading;
 
+  const insufficientBalance = React.useMemo(() => {
+    if (txType !== "EXPENSE" || walletType !== "ACCOUNT") return false;
+    const acct = accountsQuery.data?.data?.items.find((a) => a.account_id === walletId);
+    if (!acct || acct.current_balance === null) return false;
+    const amount = amountStr ? parseInt(amountStr.replace(/,/g, ""), 10) : 0;
+    if (amount <= 0) return false;
+    const minAllowed = acct.allow_negative_balance ? -acct.negative_balance_limit : 0;
+    const isEditingSameAccount =
+      isEditMode &&
+      initialData?.wallet_type === "ACCOUNT" &&
+      initialData.wallet_id === acct.account_id;
+    const initialDelta =
+      isEditingSameAccount && initialData
+        ? initialData.transaction_type === "INCOME"
+          ? initialData.amount
+          : -initialData.amount
+        : 0;
+    const baseBalance = acct.current_balance - initialDelta;
+    const projectedBalance = baseBalance - amount;
+    return projectedBalance < minAllowed;
+  }, [txType, walletType, walletId, amountStr, accountsQuery.data, isEditMode, initialData]);
+
   const toggleBase =
     "flex-1 min-h-11 rounded-xl text-sm font-semibold transition border focus:outline-none";
   const activeToggle =
@@ -564,7 +586,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       )}
 
       {!readOnly && (
-        <Button type="submit" disabled={isSaving} className="mt-2">
+        <Button type="submit" disabled={isSaving || insufficientBalance} className="mt-2">
           {mutation.isPending ? "저장 중..." : isEditMode ? "수정 완료" : "거래 등록"}
         </Button>
       )}
