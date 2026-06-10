@@ -46,6 +46,12 @@ const testCategory = {
   updated_at: "2026-06-04T00:00:00.000Z"
 };
 
+const testSettings = {
+  theme: "cat-pink",
+  font_size: "medium",
+  currency: "KRW"
+};
+
 const testIcons = [
   {
     icon_id: 3001,
@@ -124,6 +130,17 @@ export async function installE2EApiFixtures(page: Page) {
       success({
         access_token: "e2e-access-token",
         user: testUser
+      })
+    );
+  });
+
+  await page.route("**/api/v1/settings**", async (route) => {
+    await fulfillJson(
+      route,
+      200,
+      success({
+        settings: testSettings,
+        updated_at: "2026-06-04T00:00:00.000Z"
       })
     );
   });
