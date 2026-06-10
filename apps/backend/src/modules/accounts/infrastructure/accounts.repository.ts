@@ -6,13 +6,9 @@ import { PrismaService } from "../../../database/prisma.service";
 export class AccountsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  findMany(userId: bigint, useYn?: boolean): Promise<Account[]> {
+  findMany(userId: bigint): Promise<Account[]> {
     return this.prisma.account.findMany({
-      where: {
-        userId,
-        deletedYn: false,
-        ...(useYn === undefined ? {} : { useYn })
-      },
+      where: { userId, deletedYn: false },
       orderBy: { accountId: "asc" }
     });
   }

@@ -62,7 +62,6 @@ export class SignupUseCase {
             accountName: DEFAULT_ACCOUNT_NAME,
             initialBalance: 0,
             currentBalance: 0,
-            useYn: true,
           },
         });
       }

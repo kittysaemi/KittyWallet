@@ -5,7 +5,6 @@ import { PrismaService } from "../../../database/prisma.service";
 export interface AssetSummaryData {
   total_asset_amount: number;
   account_count: number;
-  active_account_count: number;
   card_count: number;
   active_card_count: number;
 }
@@ -49,7 +48,7 @@ export class DashboardRepository {
     const [accounts, cards] = await Promise.all([
       this.prisma.account.findMany({
         where: { userId },
-        select: { currentBalance: true, useYn: true }
+        select: { currentBalance: true }
       }),
       this.prisma.card.findMany({
         where: { userId },
@@ -65,7 +64,6 @@ export class DashboardRepository {
     return {
       total_asset_amount,
       account_count: accounts.length,
-      active_account_count: accounts.filter((a) => a.useYn).length,
       card_count: cards.length,
       active_card_count: cards.filter((c) => c.useYn).length
     };

@@ -11,10 +11,9 @@ export class AccountsController {
 
   @Get()
   getAccounts(@CurrentUser() user: JwtPayload, @Query() query: AccountListQueryDto) {
-    const useYn = query.use_yn === undefined ? undefined : query.use_yn === "true";
     const includeBalance =
       query.include_balance === undefined ? true : query.include_balance === "true";
-    return this.accountsService.getAccounts(BigInt(user.sub), useYn, includeBalance);
+    return this.accountsService.getAccounts(BigInt(user.sub), includeBalance);
   }
 
   @Post()
@@ -24,7 +23,6 @@ export class AccountsController {
       accountName: dto.account_name,
       initialBalance: dto.initial_balance,
       iconId: BigInt(dto.icon_id),
-      useYn: dto.use_yn,
       allowNegativeBalance: dto.allow_negative_balance,
       negativeBalanceLimit: dto.negative_balance_limit
     });
@@ -53,8 +51,7 @@ export class AccountsController {
       accountId: BigInt(id),
       userId: BigInt(user.sub),
       accountName: dto.account_name,
-      iconId: dto.icon_id === undefined ? undefined : BigInt(dto.icon_id),
-      useYn: dto.use_yn
+      iconId: dto.icon_id === undefined ? undefined : BigInt(dto.icon_id)
     });
   }
 }

@@ -28,8 +28,7 @@ const editSchema = z.object({
     .min(1, "계좌명을 입력해주세요.")
     .max(15, "계좌명은 한글 기준 15자 이하여야 합니다.")
     .optional(),
-  icon_id: z.number().min(1, "아이콘을 선택해주세요.").optional(),
-  use_yn: z.boolean().optional()
+  icon_id: z.number().min(1, "아이콘을 선택해주세요.").optional()
 });
 
 interface AccountFormProps {
@@ -54,7 +53,6 @@ export const AccountForm: React.FC<AccountFormProps> = ({ mode, account }) => {
     account?.initial_balance !== undefined ? String(account.initial_balance) : ""
   );
   const [selectedIconId, setSelectedIconId] = useState<number | undefined>(account?.icon_id);
-  const [useYn, setUseYn] = useState(account?.use_yn ?? true);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -111,8 +109,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({ mode, account }) => {
     if (isEdit && account) {
       const parsed = editSchema.safeParse({
         account_name: accountName || undefined,
-        icon_id: selectedIconId,
-        use_yn: useYn
+        icon_id: selectedIconId
       });
       if (!parsed.success) {
         const errors: Record<string, string> = {};
@@ -198,27 +195,6 @@ export const AccountForm: React.FC<AccountFormProps> = ({ mode, account }) => {
           <p className="text-xs text-[var(--color-danger)]">{fieldErrors.icon_id}</p>
         )}
       </div>
-
-      {isEdit && (
-        <div className="flex items-center justify-between rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] px-4 py-3">
-          <span className="text-sm font-medium text-[var(--color-text-primary)]">계좌 사용</span>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={useYn}
-            onClick={() => setUseYn((prev) => !prev)}
-            className={`inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent p-0.5 transition-colors ${
-              useYn ? "bg-[var(--color-primary)]" : "bg-[var(--color-border-primary)]"
-            }`}
-          >
-            <span
-              className={`inline-block h-5 w-5 rounded-full bg-white shadow ring-0 transition-transform ${
-                useYn ? "translate-x-5" : "translate-x-0"
-              }`}
-            />
-          </button>
-        </div>
-      )}
 
       {serverError && (
         <p className="rounded-xl border border-[var(--color-danger)] bg-[var(--color-danger-soft)] px-3 py-2 text-sm text-[var(--color-text-primary)]">

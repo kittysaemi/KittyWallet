@@ -1,4 +1,4 @@
-import { IsBoolean, IsInt, IsOptional, IsString, MaxLength, Min } from "class-validator";
+import { IsInt, IsOptional, IsString, MaxLength, Min } from "class-validator";
 
 export class UpdateAccountRequestDto {
   @IsOptional()
@@ -10,8 +10,4 @@ export class UpdateAccountRequestDto {
   @IsInt()
   @Min(1)
   icon_id?: number;
-
-  @IsOptional()
-  @IsBoolean()
-  use_yn?: boolean;
 }
