@@ -1,6 +1,5 @@
 import { apiClient } from "../../../shared/api/apiClient";
 import type {
-  AccountItem,
   AccountListData,
   ApiResponse,
   CreateAccountRequest,
@@ -9,7 +8,6 @@ import type {
 
 export const accountApi = {
   getAccounts: async (params?: {
-    use_yn?: boolean;
     include_balance?: boolean;
   }): Promise<ApiResponse<AccountListData>> => {
     const res = await apiClient.get<ApiResponse<AccountListData>>("/accounts", { params });
@@ -26,8 +24,8 @@ export const accountApi = {
   updateAccount: async (
     accountId: number,
     data: UpdateAccountRequest
-  ): Promise<ApiResponse<Pick<AccountItem, "account_id" | "use_yn">>> => {
-    const res = await apiClient.put<ApiResponse<Pick<AccountItem, "account_id" | "use_yn">>>(
+  ): Promise<ApiResponse<{ account_id: number }>> => {
+    const res = await apiClient.put<ApiResponse<{ account_id: number }>>(
       `/accounts/${accountId}`,
       data
     );

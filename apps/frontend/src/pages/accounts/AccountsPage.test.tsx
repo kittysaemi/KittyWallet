@@ -54,7 +54,6 @@ const successAccounts = {
         current_balance: 120000,
         allow_negative_balance: false,
         negative_balance_limit: 0,
-        use_yn: true,
         created_at: "2026-06-02T00:00:00Z",
         updated_at: "2026-06-02T00:00:00Z"
       },
@@ -66,7 +65,6 @@ const successAccounts = {
         current_balance: 0,
         allow_negative_balance: true,
         negative_balance_limit: 300000,
-        use_yn: false,
         created_at: "2026-06-02T00:00:00Z",
         updated_at: "2026-06-02T00:00:00Z"
       }
@@ -201,7 +199,7 @@ describe("AccountsPage", () => {
     mockedAccountApi.getAccounts.mockResolvedValue(successAccounts);
     mockedAccountApi.updateAccount.mockResolvedValue({
       success: true,
-      data: { account_id: 1, use_yn: true },
+      data: { account_id: 1 },
       error: null
     });
     mockedIconApi.getIcons.mockResolvedValue(visibleIcons);

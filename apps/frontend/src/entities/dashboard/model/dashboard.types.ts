@@ -6,7 +6,6 @@ export interface DashboardUser {
 export interface AssetSummary {
   total_asset_amount: number;
   account_count: number;
-  active_account_count: number;
   card_count: number;
   active_card_count: number;
   currency: string;

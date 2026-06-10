@@ -10,7 +10,6 @@ export interface AccountItem {
   current_balance: number | null;
   allow_negative_balance: boolean;
   negative_balance_limit: number;
-  use_yn: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -20,7 +19,6 @@ interface CreateAccountCommand {
   accountName: string;
   initialBalance: number;
   iconId: bigint;
-  useYn?: boolean;
   allowNegativeBalance?: boolean;
   negativeBalanceLimit?: number;
 }
@@ -30,7 +28,6 @@ interface UpdateAccountCommand {
   userId: bigint;
   accountName?: string;
   iconId?: bigint;
-  useYn?: boolean;
 }
 
 @Injectable()
@@ -39,10 +36,9 @@ export class AccountsService {
 
   async getAccounts(
     userId: bigint,
-    useYn?: boolean,
     includeBalance = true
   ): Promise<{ items: AccountItem[] }> {
-    const accounts = await this.accountsRepository.findMany(userId, useYn);
+    const accounts = await this.accountsRepository.findMany(userId);
     return {
       items: accounts.map((account) => this.toItem(account, includeBalance))
     };
@@ -72,8 +68,7 @@ export class AccountsService {
       initialBalance: command.initialBalance,
       currentBalance: command.initialBalance,
       allowNegativeBalance: negativeSetting.allowNegativeBalance,
-      negativeBalanceLimit: negativeSetting.negativeBalanceLimit,
-      useYn: command.useYn ?? true
+      negativeBalanceLimit: negativeSetting.negativeBalanceLimit
     });
 
     return { account_id: Number(account.accountId) };
@@ -97,11 +92,10 @@ export class AccountsService {
 
   async updateAccount(
     command: UpdateAccountCommand
-  ): Promise<{ account_id: number; use_yn: boolean }> {
+  ): Promise<{ account_id: number }> {
     if (
       command.accountName === undefined &&
-      command.iconId === undefined &&
-      command.useYn === undefined
+      command.iconId === undefined
     ) {
       throw new AppException(
         "VALIDATION_001",
@@ -118,7 +112,6 @@ export class AccountsService {
     const data: {
       accountName?: string;
       icon?: { connect: { iconId: bigint } };
-      useYn?: boolean;
     } = {};
 
     if (command.accountName !== undefined) {
@@ -132,15 +125,10 @@ export class AccountsService {
       data.icon = { connect: { iconId: command.iconId } };
     }
 
-    if (command.useYn !== undefined) {
-      data.useYn = command.useYn;
-    }
-
     const updated = await this.accountsRepository.update(account.accountId, data);
 
     return {
-      account_id: Number(updated.accountId),
-      use_yn: updated.useYn
+      account_id: Number(updated.accountId)
     };
   }
 
@@ -202,7 +190,6 @@ export class AccountsService {
       currentBalance: { toNumber(): number };
       allowNegativeBalance: boolean;
       negativeBalanceLimit: { toNumber(): number };
-      useYn: boolean;
       createdAt: Date;
       updatedAt: Date;
     },
@@ -216,7 +203,6 @@ export class AccountsService {
       current_balance: includeBalance ? account.currentBalance.toNumber() : null,
       allow_negative_balance: account.allowNegativeBalance,
       negative_balance_limit: account.negativeBalanceLimit.toNumber(),
-      use_yn: account.useYn,
       created_at: account.createdAt.toISOString(),
       updated_at: account.updatedAt.toISOString()
     };

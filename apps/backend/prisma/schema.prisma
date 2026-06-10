@@ -153,7 +153,6 @@ model Account {
   currentBalance       Decimal  @map("current_balance") @db.Decimal(15, 0)
   allowNegativeBalance Boolean  @default(false) @map("allow_negative_balance")
   negativeBalanceLimit Decimal  @default(0) @map("negative_balance_limit") @db.Decimal(15, 0)
-  useYn                Boolean  @default(true) @map("use_yn")
   deletedYn            Boolean  @default(false) @map("deleted_yn")
   createdAt            DateTime @default(now()) @map("created_at")
   updatedAt            DateTime @updatedAt @map("updated_at")
@@ -163,7 +162,6 @@ model Account {
 
   @@index([userId])
   @@index([userId, accountName])
-  @@index([useYn])
   @@index([deletedYn])
   @@map("ACCOUNT")
 }

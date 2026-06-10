@@ -57,7 +57,7 @@
 - 인증 사용자만 조회할 수 있다.
 - 사용자별 데이터만 조회한다.
 - 삭제 처리된 거래는 최근 거래, 자산 요약, 소비 요약에서 제외한다.
-- 계좌 자산은 사용 여부와 관계없이 현재 보유 금액 기준으로 계산할 수 있다.
+- 계좌 자산은 현재 보유 금액 기준으로 계산한다.
 - 카드 거래는 자산 합계에는 직접 반영하지 않고 소비 요약 및 최근 거래에 반영한다.
 - 최근 거래는 최신 거래일 기준으로 제한된 개수만 반환한다.
 - 대시보드는 여러 화면 데이터를 과도하게 분리 호출하지 않도록 요약 데이터를 함께 반환한다.
@@ -122,7 +122,6 @@ Authorization: Bearer {access_token}
     "asset_summary": {
       "total_asset_amount": 1250000,
       "account_count": 3,
-      "active_account_count": 2,
       "card_count": 2,
       "active_card_count": 1,
       "currency": "KRW"
@@ -185,7 +184,6 @@ Authorization: Bearer {access_token}
 |---|---|---|
 | total_asset_amount | number | 전체 계좌 현재 잔액 합계 |
 | account_count | number | 등록 계좌 수 |
-| active_account_count | number | 사용 중 계좌 수 |
 | card_count | number | 등록 카드 수 |
 | active_card_count | number | 사용 중 카드 수 |
 | currency | string | 통화 코드 |

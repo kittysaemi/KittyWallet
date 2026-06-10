@@ -44,10 +44,8 @@
 - current_balance 자동 계산
 - allow_negative_balance 기본값 false, 계좌 등록 시에만 설정 가능
 - negative_balance_limit 기본값 0, 0 이상, 계좌 등록 시에만 설정 가능
-- use_yn 기반 사용 여부 관리
 - icon_id 필수
 - 사용자별 계좌 분리
-- 비활성화: `PUT /api/v1/accounts/{id}`에서 `use_yn=false`로 처리
 - 아카이브(영구 삭제): `DELETE /api/v1/accounts/{id}`로 처리. 아카이브된 계좌명은 재사용 가능
 
 ---
@@ -68,8 +66,7 @@
   "initial_balance": 500000,
   "icon_id": 1,
   "allow_negative_balance": false,
-  "negative_balance_limit": 0,
-  "use_yn": true
+  "negative_balance_limit": 0
 }
 ```
 
@@ -80,7 +77,6 @@
 | icon_id | number | Y | 계좌 아이콘 ID |
 | allow_negative_balance | boolean | N | 마이너스 잔액 허용 여부. 기본값 false |
 | negative_balance_limit | number | N | 마이너스 한도. 0 이상. `allow_negative_balance=false`면 0 처리 |
-| use_yn | boolean | N | 계좌 사용 여부. 기본값 true |
 
 ---
 
@@ -92,7 +88,6 @@
 | 잔액 수정 | 거래 기준 자동 계산 |
 | 마이너스 허용 | 계좌 등록 시 설정 가능. 등록 후 변경 미지원 |
 | 마이너스 한도 | 계좌 등록 시 0 이상. 미허용 계좌는 0 처리. 등록 후 변경 미지원 |
-| 사용 여부 | OFF 시 선택 불가 |
 | 계좌명 길이 | 한글 기준 15자 이하 |
 
 ---
@@ -125,12 +120,11 @@
 
 ## 프론트 처리 주의사항
 
-- OFF 계좌는 선택 목록 제외
 - 잔액 직접 수정 UI 제공 금지
 
 ---
 
-# 계좌 수정/비활성화 API
+# 계좌 수정 API
 
 ## Endpoint
 
@@ -143,8 +137,7 @@
 ```json
 {
   "account_name": "생활비 통장",
-  "icon_id": 1,
-  "use_yn": false
+  "icon_id": 1
 }
 ```
 
@@ -152,7 +145,6 @@
 |---|---|---|---|
 | account_name | string | N | 변경할 계좌명 |
 | icon_id | number | N | 변경할 아이콘 ID |
-| use_yn | boolean | N | 계좌 사용 여부. false면 거래 등록 선택 목록에서 제외 |
 
 ---
 
@@ -161,12 +153,6 @@
 `allow_negative_balance`와 `negative_balance_limit`는 계좌 등록 시에만 설정할 수 있다.
 
 계좌 수정 API는 등록 후 마이너스 허용 여부 또는 마이너스 한도 변경을 지원하지 않는다.
-
-## 비활성화 처리
-
-계좌 사용 중지는 본 API에 `use_yn=false`를 전달해 처리한다.
-
-비활성화된 계좌는 거래 등록 선택 목록에서 제외하지만, 기존 거래 내역과 잔액 계산 기준은 유지한다.
 
 `PATCH /api/v1/accounts/{id}`는 계좌 수정 API로 사용하지 않는다.
 
@@ -178,8 +164,7 @@
 {
   "success": true,
   "data": {
-    "account_id": 1,
-    "use_yn": false
+    "account_id": 1
   },
   "error": null
 }
@@ -281,7 +266,6 @@
 
 | 이름 | 타입 | 필수 | 기본값 | 설명 |
 |---|---|---|---|---|
-| use_yn | boolean | N | 전체 | 계좌 사용 여부 필터. 거래 등록 선택 목록은 `true` 사용 |
 | include_balance | boolean | N | true | `current_balance` 포함 여부 |
 
 ---
@@ -301,7 +285,6 @@
         "current_balance": 420000,
         "allow_negative_balance": false,
         "negative_balance_limit": 0,
-        "use_yn": true,
         "created_at": "2026-05-30T02:00:00Z",
         "updated_at": "2026-05-30T02:10:00Z"
       }
@@ -321,7 +304,6 @@
 | current_balance | number/null | 현재 잔액. `include_balance=false`면 null |
 | allow_negative_balance | boolean | 마이너스 잔액 허용 여부 |
 | negative_balance_limit | number | 마이너스 한도 |
-| use_yn | boolean | 계좌 사용 여부 |
 | created_at | string | 생성 시각, UTC ISO-8601 |
 | updated_at | string | 최종 수정 시각, UTC ISO-8601 |
 
@@ -340,6 +322,4 @@
 
 ## 프론트 처리 주의사항
 
-- 거래 등록 화면의 지갑 선택은 `GET /api/v1/accounts?use_yn=true`를 사용한다.
-- 계좌 관리 화면은 `use_yn`을 생략해 OFF 계좌까지 표시한다.
 - 잔액 표시가 필요 없는 선택 팝업은 `include_balance=false`를 사용할 수 있다.

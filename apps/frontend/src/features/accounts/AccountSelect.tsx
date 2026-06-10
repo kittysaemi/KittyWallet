@@ -20,7 +20,7 @@ const AccountSelectSkeleton: React.FC = () => (
 export const AccountSelect: React.FC<AccountSelectProps> = ({ selectedAccountId, onSelect }) => {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["accounts", "active"],
-    queryFn: () => accountApi.getAccounts({ use_yn: true, include_balance: true })
+    queryFn: () => accountApi.getAccounts({ include_balance: true })
   });
 
   if (isLoading) return <AccountSelectSkeleton />;

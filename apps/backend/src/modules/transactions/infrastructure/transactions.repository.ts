@@ -121,7 +121,7 @@ export class TransactionsRepository {
 
   findAccount(accountId: bigint, userId: bigint): Promise<Account | null> {
     return this.prisma.account.findFirst({
-      where: { accountId, userId, useYn: true, deletedYn: false }
+      where: { accountId, userId, deletedYn: false }
     });
   }
 
