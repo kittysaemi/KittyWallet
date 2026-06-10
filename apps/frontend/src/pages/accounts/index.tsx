@@ -309,6 +309,9 @@ const AccountsPage: React.FC = () => {
                 const raw = event.target.value.replace(/,/g, "").replace(/[^0-9]/g, "");
                 setNewBalance(raw);
               }}
+              onKeyDown={(e) => {
+                if (e.key === "." || e.key === ",") e.preventDefault();
+              }}
               placeholder="초기 잔액"
               className="min-h-11 rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none"
             />
@@ -349,6 +352,9 @@ const AccountsPage: React.FC = () => {
                   onChange={(event) => {
                     const raw = event.target.value.replace(/,/g, "").replace(/[^0-9]/g, "");
                     setNewNegativeLimit(raw);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "." || e.key === ",") e.preventDefault();
                   }}
                   placeholder="마이너스 한도"
                   className="mt-3 min-h-11 w-full rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none"

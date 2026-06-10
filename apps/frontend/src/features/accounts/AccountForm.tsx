@@ -169,6 +169,9 @@ export const AccountForm: React.FC<AccountFormProps> = ({ mode, account }) => {
             setInitialBalance(raw);
             setFieldErrors((prev) => ({ ...prev, initial_balance: "" }));
           }}
+          onKeyDown={(e) => {
+            if (e.key === "." || e.key === ",") e.preventDefault();
+          }}
           placeholder="0"
           error={fieldErrors.initial_balance}
         />
