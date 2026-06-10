@@ -15,7 +15,6 @@ describe("AccountsService", () => {
     currentBalance: { toNumber: () => 500000 },
     allowNegativeBalance: false,
     negativeBalanceLimit: { toNumber: () => 0 },
-    useYn: true,
     createdAt: now,
     updatedAt: now,
     ...overrides
@@ -50,7 +49,6 @@ describe("AccountsService", () => {
           current_balance: 500000,
           allow_negative_balance: false,
           negative_balance_limit: 0,
-          use_yn: true,
           created_at: "2026-01-01T00:00:00.000Z",
           updated_at: "2026-01-01T00:00:00.000Z"
         }
@@ -61,7 +59,7 @@ describe("AccountsService", () => {
   it("returns null current_balance when include_balance is false", async () => {
     accountsRepository.findMany.mockResolvedValue([makeAccount() as any]);
 
-    const result = await service.getAccounts(BigInt(1), undefined, false);
+    const result = await service.getAccounts(BigInt(1), false);
     expect(result.items[0].current_balance).toBeNull();
   });
 
@@ -250,25 +248,12 @@ describe("AccountsService", () => {
       service.updateAccount({
         accountId: BigInt(99),
         userId: BigInt(1),
-        useYn: false
+        accountName: "새 통장"
       })
     ).rejects.toMatchObject({
       code: "ACCOUNT_002",
       statusCode: HttpStatus.NOT_FOUND
     } satisfies Partial<AppException>);
-  });
-
-  it("deactivates account with use_yn=false", async () => {
-    accountsRepository.findById.mockResolvedValue(makeAccount() as any);
-    accountsRepository.update.mockResolvedValue(makeAccount({ useYn: false }) as any);
-
-    await expect(
-      service.updateAccount({
-        accountId: BigInt(1),
-        userId: BigInt(1),
-        useYn: false
-      })
-    ).resolves.toEqual({ account_id: 1, use_yn: false });
   });
 
   it("archives account successfully", async () => {
