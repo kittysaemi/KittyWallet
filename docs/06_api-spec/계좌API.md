@@ -42,8 +42,8 @@
 
 - initial_balance 사용
 - current_balance 자동 계산
-- allow_negative_balance 기본값 false
-- negative_balance_limit 기본값 0, 0 이상
+- allow_negative_balance 기본값 false, 계좌 등록 시에만 설정 가능
+- negative_balance_limit 기본값 0, 0 이상, 계좌 등록 시에만 설정 가능
 - use_yn 기반 사용 여부 관리
 - icon_id 필수
 - 사용자별 계좌 분리
@@ -90,8 +90,8 @@
 |---|---|
 | 중복 계좌명 | 불가 |
 | 잔액 수정 | 거래 기준 자동 계산 |
-| 마이너스 허용 | 계좌별 설정 가능 |
-| 마이너스 한도 | 0 이상. 미허용 계좌는 0 처리 |
+| 마이너스 허용 | 계좌 등록 시 설정 가능. 등록 후 변경 미지원 |
+| 마이너스 한도 | 계좌 등록 시 0 이상. 미허용 계좌는 0 처리. 등록 후 변경 미지원 |
 | 사용 여부 | OFF 시 선택 불가 |
 | 계좌명 길이 | 한글 기준 15자 이하 |
 
@@ -144,8 +144,6 @@
 {
   "account_name": "생활비 통장",
   "icon_id": 1,
-  "allow_negative_balance": true,
-  "negative_balance_limit": 300000,
   "use_yn": false
 }
 ```
@@ -154,11 +152,15 @@
 |---|---|---|---|
 | account_name | string | N | 변경할 계좌명 |
 | icon_id | number | N | 변경할 아이콘 ID |
-| allow_negative_balance | boolean | N | 마이너스 잔액 허용 여부 |
-| negative_balance_limit | number | N | 마이너스 한도. 0 이상. `allow_negative_balance=false`면 0 처리 |
 | use_yn | boolean | N | 계좌 사용 여부. false면 거래 등록 선택 목록에서 제외 |
 
 ---
+
+## 마이너스 설정 변경
+
+`allow_negative_balance`와 `negative_balance_limit`는 계좌 등록 시에만 설정할 수 있다.
+
+계좌 수정 API는 등록 후 마이너스 허용 여부 또는 마이너스 한도 변경을 지원하지 않는다.
 
 ## 비활성화 처리
 
