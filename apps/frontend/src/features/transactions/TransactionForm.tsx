@@ -7,6 +7,7 @@ import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import { invalidateTransactionCaches } from "../../pwa/cache/cacheInvalidation";
 import { addOfflineTransaction } from "../../pwa/indexed-db/repositories/offlineTransaction.repository";
 import { enqueueSyncItem } from "../../pwa/indexed-db/repositories/syncQueue.repository";
+import { usePwaStore } from "../../pwa/state/pwa.store";
 import { runSyncQueue } from "../../pwa/sync/syncQueue.service";
 import type { TransactionItem } from "../../entities/transaction/model/transaction.types";
 import { accountApi } from "../../entities/account/api/accountApi";
@@ -393,6 +394,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             action: isEditMode ? "UPDATE" : "CREATE",
             payload: parsed.data
           });
+          usePwaStore.getState().setSyncStatus("pending_sync");
           void queryClient.invalidateQueries({ queryKey: ["transactions"] });
           void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
           void queryClient.invalidateQueries({ queryKey: ["accounts"] });
