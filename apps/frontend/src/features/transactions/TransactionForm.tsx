@@ -5,6 +5,9 @@ import { ChevronDown, Circle } from "lucide-react";
 import { z } from "zod";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import { invalidateTransactionCaches } from "../../pwa/cache/cacheInvalidation";
+import { addOfflineTransaction } from "../../pwa/indexed-db/repositories/offlineTransaction.repository";
+import { enqueueSyncItem } from "../../pwa/indexed-db/repositories/syncQueue.repository";
+import { runSyncQueue } from "../../pwa/sync/syncQueue.service";
 import type { TransactionItem } from "../../entities/transaction/model/transaction.types";
 import { accountApi } from "../../entities/account/api/accountApi";
 import { cardApi } from "../../entities/card/api/cardApi";
@@ -376,6 +379,30 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     }
 
     setErrors({});
+    if (!navigator.onLine) {
+      void (async () => {
+        try {
+          const offline = await addOfflineTransaction({
+            ...parsed.data,
+            ...(isEditMode && transactionId ? { server_id: String(transactionId) } : {})
+          });
+          await enqueueSyncItem({
+            local_id: offline.local_id,
+            client_temp_id: offline.client_temp_id,
+            server_id: isEditMode && transactionId ? String(transactionId) : undefined,
+            action: isEditMode ? "UPDATE" : "CREATE",
+            payload: parsed.data
+          });
+          void queryClient.invalidateQueries({ queryKey: ["transactions"] });
+          void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+          void queryClient.invalidateQueries({ queryKey: ["accounts"] });
+          onSuccess();
+        } catch {
+          setApiError("오프라인 거래 저장에 실패했습니다. 다시 시도해주세요.");
+        }
+      })();
+      return;
+    }
     if (isEditMode) {
       updateMutation.mutate({
         transaction_type: parsed.data.transaction_type,
@@ -388,6 +415,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       });
     } else {
       createMutation.mutate(parsed.data);
+      void runSyncQueue(queryClient);
     }
   }
 

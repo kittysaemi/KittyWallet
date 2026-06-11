@@ -72,7 +72,7 @@ const emptyIcons = {
 
 describe("TransactionsPage error cases", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     Object.defineProperty(window.navigator, "onLine", {
       configurable: true,
       value: true
