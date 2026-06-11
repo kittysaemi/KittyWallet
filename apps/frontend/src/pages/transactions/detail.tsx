@@ -7,6 +7,7 @@ import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import { invalidateTransactionCaches } from "../../pwa/cache/cacheInvalidation";
 import { addOfflineTransaction } from "../../pwa/indexed-db/repositories/offlineTransaction.repository";
 import { enqueueSyncItem } from "../../pwa/indexed-db/repositories/syncQueue.repository";
+import { usePwaStore } from "../../pwa/state/pwa.store";
 import { accountApi } from "../../entities/account/api/accountApi";
 import { cardApi } from "../../entities/card/api/cardApi";
 import { categoryApi } from "../../entities/category/api/categoryApi";
@@ -152,6 +153,7 @@ const TransactionDetailPage: React.FC = () => {
           action: "DELETE",
           payload
         });
+        usePwaStore.getState().setSyncStatus("pending_sync");
         void queryClient.invalidateQueries({ queryKey: ["transactions"] });
         void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
         void invalidateTransactionCaches();

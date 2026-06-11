@@ -5,7 +5,7 @@ import { authApi } from "./entities/auth/api/authApi";
 import { useAuthStore } from "./entities/auth/store/authStore";
 import { settingsApi } from "./entities/settings/api/settingsApi";
 import { applyThemeSetting, DEFAULT_THEME } from "./entities/settings/model/theme";
-import { SyncStatusNotice } from "./pwa/sync/SyncStatusNotice";
+import { PwaStatusBanner } from "./pwa/sync/PwaStatusBanner";
 import { registerSyncQueueRunner } from "./pwa/sync/syncQueue.service";
 
 const AUTH_REFRESH_TIMEOUT_MS = 5000;
@@ -100,7 +100,7 @@ const App: React.FC = () => {
   return (
     <>
       <AppRouter />
-      <SyncStatusNotice />
+      <PwaStatusBanner />
     </>
   );
 };

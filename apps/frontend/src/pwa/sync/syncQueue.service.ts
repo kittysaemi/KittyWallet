@@ -6,6 +6,7 @@ import { getOrCreateSyncClient, updateSyncClientLastSyncedAt } from "../indexed-
 import { addSyncHistory } from "../indexed-db/repositories/syncHistory.repository";
 import {
   getProcessableSyncItems,
+  getSyncQueuePendingCount,
   removeSyncItem,
   updateSyncItemStatus
 } from "../indexed-db/repositories/syncQueue.repository";
@@ -32,7 +33,13 @@ function isSuccess(result: SyncUploadItemResult): boolean {
 }
 
 export async function runSyncQueue(queryClient?: QueryClient): Promise<void> {
-  if (isRunning || !navigator.onLine) return;
+  if (isRunning || !navigator.onLine) {
+    const pendingCount = await getSyncQueuePendingCount();
+    if (pendingCount > 0) {
+      usePwaStore.getState().setSyncStatus("pending_sync");
+    }
+    return;
+  }
 
   const queueItems = (await getProcessableSyncItems()).filter(
     (item) => item.retry_count < MAX_RETRY_COUNT
