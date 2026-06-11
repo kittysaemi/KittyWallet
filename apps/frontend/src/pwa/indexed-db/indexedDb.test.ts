@@ -112,7 +112,7 @@ describe("syncQueue.repository", () => {
   });
 
   it("pending count를 반환한다 (waiting + failed)", async () => {
-    const item1 = await enqueueSyncItem({
+    await enqueueSyncItem({
       local_id: "local-1",
       client_temp_id: "temp-1",
       action: "CREATE",

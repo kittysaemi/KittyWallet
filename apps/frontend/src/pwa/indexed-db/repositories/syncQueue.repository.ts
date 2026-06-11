@@ -1,4 +1,4 @@
-import type { SyncQueueItem, QueueAction, QueueStatus } from "../../types/indexedDb.types";
+import type { SyncQueueItem, QueueStatus } from "../../types/indexedDb.types";
 import { STORE_NAMES } from "../indexedDb.config";
 import { withReadStore, withWriteStore, getDb } from "../indexedDb.client";
 
