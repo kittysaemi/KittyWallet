@@ -87,8 +87,9 @@ async function fulfillJson(route: Route, status: number, body: ApiBody) {
 
 export async function installE2EApiFixtures(page: Page) {
   const transactions: TestTransaction[] = [];
+  const ctx = page.context();
 
-  await page.route("**/api/v1/dashboard**", async (route) => {
+  await ctx.route("**/api/v1/dashboard**", async (route) => {
     await fulfillJson(route, 200, success({
       user: { user_id: testUser.user_id, nickname: testUser.nickname },
       asset_summary: {
@@ -115,15 +116,15 @@ export async function installE2EApiFixtures(page: Page) {
     }));
   });
 
-  await page.route("**/api/v1/auth/refresh", async (route) => {
+  await ctx.route("**/api/v1/auth/refresh", async (route) => {
     await fulfillJson(route, 200, { success: false, data: null, error: null });
   });
 
-  await page.route("**/api/v1/auth/signup", async (route) => {
+  await ctx.route("**/api/v1/auth/signup", async (route) => {
     await fulfillJson(route, 201, success({ user_id: testUser.user_id }));
   });
 
-  await page.route("**/api/v1/auth/login", async (route) => {
+  await ctx.route("**/api/v1/auth/login", async (route) => {
     await fulfillJson(
       route,
       200,
@@ -134,7 +135,7 @@ export async function installE2EApiFixtures(page: Page) {
     );
   });
 
-  await page.route("**/api/v1/settings**", async (route) => {
+  await ctx.route("**/api/v1/settings**", async (route) => {
     await fulfillJson(
       route,
       200,
@@ -145,27 +146,27 @@ export async function installE2EApiFixtures(page: Page) {
     );
   });
 
-  await page.route("**/api/v1/accounts**", async (route) => {
+  await ctx.route("**/api/v1/accounts**", async (route) => {
     await fulfillJson(route, 200, success({ items: [testAccount] }));
   });
 
-  await page.route("**/api/v1/cards**", async (route) => {
+  await ctx.route("**/api/v1/cards**", async (route) => {
     await fulfillJson(route, 200, success({ items: [] }));
   });
 
-  await page.route("**/api/v1/categories**", async (route) => {
+  await ctx.route("**/api/v1/categories**", async (route) => {
     await fulfillJson(route, 200, success({ items: [testCategory] }));
   });
 
-  await page.route("**/api/v1/icons**", async (route) => {
+  await ctx.route("**/api/v1/icons**", async (route) => {
     await fulfillJson(route, 200, success({ items: testIcons }));
   });
 
-  await page.route("**/api/v1/transactions/recent**", async (route) => {
+  await ctx.route("**/api/v1/transactions/recent**", async (route) => {
     await fulfillJson(route, 200, success({ items: transactions.slice(0, 5) }));
   });
 
-  await page.route("**/api/v1/transactions**", async (route) => {
+  await ctx.route("**/api/v1/transactions**", async (route) => {
     const request = route.request();
     if (request.method() === "POST") {
       const body = request.postDataJSON() as {
