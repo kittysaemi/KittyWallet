@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { ChevronLeft, Trash2 } from "lucide-react";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
+import { addOfflineTransaction } from "../../pwa/indexed-db/repositories/offlineTransaction.repository";
+import { enqueueSyncItem } from "../../pwa/indexed-db/repositories/syncQueue.repository";
 import { TransactionForm } from "../../features/transactions/TransactionForm";
 
 const DeleteConfirmDialog: React.FC<{
@@ -83,6 +85,43 @@ const TransactionEditPage: React.FC = () => {
   });
 
   const transaction = transactionQuery.data?.data;
+
+  const handleDelete = async () => {
+    setDeleteError("");
+    if (!transaction) return;
+    if (!navigator.onLine) {
+      try {
+        const payload = {
+          transaction_type: transaction.transaction_type,
+          wallet_type: transaction.wallet_type,
+          wallet_id: transaction.wallet_id,
+          category_id: transaction.category_id,
+          amount: transaction.amount,
+          memo: transaction.memo ?? undefined,
+          transaction_date: transaction.transaction_date
+        };
+        const offline = await addOfflineTransaction({
+          ...payload,
+          server_id: String(transaction.transaction_id)
+        });
+        await enqueueSyncItem({
+          local_id: offline.local_id,
+          client_temp_id: offline.client_temp_id,
+          server_id: String(transaction.transaction_id),
+          action: "DELETE",
+          payload
+        });
+        void queryClient.invalidateQueries({ queryKey: ["transactions"] });
+        void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+        void queryClient.invalidateQueries({ queryKey: ["accounts"] });
+        navigate("/transactions", { replace: true });
+      } catch {
+        setDeleteError("오프라인 삭제 저장에 실패했습니다. 다시 시도해주세요.");
+      }
+      return;
+    }
+    deleteMutation.mutate();
+  };
 
   React.useEffect(() => {
     if (transaction?.wallet_deleted) {
@@ -173,7 +212,7 @@ const TransactionEditPage: React.FC = () => {
 
       {showDeleteDialog && (
         <DeleteConfirmDialog
-          onConfirm={() => { setDeleteError(""); deleteMutation.mutate(); }}
+          onConfirm={() => void handleDelete()}
           onCancel={() => { setShowDeleteDialog(false); setDeleteError(""); }}
           isDeleting={deleteMutation.isPending}
           errorMessage={deleteError}

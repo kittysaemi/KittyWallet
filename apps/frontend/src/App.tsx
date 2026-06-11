@@ -5,6 +5,8 @@ import { authApi } from "./entities/auth/api/authApi";
 import { useAuthStore } from "./entities/auth/store/authStore";
 import { settingsApi } from "./entities/settings/api/settingsApi";
 import { applyThemeSetting, DEFAULT_THEME } from "./entities/settings/model/theme";
+import { SyncStatusNotice } from "./pwa/sync/SyncStatusNotice";
+import { registerSyncQueueRunner } from "./pwa/sync/syncQueue.service";
 
 const AUTH_REFRESH_TIMEOUT_MS = 5000;
 
@@ -34,6 +36,11 @@ const App: React.FC = () => {
   useEffect(() => {
     applyThemeSetting(DEFAULT_THEME);
   }, []);
+
+  useEffect(() => {
+    if (!isInitialized || !isAuthenticated) return undefined;
+    return registerSyncQueueRunner(queryClient);
+  }, [isInitialized, isAuthenticated, queryClient]);
 
   // 인증 해제(로그아웃/토큰 만료) 시 기본 테마로 복원
   useEffect(() => {
@@ -90,7 +97,12 @@ const App: React.FC = () => {
     );
   }
 
-  return <AppRouter />;
+  return (
+    <>
+      <AppRouter />
+      <SyncStatusNotice />
+    </>
+  );
 };
 
 export default App;

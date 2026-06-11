@@ -33,6 +33,13 @@ export async function getWaitingSyncItems(): Promise<SyncQueueItem[]> {
   });
 }
 
+export async function getProcessableSyncItems(): Promise<SyncQueueItem[]> {
+  const items = await getAllSyncItems();
+  return items
+    .filter((item) => item.status === "waiting" || item.status === "failed")
+    .sort((left, right) => left.created_at.localeCompare(right.created_at));
+}
+
 export async function updateSyncItemStatus(
   queueId: string,
   status: QueueStatus,

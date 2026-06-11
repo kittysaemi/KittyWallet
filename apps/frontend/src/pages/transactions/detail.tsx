@@ -5,6 +5,8 @@ import { ChevronLeft, Circle, RefreshCw, Trash2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import { invalidateTransactionCaches } from "../../pwa/cache/cacheInvalidation";
+import { addOfflineTransaction } from "../../pwa/indexed-db/repositories/offlineTransaction.repository";
+import { enqueueSyncItem } from "../../pwa/indexed-db/repositories/syncQueue.repository";
 import { accountApi } from "../../entities/account/api/accountApi";
 import { cardApi } from "../../entities/card/api/cardApi";
 import { categoryApi } from "../../entities/category/api/categoryApi";
@@ -124,6 +126,43 @@ const TransactionDetailPage: React.FC = () => {
   });
 
   const tx = txQuery.data?.data;
+
+  const handleDelete = async () => {
+    setDeleteError("");
+    if (!tx) return;
+    if (!navigator.onLine) {
+      try {
+        const payload = {
+          transaction_type: tx.transaction_type,
+          wallet_type: tx.wallet_type,
+          wallet_id: tx.wallet_id,
+          category_id: tx.category_id,
+          amount: tx.amount,
+          memo: tx.memo ?? undefined,
+          transaction_date: tx.transaction_date
+        };
+        const offline = await addOfflineTransaction({
+          ...payload,
+          server_id: String(tx.transaction_id)
+        });
+        await enqueueSyncItem({
+          local_id: offline.local_id,
+          client_temp_id: offline.client_temp_id,
+          server_id: String(tx.transaction_id),
+          action: "DELETE",
+          payload
+        });
+        void queryClient.invalidateQueries({ queryKey: ["transactions"] });
+        void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+        void invalidateTransactionCaches();
+        navigate("/transactions", { replace: true });
+      } catch {
+        setDeleteError("오프라인 삭제 저장에 실패했습니다. 다시 시도해주세요.");
+      }
+      return;
+    }
+    deleteMutation.mutate();
+  };
 
   const iconMap = React.useMemo(() => {
     const map = new Map<number, IconItem>();
@@ -318,7 +357,7 @@ const TransactionDetailPage: React.FC = () => {
             </button>
             <button
               type="button"
-              onClick={() => deleteMutation.mutate()}
+              onClick={() => void handleDelete()}
               disabled={deleteMutation.isPending}
               className="flex-1 min-h-11 rounded-xl bg-[var(--color-danger)] text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
             >
