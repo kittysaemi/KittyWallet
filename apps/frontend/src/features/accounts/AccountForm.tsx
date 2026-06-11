@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { z } from "zod";
 import { accountApi } from "../../entities/account/api/accountApi";
+import { invalidateAccountCaches } from "../../pwa/cache/cacheInvalidation";
 import type { AccountItem } from "../../entities/account/model/account.types";
 import type { IconItem } from "../../entities/icon/model/icon.types";
 import { IconSelect } from "../icons/IconSelect";
@@ -82,6 +83,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({ mode, account }) => {
     }) => accountApi.updateAccount(id, data),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      void invalidateAccountCaches();
       navigate("/accounts", { replace: true });
     },
     onError: (error: AxiosError<{ error: { code: string; message: string } }>) => {

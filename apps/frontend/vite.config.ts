@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
+import { workboxConfig } from "./src/pwa/workbox/workbox.config";
 
 export default defineConfig({
   plugins: [
@@ -38,10 +39,7 @@ export default defineConfig({
           }
         ]
       },
-      workbox: {
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
-        cleanupOutdatedCaches: true
-      },
+      workbox: workboxConfig,
       devOptions: {
         enabled: true,
         type: "module",

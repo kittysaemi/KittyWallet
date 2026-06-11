@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, RotateCw } from "lucide-react";
 import { z } from "zod";
 import { categoryApi } from "../../entities/category/api/categoryApi";
+import { invalidateCategoryCaches } from "../../pwa/cache/cacheInvalidation";
 import type { CategoryItem } from "../../entities/category/model/category.types";
 import { iconApi } from "../../entities/icon/api/iconApi";
 import type { IconItem } from "../../entities/icon/model/icon.types";
@@ -293,6 +294,7 @@ const CategoriesPage: React.FC = () => {
     onSuccess: async () => {
       setEditingNameId(null);
       setEditingName("");
+      void invalidateCategoryCaches();
       await refreshCategories();
     }
   });

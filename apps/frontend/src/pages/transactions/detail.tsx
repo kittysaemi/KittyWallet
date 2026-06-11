@@ -4,6 +4,7 @@ import { AxiosError } from "axios";
 import { ChevronLeft, Circle, RefreshCw, Trash2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
+import { invalidateTransactionCaches } from "../../pwa/cache/cacheInvalidation";
 import { accountApi } from "../../entities/account/api/accountApi";
 import { cardApi } from "../../entities/card/api/cardApi";
 import { categoryApi } from "../../entities/category/api/categoryApi";
@@ -74,6 +75,7 @@ const TransactionDetailPage: React.FC = () => {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["transactions"] });
       void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      void invalidateTransactionCaches();
       navigate("/transactions", { replace: true });
     },
     onError: (err: unknown) => {

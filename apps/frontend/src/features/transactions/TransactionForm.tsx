@@ -4,6 +4,7 @@ import { AxiosError } from "axios";
 import { ChevronDown, Circle } from "lucide-react";
 import { z } from "zod";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
+import { invalidateTransactionCaches } from "../../pwa/cache/cacheInvalidation";
 import type { TransactionItem } from "../../entities/transaction/model/transaction.types";
 import { accountApi } from "../../entities/account/api/accountApi";
 import { cardApi } from "../../entities/card/api/cardApi";
@@ -290,6 +291,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       void queryClient.invalidateQueries({ queryKey: ["transactions"] });
       void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       void queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      void invalidateTransactionCaches();
       onSuccess();
     },
     onError: (err: unknown) => {
@@ -308,6 +310,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       void queryClient.invalidateQueries({ queryKey: ["transactions"] });
       void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       void queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      void invalidateTransactionCaches();
       onSuccess();
     },
     onError: (err: unknown, variables) => {
