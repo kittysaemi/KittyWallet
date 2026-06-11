@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { z } from "zod";
 import { cardApi } from "../../entities/card/api/cardApi";
+import { invalidateCardCaches } from "../../pwa/cache/cacheInvalidation";
 import type { CardItem } from "../../entities/card/model/card.types";
 import type { IconItem } from "../../entities/icon/model/icon.types";
 import { IconSelect } from "../icons/IconSelect";
@@ -72,6 +73,7 @@ export const CardForm: React.FC<CardFormProps> = ({ mode, card }) => {
       cardApi.updateCard(id, data),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["cards"] });
+      void invalidateCardCaches();
       navigate("/cards", { replace: true });
     },
     onError: (error: AxiosError<{ error: { code: string; message: string } }>) => {

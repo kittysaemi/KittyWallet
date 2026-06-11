@@ -8,6 +8,7 @@ import { useAuthStore } from "../../entities/auth/store/authStore";
 import { applyThemeSetting, DEFAULT_THEME } from "../../entities/settings/model/theme";
 import { userApi } from "../../entities/user/api/userApi";
 import { getPendingSyncCount } from "../../shared/storage/syncQueue";
+import { clearUserApiCaches } from "../../pwa/cache/cacheInvalidation";
 import { Button } from "../../shared/ui/Button";
 
 const nicknameSchema = z
@@ -56,7 +57,8 @@ const SettingsPage: React.FC = () => {
 
   const withdrawMutation = useMutation({
     mutationFn: userApi.withdraw,
-    onSuccess: () => {
+    onSuccess: async () => {
+      await clearUserApiCaches();
       clearAuth();
       void queryClient.clear();
       applyThemeSetting(DEFAULT_THEME);
@@ -79,6 +81,7 @@ const SettingsPage: React.FC = () => {
     } catch {
       // 실패해도 로컬 상태는 제거
     }
+    await clearUserApiCaches();
     clearAuth();
     void queryClient.clear();
     applyThemeSetting(DEFAULT_THEME);
