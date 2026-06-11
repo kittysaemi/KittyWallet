@@ -9,6 +9,7 @@ import { applyThemeSetting, DEFAULT_THEME } from "../../entities/settings/model/
 import { userApi } from "../../entities/user/api/userApi";
 import { getPendingSyncCount } from "../../shared/storage/syncQueue";
 import { clearUserApiCaches } from "../../pwa/cache/cacheInvalidation";
+import { deleteDb } from "../../pwa/indexed-db/indexedDb.client";
 import { Button } from "../../shared/ui/Button";
 
 const nicknameSchema = z
@@ -59,6 +60,7 @@ const SettingsPage: React.FC = () => {
     mutationFn: userApi.withdraw,
     onSuccess: async () => {
       await clearUserApiCaches();
+      await deleteDb();
       clearAuth();
       void queryClient.clear();
       applyThemeSetting(DEFAULT_THEME);
