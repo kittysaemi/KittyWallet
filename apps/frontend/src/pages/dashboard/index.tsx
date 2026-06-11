@@ -17,6 +17,7 @@ import { categoryApi } from "../../entities/category/api/categoryApi";
 import { iconApi } from "../../entities/icon/api/iconApi";
 import type { IconItem } from "../../entities/icon/model/icon.types";
 import { IconRenderer } from "../../shared/ui/IconRenderer";
+import PwaInstallBanner from "../../shared/ui/PwaInstallBanner";
 
 const cardClass =
   "rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] shadow-[0_4px_16px_var(--color-card-shadow)]";
@@ -156,6 +157,9 @@ const DashboardPage: React.FC = () => {
   return (
     <div className="bg-[var(--color-bg-primary)]">
       <div className="mx-auto max-w-[480px] px-4 pb-6 pt-6">
+
+        {/* PWA 설치 배너 */}
+        <PwaInstallBanner />
 
         {/* 오프라인 배너 */}
         {isOffline && (

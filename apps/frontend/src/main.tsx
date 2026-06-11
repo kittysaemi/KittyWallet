@@ -4,6 +4,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import "./styles.css";
+import { initInstallPrompt } from "./pwa/install/installPrompt.service";
+import { registerServiceWorker } from "./pwa/service-worker/registerServiceWorker";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -13,6 +15,9 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+initInstallPrompt();
+registerServiceWorker();
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
