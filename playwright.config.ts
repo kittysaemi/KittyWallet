@@ -11,7 +11,7 @@ export default defineConfig({
   },
   webServer: {
     command: "npm run dev -w @kittywallet/frontend -- --host 127.0.0.1 --port 5183 --strictPort",
-    url: "http://127.0.0.1:5183",
+    url: "http://127.0.0.1:5183/kittywallet/",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000
   },

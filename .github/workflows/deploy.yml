@@ -139,10 +139,11 @@ jobs:
             docker compose --env-file .env.production -f docker-compose.prod.yml pull
             docker compose --env-file .env.production -f docker-compose.prod.yml up -d
             docker compose --env-file .env.production -f docker-compose.prod.yml exec -T backend npm run db:migrate
+            docker compose --env-file .env.production -f docker-compose.prod.yml exec -T nginx nginx -s reload
             docker compose --env-file .env.production -f docker-compose.prod.yml ps
 
       - name: Health check
-        run: curl --fail --retry 10 --retry-delay 5 https://kittysaemi.com/api/v1/health
+        run: curl --fail --retry 10 --retry-delay 5 https://kittysaemi.com/kittywallet/api/v1/health
 
       - name: Deployment notification
         if: always()

@@ -15,7 +15,7 @@ let failedQueue: Array<{
 
 export const authExpiredRedirect = {
   redirect() {
-    window.location.href = "/login?expired=1";
+    window.location.href = "/kittywallet/login?expired=1";
   }
 };
 
@@ -28,7 +28,7 @@ const processQueue = (error: unknown, token: string | null = null) => {
 };
 
 export const apiClient = axios.create({
-  baseURL: "/api/v1",
+  baseURL: "/kittywallet/api/v1",
   withCredentials: true,
   headers: { "Content-Type": "application/json" }
 });
@@ -70,7 +70,7 @@ apiClient.interceptors.response.use(
 
       try {
         const response = await axios.post<RefreshResponse>(
-          "/api/v1/auth/refresh",
+          "/kittywallet/api/v1/auth/refresh",
           {},
           { withCredentials: true }
         );

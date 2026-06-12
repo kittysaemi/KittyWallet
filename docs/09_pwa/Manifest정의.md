@@ -74,15 +74,15 @@ VitePWA({
     short_name: 'KittyWall',
     description: '계좌, 카드, 거래 내역을 관리하는 모바일 가계부 서비스',
     lang: 'ko-KR',
-    start_url: '/',
-    scope: '/',
+    start_url: '/kittywallet/',
+    scope: '/kittywallet/',
     display: 'standalone',
     orientation: 'portrait',
     theme_color: '#fda5e3',
     background_color: '#fce2f4',',
     icons: [
       {
-        src: '/icons/icon-192x192.png',
+        src: '/kittywallet/icons/icon-192x192.png',
         sizes: '192x192',
         type: 'image/png'
       },
@@ -445,8 +445,8 @@ Manifest는 배포 전 다음 기준으로 검증한다.
 | Manifest 로드       | 정상           |
 | name              | 존재           |
 | short_name        | 존재           |
-| start_url         | `/`          |
-| scope             | `/`          |
+| start_url         | `/kittywallet/` |
+| scope             | `/kittywallet/` |
 | display           | `standalone` |
 | icons             | 192, 512 존재  |
 | maskable icon     | 존재           |
@@ -481,7 +481,7 @@ Manifest는 배포 전 다음 기준으로 검증한다.
 처리
 
 * PWA 실행 실패로 간주
-* 기본 라우트 `/` 복구 필요
+* 기본 라우트 `/kittywallet/` 복구 필요
 
 ---
 
@@ -515,15 +515,15 @@ export default {
         short_name: 'KittyWall',
         description: '계좌, 카드, 거래 내역을 관리하는 모바일 가계부 서비스',
         lang: 'ko-KR',
-        start_url: '/',
-        scope: '/',
+        start_url: '/kittywallet/',
+        scope: '/kittywallet/',
         display: 'standalone',
         orientation: 'portrait',
         theme_color: '#fda5e3',
         background_color: '#fce2f4',
         icons: [
           {
-            src: '/icons/icon-192x192.png',
+            src: '/kittywallet/icons/icon-192x192.png',
             sizes: '192x192',
             type: 'image/png'
           },
