@@ -132,6 +132,30 @@
 
 ---
 
+# 버전 관리
+
+KittyWallet은 SemVer와 Conventional Commit을 기준으로 버전을 관리합니다.
+
+`main` 브랜치에 PR이 merge되면 Release workflow가 `lint`, `type-check`, `test`, `build`를 실행한 뒤 semantic-release로 다음 항목을 자동 생성하거나 갱신합니다.
+
+* Git tag
+* GitHub Release
+* `CHANGELOG.md`
+* `package.json` version
+* `package-lock.json`
+
+커밋 타입별 버전 증가는 다음 기준을 따릅니다.
+
+| 커밋 | 버전 영향 |
+| --- | --- |
+| `feat:` | MINOR |
+| `fix:` | PATCH |
+| `feat!:` 또는 `BREAKING CHANGE:` | MAJOR |
+
+앱 설정 화면의 `KittyWallet vX.Y.Z` 표시는 루트 `package.json` version을 기준으로 하며, 운영 배포물의 Git tag 및 GitHub Release 버전과 일치해야 합니다.
+
+---
+
 # 프로젝트 구조
 
 ```text
