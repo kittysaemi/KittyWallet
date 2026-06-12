@@ -2,50 +2,42 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: kittywallet-postgres
-    environment:
-      POSTGRES_DB: kittywallet
-      POSTGRES_USER: kittywallet
-      POSTGRES_PASSWORD: kittywallet
-    ports:
-      - "5432:5432"
+    restart: unless-stopped
+    env_file:
+      - ${KITTYWALLET_ENV_FILE:-.env.production}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U kittywallet -d kittywallet"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   backend:
-    build:
-      context: .
-      dockerfile: apps/backend/Dockerfile
+    image: ${KITTYWALLET_API_IMAGE}
     container_name: kittywallet-backend
+    restart: unless-stopped
     env_file:
-      - ${KITTYWALLET_ENV_FILE:-.env.example}
-    environment:
-      DATABASE_URL: postgresql://kittywallet:kittywallet@postgres:5432/kittywallet?schema=public
-    ports:
-      - "3700:3000"
+      - ${KITTYWALLET_ENV_FILE:-.env.production}
+    expose:
+      - "3000"
     depends_on:
       postgres:
         condition: service_healthy
 
   frontend:
-    build:
-      context: .
-      dockerfile: apps/frontend/Dockerfile
+    image: ${KITTYWALLET_WEB_IMAGE}
     container_name: kittywallet-frontend
-    environment:
-      VITE_API_URL: http://localhost:3000
-    ports:
-      - "5173:80"
+    restart: unless-stopped
+    expose:
+      - "80"
     depends_on:
       - backend
 
   nginx:
     image: nginx:1.27-alpine
     container_name: kittywallet-nginx
+    restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
