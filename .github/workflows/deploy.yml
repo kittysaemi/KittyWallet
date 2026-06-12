@@ -139,7 +139,6 @@ jobs:
             docker compose --env-file .env.production -f docker-compose.prod.yml pull
             docker compose --env-file .env.production -f docker-compose.prod.yml up -d
             docker compose --env-file .env.production -f docker-compose.prod.yml exec -T backend npm run db:migrate
-            docker compose --env-file .env.production -f docker-compose.prod.yml exec -T nginx nginx -s reload
             docker compose --env-file .env.production -f docker-compose.prod.yml ps
 
       - name: Health check
