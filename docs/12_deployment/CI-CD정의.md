@@ -621,8 +621,13 @@ deployment files upload
 docker compose pull
 docker compose up -d
 Prisma migrate deploy
+docker compose up -d --force-recreate nginx
+nginx config test
+nginx reload
 health check
 ```
+
+Nginx 설정 파일은 bind mount로 컨테이너에 연결되므로, `infra/nginx/default.conf`가 변경된 배포에서는 `nginx -s reload`만 수행하지 않는다. `docker compose up -d --force-recreate nginx`로 Nginx 컨테이너를 재생성한 뒤 `nginx -t`와 reload를 수행한다.
 
 운영 Health Check는 다음 경로를 기준으로 수행한다.
 
