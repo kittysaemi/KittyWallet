@@ -419,6 +419,62 @@ v1.1.1
 
 ---
 
+# 버전 관리 및 릴리즈 자동화
+
+## 버전 기준
+
+프로그램 버전은 SemVer를 사용한다.
+
+* `MAJOR`: 기존 API, 데이터, 배포 환경과 호환되지 않는 변경
+* `MINOR`: 하위 호환 가능한 기능 추가
+* `PATCH`: 버그 수정, UI 표시 수정, 문서/설정 보완
+
+## 커밋 타입과 버전 증가
+
+`main` 브랜치에 merge된 Conventional Commit을 기준으로 semantic-release가 버전을 계산한다.
+
+* `feat:` → MINOR
+* `fix:` → PATCH
+* `feat!:` 또는 본문 `BREAKING CHANGE:` → MAJOR
+
+릴리즈 버전은 사람이 직접 tag를 생성하거나 `package.json` version만 수동 수정하지 않는다.
+
+## 자동 릴리즈 흐름
+
+`main` 브랜치에 push되면 Release workflow가 다음 순서로 실행된다.
+
+```text
+npm ci
+↓
+lint
+↓
+type-check
+↓
+test
+↓
+build
+↓
+semantic-release
+↓
+CHANGELOG.md 갱신
+↓
+package.json / package-lock.json version 갱신
+↓
+Git tag 생성
+↓
+GitHub Release 생성
+```
+
+릴리즈 커밋은 semantic-release가 생성하며 메시지는 `chore(release): {version} [skip ci]` 형식을 사용한다.
+
+## 앱 버전 표시
+
+앱 설정 화면의 버전 표시는 루트 `package.json` version을 기준으로 한다.
+
+따라서 운영 배포물의 앱 버전은 Git tag, GitHub Release, `package.json` version과 일치해야 한다.
+
+---
+
 # AI 작업 규칙
 
 AI는 작업 시작 전 `AGENTS.md`와 `docs/00_project/문서인덱스.md`를 확인한다.

@@ -279,6 +279,7 @@ const SettingsPage: React.FC = () => {
             <p className="mt-2 text-xs text-[var(--color-danger)]">{withdrawError}</p>
           )}
         </section>
+
       </div>
 
       {isWithdrawOpen && (

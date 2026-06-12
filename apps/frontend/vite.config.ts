@@ -2,7 +2,6 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import { workboxConfig } from "./src/pwa/workbox/workbox.config";
-
 export default defineConfig({
   base: "/kittywallet/",
   plugins: [
