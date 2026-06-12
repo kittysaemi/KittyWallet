@@ -103,6 +103,10 @@ body {
   background: var(--color-bg-primary);
 }
 
+html {
+  background: var(--color-bg-primary);
+}
+
 .font-gamja {
   font-family: var(--font-brand);
 }

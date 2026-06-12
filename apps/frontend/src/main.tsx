@@ -19,10 +19,12 @@ const queryClient = new QueryClient({
 initInstallPrompt();
 registerServiceWorker();
 
+const routerBaseName = "/kittywallet";
+
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter basename="/kittywallet">
+      <BrowserRouter basename={routerBaseName}>
         <App />
       </BrowserRouter>
     </QueryClientProvider>
