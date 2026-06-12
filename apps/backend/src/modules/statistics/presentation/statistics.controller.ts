@@ -71,7 +71,8 @@ export class StatisticsController {
       userId: BigInt(user.sub),
       month: query.month,
       walletType: query.wallet_type,
-      walletId: query.wallet_id ? BigInt(query.wallet_id) : undefined
+      walletId: query.wallet_id ? BigInt(query.wallet_id) : undefined,
+      transactionType: query.transaction_type
     });
   }
 
@@ -88,6 +89,16 @@ export class StatisticsController {
   @Get("sankey")
   getSankeyStatistics(@CurrentUser() user: JwtPayload, @Query() query: VisualizationQueryDto) {
     return this.statisticsService.getSankeyStatistics({
+      userId: BigInt(user.sub),
+      month: query.month,
+      walletType: query.wallet_type,
+      walletId: query.wallet_id ? BigInt(query.wallet_id) : undefined
+    });
+  }
+
+  @Get("sankey-income")
+  getSankeyIncomeStatistics(@CurrentUser() user: JwtPayload, @Query() query: VisualizationQueryDto) {
+    return this.statisticsService.getSankeyIncomeStatistics({
       userId: BigInt(user.sub),
       month: query.month,
       walletType: query.wallet_type,

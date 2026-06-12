@@ -78,6 +78,7 @@ export interface VisualizationParams {
   end_date?: string;
   wallet_type?: "ACCOUNT" | "CARD";
   wallet_id?: number;
+  transaction_type?: "INCOME" | "EXPENSE";
 }
 
 export interface SummaryTopCategory {
@@ -107,7 +108,8 @@ export interface CategoryTopItem {
 
 export interface CategoryTopStatisticsData {
   month: string;
-  total_expense: number;
+  total_expense?: number;
+  total_income?: number;
   items: CategoryTopItem[];
 }
 
@@ -137,6 +139,13 @@ export interface SankeyLink {
 export interface SankeyStatisticsData {
   month: string;
   total_expense: number;
+  nodes: SankeyNode[];
+  links: SankeyLink[];
+}
+
+export interface SankeyIncomeStatisticsData {
+  month: string;
+  total_income: number;
   nodes: SankeyNode[];
   links: SankeyLink[];
 }

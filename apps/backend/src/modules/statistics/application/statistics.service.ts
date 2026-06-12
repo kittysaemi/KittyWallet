@@ -32,6 +32,7 @@ interface GetPeriodStatisticsCommand extends BaseStatisticsCommand {
 
 interface GetVisualizationCommand extends BaseStatisticsCommand {
   month?: string;
+  transactionType?: string;
 }
 
 interface AmountSummary {
@@ -198,16 +199,18 @@ export class StatisticsService {
   async getCategoryTopStatistics(command: GetVisualizationCommand) {
     const month = command.month ?? new Date().toISOString().slice(0, 7);
     const { startDate, endDate } = this.parseMonth(month);
+    const isIncome = command.transactionType === "INCOME";
+    const txType = isIncome ? TransactionType.INCOME : TransactionType.EXPENSE;
     const groups = await this.statisticsRepository.groupAmountsByCategory({
       userId: command.userId,
       startDate,
       endDate,
       walletType: this.toWalletType(command.walletType),
       walletId: command.walletId,
-      transactionType: TransactionType.EXPENSE
+      transactionType: txType
     });
 
-    const totalExpense = groups.reduce((sum, g) => sum + this.toNumber(g.amount), 0);
+    const totalAmount = groups.reduce((sum, g) => sum + this.toNumber(g.amount), 0);
     const top5 = groups.slice(0, 5);
     const othersAmount = groups.slice(5).reduce((sum, g) => sum + this.toNumber(g.amount), 0);
 
@@ -219,7 +222,7 @@ export class StatisticsService {
         category_name: g.category?.categoryName ?? "",
         icon_id: g.category ? Number(g.category.iconId) : null,
         amount,
-        ratio: totalExpense > 0 ? Math.round((amount / totalExpense) * 10000) / 100 : 0
+        ratio: totalAmount > 0 ? Math.round((amount / totalAmount) * 10000) / 100 : 0
       };
     });
 
@@ -230,11 +233,14 @@ export class StatisticsService {
         category_name: "기타",
         icon_id: null,
         amount: othersAmount,
-        ratio: totalExpense > 0 ? Math.round((othersAmount / totalExpense) * 10000) / 100 : 0
+        ratio: totalAmount > 0 ? Math.round((othersAmount / totalAmount) * 10000) / 100 : 0
       });
     }
 
-    return { month, total_expense: totalExpense, items };
+    if (isIncome) {
+      return { month, total_income: totalAmount, items };
+    }
+    return { month, total_expense: totalAmount, items };
   }
 
   async getCalendarStatistics(command: GetVisualizationCommand) {
@@ -336,6 +342,80 @@ export class StatisticsService {
     ];
 
     return { month, total_expense: totalExpense, nodes, links };
+  }
+
+  async getSankeyIncomeStatistics(command: GetVisualizationCommand) {
+    const month = command.month ?? new Date().toISOString().slice(0, 7);
+    const { startDate, endDate } = this.parseMonth(month);
+    const condition = {
+      userId: command.userId,
+      startDate,
+      endDate,
+      walletType: this.toWalletType(command.walletType),
+      walletId: command.walletId
+    };
+
+    const [crossGroups, categoryGroups] = await Promise.all([
+      this.statisticsRepository.groupIncomesByWalletTypeAndCategory(condition),
+      this.statisticsRepository.groupAmountsByCategory({
+        ...condition,
+        transactionType: TransactionType.INCOME
+      })
+    ]);
+
+    if (crossGroups.length === 0) {
+      return { month, total_income: 0, nodes: [], links: [] };
+    }
+
+    const totalIncome = categoryGroups.reduce((sum, g) => sum + this.toNumber(g.amount), 0);
+
+    const walletTotals = new Map<string, number>();
+    for (const g of crossGroups) {
+      const key = g.walletType;
+      walletTotals.set(key, (walletTotals.get(key) ?? 0) + this.toNumber(g.amount));
+    }
+
+    const top5Categories = categoryGroups.slice(0, 5);
+    const top5Ids = new Set(top5Categories.map((g) => String(g.categoryId)));
+
+    const catTotals = new Map<string, number>();
+    let othersTotal = 0;
+    for (const g of crossGroups) {
+      const catKey = String(g.categoryId);
+      if (top5Ids.has(catKey)) {
+        catTotals.set(catKey, (catTotals.get(catKey) ?? 0) + this.toNumber(g.amount));
+      } else {
+        othersTotal += this.toNumber(g.amount);
+      }
+    }
+
+    const nodes = [
+      { id: "total", name: "총 수입", value: totalIncome },
+      ...Array.from(walletTotals.entries()).map(([walletType, value]) => ({
+        id: walletType.toLowerCase(),
+        name: walletType === "ACCOUNT" ? "계좌" : "카드",
+        value
+      })),
+      ...top5Categories.map((g) => ({
+        id: `cat_${g.categoryId}`,
+        name: g.category?.categoryName ?? "",
+        value: catTotals.get(String(g.categoryId)) ?? 0
+      })),
+      ...(othersTotal > 0 ? [{ id: "cat_other", name: "기타", value: othersTotal }] : [])
+    ];
+
+    const walletCatLinks = this.buildWalletCatLinks(crossGroups, top5Ids);
+
+    const links = [
+      ...Array.from(walletTotals.entries()).map(([walletType, value]) => ({
+        source: "total",
+        target: walletType.toLowerCase(),
+        value
+      })),
+      ...walletCatLinks
+    ];
+
+    return { month, total_income: totalIncome, nodes, links };
   }
 
   private buildWalletCatLinks(
