@@ -221,13 +221,13 @@ const AppSettingsPage: React.FC = () => {
               >
                 앱 설정 저장
               </Button>
+
+              <p className="text-center text-xs text-[var(--color-text-caption)]">
+                KittyWallet v{__APP_VERSION__}
+              </p>
             </>
           )}
         </section>
-
-        <p className="text-center text-xs text-[var(--color-text-caption)]">
-          KittyWallet v{__APP_VERSION__}
-        </p>
       </div>
     </div>
   );
