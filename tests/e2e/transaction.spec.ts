@@ -27,7 +27,7 @@ test("E2E-CORE-002 API mock: login and register account transaction", async ({ p
   await page.getByRole("button", { name: "거래 등록" }).click();
 
   await expect(page).toHaveURL(/\/kittywallet\/transactions$/);
-  await expect(page.getByText("점심")).toBeVisible();
+  await expect(page.getByText("점심", { exact: true })).toBeVisible();
   await expect(page.getByText("생활비 통장")).toBeVisible();
   await expect(page.getByText("-15,000원").first()).toBeVisible();
 });
