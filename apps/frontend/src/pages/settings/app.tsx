@@ -11,6 +11,7 @@ import {
   THEME_OPTIONS
 } from "../../entities/settings/model/theme";
 import { Button } from "../../shared/ui/Button";
+import { APP_VERSION } from "../../shared/constants/version";
 
 const cardClass =
   "rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] shadow-[0_4px_16px_var(--color-card-shadow)]";
@@ -223,7 +224,7 @@ const AppSettingsPage: React.FC = () => {
               </Button>
 
               <p className="text-center text-xs text-[var(--color-text-caption)]">
-                KittyWallet v{__APP_VERSION__}
+                KittyWallet v{APP_VERSION}
               </p>
             </>
           )}
