@@ -243,6 +243,31 @@ describe("StatisticsPage", () => {
     expect(await screen.findByText("통계 데이터가 없습니다")).toBeInTheDocument();
   });
 
+  it("renders spending tab when the period has income but no expense", async () => {
+    mockedStatisticsApi.getMonthlyStatistics.mockResolvedValueOnce({
+      success: true,
+      data: {
+        month: "2026-06",
+        wallet_type: null,
+        income_amount: 300000,
+        expense_amount: 0,
+        net_amount: 300000,
+        transaction_count: 1,
+        daily_items: [
+          { date: "2026-06-02", income_amount: 300000, expense_amount: 0, transaction_count: 1 }
+        ]
+      },
+      error: null
+    });
+
+    render(<StatisticsPage />, { wrapper: createWrapper() });
+
+    expect(await screen.findByText("소비 흐름")).toBeInTheDocument();
+    expect(screen.getAllByText("300,000원").length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText("통계 데이터가 없습니다")).not.toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "월별 소비 흐름 차트" })).toBeInTheDocument();
+  });
+
   it("switches to 월간 요약 tab and shows summary data", async () => {
     render(<StatisticsPage />, { wrapper: createWrapper() });
 

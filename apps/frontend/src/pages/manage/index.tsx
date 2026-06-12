@@ -16,6 +16,11 @@ import { IconSelect } from "../../features/icons/IconSelect";
 import { Button } from "../../shared/ui/Button";
 import { IconRenderer } from "../../shared/ui/IconRenderer";
 import { useSearchParams } from "react-router-dom";
+import {
+  invalidateAccountCaches,
+  invalidateCardCaches,
+  invalidateCategoryCaches
+} from "../../pwa/cache/cacheInvalidation";
 
 type ManageTab = "accounts" | "cards" | "categories" | "icons";
 
@@ -131,6 +136,8 @@ const AccountsTab: React.FC = () => {
   const accountsQuery = useQuery({
     queryKey: ["accounts"],
     queryFn: () => accountApi.getAccounts(),
+    staleTime: 0,
+    refetchOnMount: "always",
     retry: isOffline ? false : 3
   });
   const iconsQuery = useQuery({
@@ -146,7 +153,11 @@ const AccountsTab: React.FC = () => {
   }, [iconsQuery.data]);
 
   const refresh = async () => {
-    await queryClient.invalidateQueries({ queryKey: ["accounts"] });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["accounts"] }),
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
+      invalidateAccountCaches()
+    ]);
   };
 
   const createMutation = useMutation({
@@ -193,7 +204,9 @@ const AccountsTab: React.FC = () => {
       setArchiveTarget(null);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["accounts"] }),
-        queryClient.invalidateQueries({ queryKey: ["transactions"] })
+        queryClient.invalidateQueries({ queryKey: ["transactions"] }),
+        queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
+        invalidateAccountCaches()
       ]);
     }
   });
@@ -565,6 +578,8 @@ const CardsTab: React.FC = () => {
   const cardsQuery = useQuery({
     queryKey: ["cards"],
     queryFn: () => cardApi.getCards(),
+    staleTime: 0,
+    refetchOnMount: "always",
     retry: isOffline ? false : 3
   });
   const iconsQuery = useQuery({
@@ -580,7 +595,11 @@ const CardsTab: React.FC = () => {
   }, [iconsQuery.data]);
 
   const refresh = async () => {
-    await queryClient.invalidateQueries({ queryKey: ["cards"] });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["cards"] }),
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
+      invalidateCardCaches()
+    ]);
   };
 
   const createMutation = useMutation({
@@ -619,7 +638,9 @@ const CardsTab: React.FC = () => {
       setArchiveTarget(null);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["cards"] }),
-        queryClient.invalidateQueries({ queryKey: ["transactions"] })
+        queryClient.invalidateQueries({ queryKey: ["transactions"] }),
+        queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
+        invalidateCardCaches()
       ]);
     }
   });
@@ -1068,7 +1089,10 @@ const CategoriesTab: React.FC = () => {
   const refreshCategories = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["categories", "manage"] }),
-      queryClient.invalidateQueries({ queryKey: ["categories", "select"] })
+      queryClient.invalidateQueries({ queryKey: ["categories", "select"] }),
+      queryClient.invalidateQueries({ queryKey: ["categories", "active"] }),
+      queryClient.invalidateQueries({ queryKey: ["statistics"] }),
+      invalidateCategoryCaches()
     ]);
   };
 
@@ -1095,6 +1119,11 @@ const CategoriesTab: React.FC = () => {
       setNewIconId(undefined);
       setNameErrors({});
       await refreshCategories();
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { error?: { message?: string } } } }).response
+        ?.data?.error?.message;
+      setNameErrors({ 0: msg ?? "카테고리 등록에 실패했습니다." });
     }
   });
 

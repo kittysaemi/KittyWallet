@@ -78,6 +78,9 @@ const TransactionDetailPage: React.FC = () => {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["transactions"] });
       void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      void queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      void queryClient.invalidateQueries({ queryKey: ["cards"] });
+      void queryClient.invalidateQueries({ queryKey: ["statistics"] });
       void invalidateTransactionCaches();
       navigate("/transactions", { replace: true });
     },
@@ -156,6 +159,9 @@ const TransactionDetailPage: React.FC = () => {
         usePwaStore.getState().setSyncStatus("pending_sync");
         void queryClient.invalidateQueries({ queryKey: ["transactions"] });
         void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+        void queryClient.invalidateQueries({ queryKey: ["accounts"] });
+        void queryClient.invalidateQueries({ queryKey: ["cards"] });
+        void queryClient.invalidateQueries({ queryKey: ["statistics"] });
         void invalidateTransactionCaches();
         navigate("/transactions", { replace: true });
       } catch {

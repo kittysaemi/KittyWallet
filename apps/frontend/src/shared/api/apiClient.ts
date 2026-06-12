@@ -27,6 +27,11 @@ const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue = [];
 };
 
+const isOfflineRefreshFailure = (error: unknown): boolean =>
+  typeof navigator !== "undefined" &&
+  !navigator.onLine &&
+  !(error as AxiosError | undefined)?.response;
+
 export const apiClient = axios.create({
   baseURL: "/kittywallet/api/v1",
   withCredentials: true,
@@ -91,6 +96,9 @@ apiClient.interceptors.response.use(
         }
       } catch (refreshError) {
         processQueue(refreshError, null);
+        if (isOfflineRefreshFailure(refreshError)) {
+          return Promise.reject(refreshError);
+        }
         useAuthStore.getState().clearAuth();
         authExpiredRedirect.redirect();
         return Promise.reject(refreshError);

@@ -98,6 +98,42 @@ describe("TransactionsPage error cases", () => {
     await waitFor(() => expect(mockedTransactionApi.getTransactions).toHaveBeenCalledTimes(1));
   });
 
+  it("renders transaction memo beside the category name", async () => {
+    mockedTransactionApi.getTransactions.mockResolvedValueOnce({
+      success: true,
+      data: {
+        items: [
+          {
+            transaction_id: 1,
+            wallet_type: "ACCOUNT",
+            wallet_id: 1,
+            wallet_name: "생활통장",
+            wallet_deleted: false,
+            category_id: 1,
+            category_name: "식비",
+            transaction_type: "EXPENSE",
+            amount: 12000,
+            memo: "점심",
+            transaction_date: "2026-06-02",
+            created_at: "2026-06-02T00:00:00Z",
+            updated_at: "2026-06-02T00:00:00Z"
+          }
+        ],
+        total_count: 1,
+        page: 1,
+        limit: 20
+      },
+      error: null
+    });
+    mockedCategoryApi.getCategories.mockResolvedValue(emptyCategories);
+    mockedIconApi.getIcons.mockResolvedValue(emptyIcons);
+
+    render(<TransactionsPage />, { wrapper: createWrapper() });
+
+    expect(await screen.findByText("식비")).toBeInTheDocument();
+    expect(screen.getByText("점심")).toBeInTheDocument();
+  });
+
   it("shows offline state and disables query retry while offline", async () => {
     Object.defineProperty(window.navigator, "onLine", {
       configurable: true,

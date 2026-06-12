@@ -168,6 +168,27 @@ describe("CategoriesPage", () => {
     expect(screen.queryByLabelText("카테고리명")).not.toBeInTheDocument();
   });
 
+  it("shows API error when category creation fails", async () => {
+    mockedCategoryApi.getCategories.mockResolvedValue(successCategories);
+    mockedCategoryApi.createCategory.mockRejectedValue({
+      response: { data: { error: { message: "이미 사용 중인 카테고리명입니다." } } }
+    });
+    mockedIconApi.getIcons
+      .mockResolvedValueOnce(visibleIcons)
+      .mockResolvedValueOnce(hiddenIcons)
+      .mockResolvedValueOnce(visibleIcons);
+
+    render(<CategoriesPage />, { wrapper: createWrapper() });
+
+    await userEvent.click(await screen.findByRole("button", { name: "카테고리 등록" }));
+    await userEvent.click(screen.getByRole("button", { name: "카테고리 아이콘 선택" }));
+    await userEvent.click(await screen.findByRole("button", { name: "아이콘 선택: utensils" }));
+    await userEvent.type(screen.getByLabelText("카테고리명"), "식비");
+    await userEvent.click(screen.getByRole("button", { name: "등록" }));
+
+    expect(await screen.findByText("이미 사용 중인 카테고리명입니다.")).toBeInTheDocument();
+  });
+
   it("edits active category name inline", async () => {
     mockedCategoryApi.getCategories.mockResolvedValue(successCategories);
     mockedCategoryApi.updateCategory.mockResolvedValue({

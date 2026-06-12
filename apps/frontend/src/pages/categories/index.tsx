@@ -279,7 +279,10 @@ const CategoriesPage: React.FC = () => {
   const refreshCategories = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["categories", "manage"] }),
-      queryClient.invalidateQueries({ queryKey: ["categories", "select"] })
+      queryClient.invalidateQueries({ queryKey: ["categories", "select"] }),
+      queryClient.invalidateQueries({ queryKey: ["categories", "active"] }),
+      queryClient.invalidateQueries({ queryKey: ["statistics"] }),
+      invalidateCategoryCaches()
     ]);
   };
 
@@ -307,6 +310,11 @@ const CategoriesPage: React.FC = () => {
       setNewIconId(undefined);
       setNameErrors({});
       await refreshCategories();
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { error?: { message?: string } } } }).response
+        ?.data?.error?.message;
+      setNameErrors({ 0: msg ?? "카테고리 등록에 실패했습니다." });
     }
   });
 
