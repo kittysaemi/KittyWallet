@@ -93,7 +93,7 @@ dist/
 예시
 
 ```text
-manifest.webmanifest
+/kittywallet/manifest.webmanifest
 ```
 
 검증
@@ -112,8 +112,8 @@ manifest.webmanifest
 예시
 
 ```text
-sw.js
-workbox-*.js
+/kittywallet/sw.js
+/kittywallet/workbox-*.js
 ```
 
 ---
@@ -162,7 +162,8 @@ manifest.webmanifest
 | --------- | ---- |
 | name      | PASS |
 | icons     | PASS |
-| start_url | PASS |
+| start_url `/kittywallet/` | PASS |
+| scope `/kittywallet/` | PASS |
 | display   | PASS |
 
 ---
@@ -178,7 +179,7 @@ vite-plugin-pwa
 생성 확인
 
 ```text
-sw.js
+/kittywallet/sw.js
 ```
 
 ---

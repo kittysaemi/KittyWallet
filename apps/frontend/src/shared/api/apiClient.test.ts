@@ -60,7 +60,7 @@ describe("apiClient auth error handling", () => {
 
     expect(apiClient).toBe(axiosMocks.client as unknown as AxiosInstance);
     expect(axiosMocks.post).toHaveBeenCalledWith(
-      "/api/v1/auth/refresh",
+      "/kittywallet/api/v1/auth/refresh",
       {},
       { withCredentials: true }
     );

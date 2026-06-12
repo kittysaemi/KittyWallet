@@ -624,6 +624,12 @@ Prisma migrate deploy
 health check
 ```
 
+운영 Health Check는 다음 경로를 기준으로 수행한다.
+
+```text
+https://kittysaemi.com/kittywallet/api/v1/health
+```
+
 ## GitHub Actions Secrets
 
 ```text

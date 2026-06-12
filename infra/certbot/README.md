@@ -9,8 +9,9 @@ The production domain structure is:
 
 - Canonical domain: `kittysaemi.com`
 - Redirect domains: `www.kittysaemi.com`, `kittysaemi.kr`, `www.kittysaemi.kr`
-- Frontend: `https://kittysaemi.com/`
-- Backend API: `https://kittysaemi.com/api/*`
+- Project index: `https://kittysaemi.com/`
+- KittyWallet frontend: `https://kittysaemi.com/kittywallet/`
+- KittyWallet backend API: `https://kittysaemi.com/kittywallet/api/*`
 
 Issue the initial Let's Encrypt certificate on the server after DNS points to the
 server public IP. Run this before starting the Nginx service because Nginx needs
