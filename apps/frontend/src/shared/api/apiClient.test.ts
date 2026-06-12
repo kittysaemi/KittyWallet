@@ -32,6 +32,7 @@ import { apiClient, authExpiredRedirect } from "./apiClient";
 
 describe("apiClient auth error handling", () => {
   beforeEach(() => {
+    vi.restoreAllMocks();
     axiosMocks.client.mockReset();
     axiosMocks.post.mockReset();
     useAuthStore.getState().clearAuth();
@@ -98,5 +99,33 @@ describe("apiClient auth error handling", () => {
     expect(useAuthStore.getState().accessToken).toBe("new-token");
     expect(originalRequest.headers.Authorization).toBe("Bearer new-token");
     expect(axiosMocks.client).toHaveBeenCalledWith(originalRequest);
+  });
+
+  it("keeps auth state when refresh fails because the app is offline", async () => {
+    const redirectSpy = vi.spyOn(authExpiredRedirect, "redirect").mockImplementation(() => {});
+    const onLineSpy = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+    useAuthStore.getState().setAuth("expired-token", { user_id: 1, nickname: "테스터" });
+    axiosMocks.post.mockRejectedValueOnce(new Error("Network Error"));
+
+    const [, handleResponseError] = axiosMocks.responseUse.mock.calls[0] as [
+      unknown,
+      (error: AxiosError) => Promise<unknown>
+    ];
+    const originalRequest = {
+      url: "/transactions",
+      headers: {}
+    } as InternalAxiosRequestConfig & { _retry?: boolean };
+
+    await expect(
+      handleResponseError({
+        config: originalRequest,
+        response: { status: 401 }
+      } as AxiosError)
+    ).rejects.toThrow("Network Error");
+
+    expect(useAuthStore.getState().isAuthenticated).toBe(true);
+    expect(useAuthStore.getState().accessToken).toBe("expired-token");
+    expect(redirectSpy).not.toHaveBeenCalled();
+    onLineSpy.mockRestore();
   });
 });

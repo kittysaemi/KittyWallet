@@ -40,6 +40,7 @@ const TABS: { id: StatTab; label: string }[] = [
 
 interface ChartItem {
   label: string;
+  incomeAmount: number;
   expenseAmount: number;
 }
 
@@ -81,6 +82,7 @@ function formatWeekLabel(range: { start: string; end: string }): string {
 function toChartItems(items: MonthlyDailyItem[]): ChartItem[] {
   return items.map((item) => ({
     label: item.date.slice(8),
+    incomeAmount: item.income_amount,
     expenseAmount: item.expense_amount
   }));
 }
@@ -90,6 +92,7 @@ function toPeriodChartItems(items: PeriodStatisticsItem[]): ChartItem[] {
     const date = new Date(`${item.period}T00:00:00`);
     return {
       label: `${date.getMonth() + 1}/${date.getDate()}`,
+      incomeAmount: item.income_amount,
       expenseAmount: item.expense_amount
     };
   });
@@ -107,6 +110,17 @@ const SpendingChart: React.FC<{ items: ChartItem[] }> = ({ items }) => {
       data: {
         labels: items.map((i) => i.label),
         datasets: [
+          {
+            label: "수입",
+            data: items.map((i) => i.incomeAmount),
+            borderColor: "#38BDF8",
+            backgroundColor: "rgba(56, 189, 248, 0.12)",
+            borderWidth: 3,
+            fill: false,
+            pointRadius: 3,
+            pointHoverRadius: 5,
+            tension: 0.35
+          },
           {
             label: "지출",
             data: items.map((i) => i.expenseAmount),
@@ -126,7 +140,8 @@ const SpendingChart: React.FC<{ items: ChartItem[] }> = ({ items }) => {
         plugins: {
           tooltip: {
             callbacks: {
-              label: (ctx) => `지출 ${formatAmount(Number(ctx.parsed.y))}`
+              label: (ctx) =>
+                `${ctx.dataset.label ?? "금액"} ${formatAmount(Number(ctx.parsed.y))}`
             }
           }
         },
@@ -203,11 +218,11 @@ const SpendingContent: React.FC<{
   isEmpty: boolean;
   onRetry: () => void;
 }> = ({ chartItems, incomeAmount, expenseAmount, netAmount, transactionCount, isLoading, isError, isEmpty, onRetry }) => {
-  const hasChartData = chartItems.some((i) => i.expenseAmount > 0);
+  const hasChartData = chartItems.some((i) => i.incomeAmount > 0 || i.expenseAmount > 0);
 
   if (isLoading) return <TabSkeleton />;
   if (isError) return <ErrorCard onRetry={onRetry} />;
-  if (isEmpty) return <EmptyCard message="선택한 기간에 기록된 지출이 없습니다." />;
+  if (isEmpty) return <EmptyCard message="선택한 기간에 기록된 수입/지출이 없습니다." />;
 
   return (
     <div className="flex flex-col gap-4">
@@ -241,7 +256,7 @@ const SpendingContent: React.FC<{
           <SpendingChart items={chartItems} />
         ) : (
           <div className="flex min-h-[220px] items-center justify-center rounded-xl bg-[var(--color-bg-secondary)] px-4 text-center text-sm text-[var(--color-text-secondary)]">
-            차트로 표시할 지출 데이터가 없습니다.
+            차트로 표시할 수입/지출 데이터가 없습니다.
           </div>
         )}
       </section>
@@ -916,7 +931,7 @@ const StatisticsPage: React.FC = () => {
   const spendingIsError =
     (viewMode === "MONTH" ? monthlyQuery.isError : periodQuery.isError) && !activeSpendingData;
 
-  const hasChartData = chartItems.some((i) => i.expenseAmount > 0);
+  const hasChartData = chartItems.some((i) => i.incomeAmount > 0 || i.expenseAmount > 0);
   const spendingIsEmpty = !spendingIsLoading && !spendingIsError && !hasChartData;
 
   /* ── 네비게이터 ── */

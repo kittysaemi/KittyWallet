@@ -10,6 +10,7 @@ import type { IconItem } from "../../entities/icon/model/icon.types";
 import { IconPickerSheet } from "../../features/icons/IconPickerSheet";
 import { Button } from "../../shared/ui/Button";
 import { IconRenderer } from "../../shared/ui/IconRenderer";
+import { invalidateCardCaches } from "../../pwa/cache/cacheInvalidation";
 
 const cardClass =
   "rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] shadow-[0_4px_16px_var(--color-card-shadow)]";
@@ -98,6 +99,8 @@ const CardsPage: React.FC = () => {
   const cardsQuery = useQuery({
     queryKey: ["cards"],
     queryFn: () => cardApi.getCards(),
+    staleTime: 0,
+    refetchOnMount: "always",
     retry: isOffline ? false : 3
   });
 
@@ -108,7 +111,11 @@ const CardsPage: React.FC = () => {
   });
 
   const refreshCards = async () => {
-    await queryClient.invalidateQueries({ queryKey: ["cards"] });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["cards"] }),
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
+      invalidateCardCaches()
+    ]);
   };
 
   const createMutation = useMutation({
@@ -148,7 +155,8 @@ const CardsPage: React.FC = () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["cards"] }),
         queryClient.invalidateQueries({ queryKey: ["transactions"] }),
-        queryClient.invalidateQueries({ queryKey: ["dashboard"] })
+        queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
+        invalidateCardCaches()
       ]);
     }
   });

@@ -68,8 +68,14 @@ const TxRow: React.FC<TxRowProps> = ({ tx, iconMap, categoryIconMap }) => {
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">
-          {tx.category_name}
+        <p className="flex min-w-0 items-center gap-1 text-sm font-medium text-[var(--color-text-primary)]">
+          <span className="truncate">{tx.category_name}</span>
+          {tx.memo && (
+            <>
+              <span className="shrink-0 text-[var(--color-text-caption)]">·</span>
+              <span className="truncate text-[var(--color-text-secondary)]">{tx.memo}</span>
+            </>
+          )}
         </p>
         <p className="flex items-center gap-1 truncate text-xs text-[var(--color-text-secondary)]">
           <span className="shrink-0">{formatDate(tx.transaction_date)}</span>
