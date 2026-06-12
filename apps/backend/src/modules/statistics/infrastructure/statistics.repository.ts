@@ -125,6 +125,36 @@ export class StatisticsRepository {
     }));
   }
 
+  async groupIncomesByWalletTypeAndCategory(
+    condition: StatisticsCondition
+  ): Promise<WalletTypeCategoryGroup[]> {
+    const rows = await this.prisma.transaction.groupBy({
+      by: ["walletType", "categoryId"],
+      where: {
+        ...this.buildWhere(condition),
+        transactionType: "INCOME"
+      },
+      _sum: { amount: true },
+      orderBy: { _sum: { amount: "desc" } }
+    });
+
+    const categoryIds = [...new Set(rows.map((r) => r.categoryId))];
+    const categories = categoryIds.length
+      ? await this.prisma.category.findMany({
+          where: { categoryId: { in: categoryIds } },
+          select: { categoryId: true, categoryName: true, iconId: true }
+        })
+      : [];
+    const categoryMap = new Map(categories.map((c) => [String(c.categoryId), c]));
+
+    return rows.map((row) => ({
+      walletType: row.walletType,
+      categoryId: row.categoryId,
+      amount: row._sum.amount,
+      category: categoryMap.get(String(row.categoryId)) ?? null
+    }));
+  }
+
   async groupAmountsByCategory(condition: StatisticsCondition): Promise<CategoryAmountGroup[]> {
     const rows = await this.prisma.transaction.groupBy({
       by: ["categoryId"],

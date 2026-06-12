@@ -12,4 +12,8 @@ export class VisualizationQueryDto {
   @IsOptional()
   @IsNumberString()
   wallet_id?: string;
+
+  @IsOptional()
+  @IsIn(["INCOME", "EXPENSE"])
+  transaction_type?: string;
 }

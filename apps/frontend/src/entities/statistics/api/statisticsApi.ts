@@ -9,6 +9,7 @@ import type {
   MonthlyStatisticsParams,
   PeriodStatisticsData,
   PeriodStatisticsParams,
+  SankeyIncomeStatisticsData,
   SankeyStatisticsData,
   SummaryStatisticsData,
   VisualizationParams
@@ -76,6 +77,16 @@ export const statisticsApi = {
     const res = await apiClient.get<ApiResponse<SankeyStatisticsData>>("/statistics/sankey", {
       params
     });
+    return res.data;
+  },
+
+  getSankeyIncomeStatistics: async (
+    params?: VisualizationParams
+  ): Promise<ApiResponse<SankeyIncomeStatisticsData>> => {
+    const res = await apiClient.get<ApiResponse<SankeyIncomeStatisticsData>>(
+      "/statistics/sankey-income",
+      { params }
+    );
     return res.data;
   }
 };

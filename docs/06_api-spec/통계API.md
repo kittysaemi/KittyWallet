@@ -47,7 +47,7 @@
 - 계좌 거래와 카드 거래는 `wallet_type` 기준으로 독립 집계 가능
 - 카드 거래는 지출만 집계 대상이며 수입 통계에는 포함되지 않음
 - Top 5 카테고리 산출 시 카테고리가 5개를 초과하면 6번째 이후는 `기타`로 합산한다
-- Sankey와 Top 5는 지출 거래 중심으로 산출한다
+- Sankey와 Top 5는 지출 거래 중심으로 산출한다. 수입 흐름 Sankey와 수입 Top 5는 수입 거래 중심으로 별도 산출한다
 - 기본 조회 기간은 현재 월이다
 
 # 월별 통계 API
@@ -358,10 +358,13 @@
 | month | string | N | 현재 월 | 조회 월. 사용자 로컬 캘린더 기준 `YYYY-MM` |
 | wallet_type | string | N | 전체 | `ACCOUNT`, `CARD` |
 | wallet_id | number | N | 전체 | 특정 계좌 또는 카드 ID. `wallet_type`과 함께 사용 |
+| transaction_type | string | N | `EXPENSE` | `INCOME`, `EXPENSE`. 수입/지출 기준 전환 |
 
 ---
 
 ## Response
+
+`transaction_type=EXPENSE` (기본값) 응답:
 
 ```json
 {
@@ -392,23 +395,48 @@
 }
 ```
 
+`transaction_type=INCOME` 응답:
+
+```json
+{
+  "success": true,
+  "data": {
+    "month": "2026-05",
+    "total_income": 2500000,
+    "items": [
+      {
+        "rank": 1,
+        "category_id": 5,
+        "category_name": "급여",
+        "icon_id": 7,
+        "amount": 2000000,
+        "ratio": 80.00
+      }
+    ]
+  },
+  "error": null
+}
+```
+
 | 필드 | 타입 | 설명 |
 |---|---|---|
 | month | string | 조회 월 |
-| total_expense | number | 해당 월 전체 지출 합계 |
+| total_expense | number | 해당 월 전체 지출 합계. `transaction_type=EXPENSE`(기본값) 시 포함 |
+| total_income | number | 해당 월 전체 수입 합계. `transaction_type=INCOME` 시 포함 |
 | items | array | Top 5 카테고리 + 기타 목록. 데이터가 없으면 빈 배열 |
 | items[].rank | number/null | 순위. `기타` 항목은 null |
 | items[].category_id | number/null | 카테고리 ID. `기타` 항목은 null |
 | items[].category_name | string | 카테고리명. 6위 이후는 `기타` |
 | items[].icon_id | number/null | 아이콘 ID. `기타` 항목은 null |
-| items[].amount | number | 지출 합계 |
-| items[].ratio | number | `total_expense` 대비 비율. 소수점 둘째 자리까지 반올림 |
+| items[].amount | number | 금액 합계 |
+| items[].ratio | number | 총액 대비 비율. 소수점 둘째 자리까지 반올림 |
 
 ### 항목 구성 규칙
 
-- 지출 카테고리가 5개 이하이면 `기타` 항목을 포함하지 않는다.
-- 지출 카테고리가 6개 이상이면 6위 이후를 `기타`로 합산하여 목록 마지막에 추가한다.
-- 지출 거래가 없으면 `items`는 빈 배열이다.
+- 카테고리가 5개 이하이면 `기타` 항목을 포함하지 않는다.
+- 카테고리가 6개 이상이면 6위 이후를 `기타`로 합산하여 목록 마지막에 추가한다.
+- 해당 유형 거래가 없으면 `items`는 빈 배열이다.
+- `transaction_type=INCOME`이면서 `wallet_type=CARD`인 경우 400 오류를 반환한다 (카드는 수입 거래 불가).
 
 ---
 
@@ -416,7 +444,7 @@
 
 | HTTP Status | 코드 | 설명 |
 |---|---|---|
-| 400 | STAT_002 | 잘못된 월 또는 결제수단 조회 조건 |
+| 400 | STAT_002 | 잘못된 월, 결제수단, 거래 유형 조회 조건 |
 | 401 | AUTH_002 | 인증 토큰 없음 또는 유효하지 않음 |
 | 401 | AUTH_004 | 토큰 만료 |
 | 500 | STAT_001 | 통계 조회 실패 |
@@ -427,6 +455,7 @@
 
 - `items`가 빈 배열이면 empty UI를 표시한다.
 - `기타` 항목은 아이콘 없이 텍스트만 표시한다.
+- `transaction_type=INCOME` 요청 시에는 `total_income` 필드를 사용한다.
 
 # 달력 히트맵 통계 API
 
@@ -576,3 +605,83 @@
 - Sankey 렌더링 실패(라이브러리 오류 등)가 발생해도 통계 화면 전체가 깨지지 않아야 한다.
 - 모바일 360px 폭에서 노드 라벨 겹침/잘림이 없어야 한다.
 - 카테고리가 1개뿐이면 `cat_other`를 포함하지 않는다.
+
+# 수입 흐름 Sankey 통계 API
+
+## Endpoint
+
+`GET /api/v1/statistics/sankey-income`
+
+---
+
+## Query Parameters
+
+| 이름 | 타입 | 필수 | 기본값 | 설명 |
+|---|---|---|---|---|
+| month | string | N | 현재 월 | 조회 월. 사용자 로컬 캘린더 기준 `YYYY-MM` |
+| wallet_type | string | N | 전체 | `ACCOUNT` (카드는 수입 거래 없으므로 사실상 ACCOUNT만 유효) |
+| wallet_id | number | N | 전체 | 특정 계좌 ID. `wallet_type`과 함께 사용 |
+
+---
+
+## Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "month": "2026-05",
+    "total_income": 2500000,
+    "nodes": [
+      { "id": "total", "name": "총 수입", "value": 2500000 },
+      { "id": "account", "name": "계좌", "value": 2500000 },
+      { "id": "cat_5", "name": "급여", "value": 2000000 },
+      { "id": "cat_other", "name": "기타", "value": 500000 }
+    ],
+    "links": [
+      { "source": "total", "target": "account", "value": 2500000 },
+      { "source": "account", "target": "cat_5", "value": 2000000 },
+      { "source": "account", "target": "cat_other", "value": 500000 }
+    ]
+  },
+  "error": null
+}
+```
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| month | string | 조회 월 |
+| total_income | number | 해당 월 전체 수입 합계 |
+| nodes | array | Sankey 노드 목록. 데이터가 없으면 빈 배열 |
+| nodes[].id | string | 노드 식별자. `total`, `account`, `cat_{id}`, `cat_other` 형식 |
+| nodes[].name | string | 노드 표시 이름 |
+| nodes[].value | number | 노드 금액 |
+| links | array | Sankey 링크(흐름) 목록. 데이터가 없으면 빈 배열 |
+| links[].source | string | 출발 노드 ID |
+| links[].target | string | 도착 노드 ID |
+| links[].value | number | 링크 금액 (두께 비례) |
+
+### 노드 구조
+
+- **1단계 (좌):** `total` — 월 전체 수입
+- **2단계 (중):** `account` — 계좌 수입 합계. 카드는 수입 거래가 없으므로 `card` 노드는 생성되지 않음
+- **3단계 (우):** 수입 카테고리 Top 5 + `cat_other`. 수입이 없거나 한 카테고리이면 `cat_other` 생략 가능
+
+---
+
+## 오류 처리
+
+| HTTP Status | 코드 | 설명 |
+|---|---|---|
+| 400 | STAT_002 | 잘못된 월 또는 결제수단 조회 조건 |
+| 401 | AUTH_002 | 인증 토큰 없음 또는 유효하지 않음 |
+| 401 | AUTH_004 | 토큰 만료 |
+| 500 | STAT_001 | 통계 조회 실패 |
+
+---
+
+## 프론트 처리 주의사항
+
+- `nodes`가 빈 배열이거나 `total_income`이 0이면 empty UI를 표시한다.
+- 노드 색상은 파란색 계열(`#38BDF8` 기준)로 지출 흐름과 시각적으로 구분한다.
+- 카드 노드는 수입 거래 특성상 표시되지 않는다.
