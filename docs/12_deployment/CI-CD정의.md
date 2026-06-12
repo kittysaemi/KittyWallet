@@ -359,10 +359,11 @@ docker compose up -d
 
 ## STEP 4
 
-Migration 수행
+Migration 및 Seed 수행
 
 ```bash
 npx prisma migrate deploy
+npm run db:seed
 ```
 
 ---
@@ -621,6 +622,7 @@ deployment files upload
 docker compose pull
 docker compose up -d
 Prisma migrate deploy
+Prisma db seed
 docker compose up -d --force-recreate nginx
 nginx config test
 nginx reload

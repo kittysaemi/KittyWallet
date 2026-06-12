@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+const { PrismaClient } = require("@prisma/client");
 
 const prisma = new PrismaClient();
 
@@ -19,7 +19,7 @@ const defaultIcons = [
   "sandwich"
 ];
 
-const toIconCode = (providerKey: string): string => `icon-${providerKey}`;
+const toIconCode = (providerKey) => `icon-${providerKey}`;
 
 const defaultCategories = [
   { categoryName: "급여", providerKey: "circle-dollar-sign" },
@@ -37,8 +37,8 @@ const defaultCategories = [
   { categoryName: "기타지출", providerKey: "tag" }
 ];
 
-async function main(): Promise<void> {
-  const defaultIconIds = new Map<string, bigint>();
+async function main() {
+  const defaultIconIds = new Map();
 
   for (const providerKey of defaultIcons) {
     const dictionary = await prisma.iconDictionary.upsert({
@@ -119,11 +119,10 @@ async function main(): Promise<void> {
 }
 
 main()
+  .catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  })
   .finally(async () => {
     await prisma.$disconnect();
-  })
-  .catch(async (error) => {
-    console.error(error);
-    await prisma.$disconnect();
-    process.exit(1);
   });
