@@ -579,3 +579,67 @@ Production 배포 전
 * 운영 승인 완료
 
 모든 조건 충족 시 배포 완료로 판단한다.
+
+---
+
+# 22. KittyWallet GitHub Actions 배포 파이프라인
+
+## Workflow
+
+```text
+.github/workflows/deploy.yml
+```
+
+## Trigger
+
+```text
+main push
+workflow_dispatch
+```
+
+운영 배포는 `main` 브랜치 push 시 자동 실행된다.
+수동 재실행은 GitHub Actions의 `workflow_dispatch`로 수행한다.
+
+## Docker Image
+
+```text
+ghcr.io/<owner>/kittywallet-api:<commit-sha>
+ghcr.io/<owner>/kittywallet-web:<commit-sha>
+```
+
+`latest` 태그는 사용하지 않는다.
+
+## Server Deploy
+
+서버 배포 순서는 다음과 같다.
+
+```text
+Docker image build
+Docker image push
+deployment files upload
+.env.production 생성
+docker compose pull
+docker compose up -d
+Prisma migrate deploy
+health check
+```
+
+## GitHub Actions Secrets
+
+```text
+DEPLOY_HOST
+DEPLOY_USER
+DEPLOY_SSH_KEY
+DEPLOY_PORT
+DEPLOY_PATH
+PRODUCTION_ENV_FILE
+```
+
+`PRODUCTION_ENV_FILE`에는 `.env.production` 전체 내용을 저장한다.
+`DEPLOY_PORT`는 선택값이며, 비어 있으면 22번 포트를 사용한다.
+실제 secret 값은 저장소에 커밋하지 않는다.
+
+## Notification
+
+배포 성공/실패는 GitHub Actions annotation으로 표시한다.
+실패 시 workflow job이 실패 상태가 되며 GitHub UI에서 확인한다.
