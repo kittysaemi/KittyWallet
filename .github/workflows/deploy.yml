@@ -138,7 +138,7 @@ jobs:
             printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
             docker compose --env-file .env.production -f docker-compose.prod.yml pull
             docker compose --env-file .env.production -f docker-compose.prod.yml up -d
-            docker compose --env-file .env.production -f docker-compose.prod.yml exec -T backend npm run prisma:migrate
+            docker compose --env-file .env.production -f docker-compose.prod.yml exec -T backend npm run db:migrate
             docker compose --env-file .env.production -f docker-compose.prod.yml ps
 
       - name: Health check
