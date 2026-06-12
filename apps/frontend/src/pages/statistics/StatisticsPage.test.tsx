@@ -288,7 +288,7 @@ describe("StatisticsPage", () => {
     await waitFor(() => expect(mockedStatisticsApi.getCategoryTopStatistics).toHaveBeenCalled());
     expect(await screen.findByLabelText("Top 5 카테고리")).toBeInTheDocument();
     expect(screen.getAllByText("식비").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText("기타")).toBeInTheDocument();
+    expect(screen.getAllByText("기타").length).toBeGreaterThanOrEqual(1);
   });
 
   it("switches to 달력 히트맵 tab and shows calendar grid", async () => {
