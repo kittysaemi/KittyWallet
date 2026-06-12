@@ -280,9 +280,6 @@ const SettingsPage: React.FC = () => {
           )}
         </section>
 
-        <p className="text-center text-xs text-[var(--color-text-caption)]">
-          KittyWallet v{__APP_VERSION__}
-        </p>
       </div>
 
       {isWithdrawOpen && (
