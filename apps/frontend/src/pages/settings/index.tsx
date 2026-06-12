@@ -279,6 +279,10 @@ const SettingsPage: React.FC = () => {
             <p className="mt-2 text-xs text-[var(--color-danger)]">{withdrawError}</p>
           )}
         </section>
+
+        <p className="text-center text-xs text-[var(--color-text-caption)]">
+          KittyWallet v{__APP_VERSION__}
+        </p>
       </div>
 
       {isWithdrawOpen && (
