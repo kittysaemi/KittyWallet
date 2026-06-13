@@ -4,7 +4,7 @@ import { AppException } from "../../../common/exceptions/app.exception";
 import {
   StatisticsRepository,
   TransactionTypeAmountGroup,
-  WalletTypeCategoryGroup
+  WalletCategoryGroup
 } from "../infrastructure/statistics.repository";
 
 interface BaseStatisticsCommand {
@@ -282,7 +282,7 @@ export class StatisticsService {
     };
 
     const [crossGroups, categoryGroups] = await Promise.all([
-      this.statisticsRepository.groupExpensesByWalletTypeAndCategory(condition),
+      this.statisticsRepository.groupExpensesByWalletAndCategory(condition),
       this.statisticsRepository.groupAmountsByCategory({
         ...condition,
         transactionType: TransactionType.EXPENSE
@@ -295,10 +295,14 @@ export class StatisticsService {
 
     const totalExpense = categoryGroups.reduce((sum, g) => sum + this.toNumber(g.amount), 0);
 
-    const walletTotals = new Map<string, number>();
+    const walletInfo = new Map<string, { name: string; value: number }>();
     for (const g of crossGroups) {
-      const key = g.walletType;
-      walletTotals.set(key, (walletTotals.get(key) ?? 0) + this.toNumber(g.amount));
+      const key = `w_${String(g.walletId)}`;
+      const existing = walletInfo.get(key);
+      walletInfo.set(key, {
+        name: g.walletName,
+        value: (existing?.value ?? 0) + this.toNumber(g.amount)
+      });
     }
 
     const categoryIds = new Set(categoryGroups.map((g) => String(g.categoryId)));
@@ -311,10 +315,10 @@ export class StatisticsService {
 
     const nodes = [
       { id: "total", name: "총 지출", value: totalExpense },
-      ...Array.from(walletTotals.entries()).map(([walletType, value]) => ({
-        id: walletType.toLowerCase(),
-        name: walletType === "ACCOUNT" ? "계좌" : "카드",
-        value
+      ...Array.from(walletInfo.entries()).map(([id, info]) => ({
+        id,
+        name: info.name,
+        value: info.value
       })),
       ...categoryGroups.map((g) => ({
         id: `cat_${g.categoryId}`,
@@ -326,10 +330,10 @@ export class StatisticsService {
     const walletCatLinks = this.buildWalletCatLinks(crossGroups, categoryIds);
 
     const links = [
-      ...Array.from(walletTotals.entries()).map(([walletType, value]) => ({
+      ...Array.from(walletInfo.entries()).map(([id, info]) => ({
         source: "total",
-        target: walletType.toLowerCase(),
-        value
+        target: id,
+        value: info.value
       })),
       ...walletCatLinks
     ];
@@ -349,7 +353,7 @@ export class StatisticsService {
     };
 
     const [crossGroups, categoryGroups] = await Promise.all([
-      this.statisticsRepository.groupIncomesByWalletTypeAndCategory(condition),
+      this.statisticsRepository.groupIncomesByWalletAndCategory(condition),
       this.statisticsRepository.groupAmountsByCategory({
         ...condition,
         transactionType: TransactionType.INCOME
@@ -360,10 +364,14 @@ export class StatisticsService {
       return { month, total_income: 0, nodes: [], links: [] };
     }
 
-    const walletTotals = new Map<string, number>();
+    const walletInfo = new Map<string, { name: string; value: number }>();
     for (const g of crossGroups) {
-      const key = g.walletType;
-      walletTotals.set(key, (walletTotals.get(key) ?? 0) + this.toNumber(g.amount));
+      const key = `w_${String(g.walletId)}`;
+      const existing = walletInfo.get(key);
+      walletInfo.set(key, {
+        name: g.walletName,
+        value: (existing?.value ?? 0) + this.toNumber(g.amount)
+      });
     }
 
     const catTotals = new Map<string, number>();
@@ -403,10 +411,10 @@ export class StatisticsService {
 
     const nodes = [
       { id: "total", name: "총 수입", value: totalIncome },
-      ...Array.from(walletTotals.entries()).map(([walletType, value]) => ({
-        id: walletType.toLowerCase(),
-        name: walletType === "ACCOUNT" ? "계좌" : "카드",
-        value
+      ...Array.from(walletInfo.entries()).map(([id, info]) => ({
+        id,
+        name: info.name,
+        value: info.value
       })),
       ...effectiveCategoryEntries
     ];
@@ -419,10 +427,10 @@ export class StatisticsService {
     const walletCatLinks = this.buildWalletCatLinks(crossGroups, effectiveCategoryIds);
 
     const links = [
-      ...Array.from(walletTotals.entries()).map(([walletType, value]) => ({
+      ...Array.from(walletInfo.entries()).map(([id, info]) => ({
         source: "total",
-        target: walletType.toLowerCase(),
-        value
+        target: id,
+        value: info.value
       })),
       ...walletCatLinks
     ];
@@ -431,13 +439,13 @@ export class StatisticsService {
   }
 
   private buildWalletCatLinks(
-    crossGroups: WalletTypeCategoryGroup[],
+    crossGroups: WalletCategoryGroup[],
     categoryIds: Set<string>
   ): { source: string; target: string; value: number }[] {
     const linkMap = new Map<string, number>();
 
     for (const g of crossGroups) {
-      const walletKey = g.walletType.toLowerCase();
+      const walletKey = `w_${String(g.walletId)}`;
       const catKey = String(g.categoryId);
       const amount = this.toNumber(g.amount);
 
@@ -447,12 +455,10 @@ export class StatisticsService {
       }
     }
 
-    const links = Array.from(linkMap.entries()).map(([key, value]) => {
+    return Array.from(linkMap.entries()).map(([key, value]) => {
       const [source, target] = key.split("|");
       return { source, target, value };
     });
-
-    return links;
   }
 
   private summarizeTransactionTypeGroups(groups: TransactionTypeAmountGroup[]): AmountSummary {
