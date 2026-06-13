@@ -301,18 +301,12 @@ export class StatisticsService {
       walletTotals.set(key, (walletTotals.get(key) ?? 0) + this.toNumber(g.amount));
     }
 
-    const top5Categories = categoryGroups.slice(0, 5);
-    const top5Ids = new Set(top5Categories.map((g) => String(g.categoryId)));
+    const categoryIds = new Set(categoryGroups.map((g) => String(g.categoryId)));
 
     const catTotals = new Map<string, number>();
-    let othersTotal = 0;
     for (const g of crossGroups) {
       const catKey = String(g.categoryId);
-      if (top5Ids.has(catKey)) {
-        catTotals.set(catKey, (catTotals.get(catKey) ?? 0) + this.toNumber(g.amount));
-      } else {
-        othersTotal += this.toNumber(g.amount);
-      }
+      catTotals.set(catKey, (catTotals.get(catKey) ?? 0) + this.toNumber(g.amount));
     }
 
     const nodes = [
@@ -322,15 +316,14 @@ export class StatisticsService {
         name: walletType === "ACCOUNT" ? "계좌" : "카드",
         value
       })),
-      ...top5Categories.map((g) => ({
+      ...categoryGroups.map((g) => ({
         id: `cat_${g.categoryId}`,
         name: g.category?.categoryName ?? "",
         value: catTotals.get(String(g.categoryId)) ?? 0
-      })),
-      ...(othersTotal > 0 ? [{ id: "cat_other", name: "기타", value: othersTotal }] : [])
+      }))
     ];
 
-    const walletCatLinks = this.buildWalletCatLinks(crossGroups, top5Ids);
+    const walletCatLinks = this.buildWalletCatLinks(crossGroups, categoryIds);
 
     const links = [
       ...Array.from(walletTotals.entries()).map(([walletType, value]) => ({
@@ -367,27 +360,46 @@ export class StatisticsService {
       return { month, total_income: 0, nodes: [], links: [] };
     }
 
-    const totalIncome = categoryGroups.reduce((sum, g) => sum + this.toNumber(g.amount), 0);
-
     const walletTotals = new Map<string, number>();
     for (const g of crossGroups) {
       const key = g.walletType;
       walletTotals.set(key, (walletTotals.get(key) ?? 0) + this.toNumber(g.amount));
     }
 
-    const top5Categories = categoryGroups.slice(0, 5);
-    const top5Ids = new Set(top5Categories.map((g) => String(g.categoryId)));
-
     const catTotals = new Map<string, number>();
-    let othersTotal = 0;
     for (const g of crossGroups) {
       const catKey = String(g.categoryId);
-      if (top5Ids.has(catKey)) {
-        catTotals.set(catKey, (catTotals.get(catKey) ?? 0) + this.toNumber(g.amount));
-      } else {
-        othersTotal += this.toNumber(g.amount);
-      }
+      catTotals.set(catKey, (catTotals.get(catKey) ?? 0) + this.toNumber(g.amount));
     }
+
+    // categoryGroups로 total 집계, 없으면 crossGroups 합산으로 fallback
+    const totalIncome = categoryGroups.length > 0
+      ? categoryGroups.reduce((sum, g) => sum + this.toNumber(g.amount), 0)
+      : Array.from(catTotals.values()).reduce((sum, v) => sum + v, 0);
+
+    if (totalIncome === 0) {
+      return { month, total_income: 0, nodes: [], links: [] };
+    }
+
+    const categoryIds = new Set(categoryGroups.map((g) => String(g.categoryId)));
+
+    // categoryGroups가 비어 있으면 crossGroups에서 카테고리 목록을 구성
+    const effectiveCategoryEntries = categoryGroups.length > 0
+      ? categoryGroups.map((g) => ({
+          id: `cat_${g.categoryId}`,
+          name: g.category?.categoryName ?? "",
+          value: catTotals.get(String(g.categoryId)) ?? 0
+        }))
+      : Array.from(catTotals.entries())
+          .filter(([, v]) => v > 0)
+          .map(([catKey, value]) => {
+            const catGroup = crossGroups.find((g) => String(g.categoryId) === catKey);
+            return {
+              id: `cat_${catKey}`,
+              name: catGroup?.category?.categoryName ?? "",
+              value
+            };
+          });
 
     const nodes = [
       { id: "total", name: "총 수입", value: totalIncome },
@@ -396,15 +408,15 @@ export class StatisticsService {
         name: walletType === "ACCOUNT" ? "계좌" : "카드",
         value
       })),
-      ...top5Categories.map((g) => ({
-        id: `cat_${g.categoryId}`,
-        name: g.category?.categoryName ?? "",
-        value: catTotals.get(String(g.categoryId)) ?? 0
-      })),
-      ...(othersTotal > 0 ? [{ id: "cat_other", name: "기타", value: othersTotal }] : [])
+      ...effectiveCategoryEntries
     ];
 
-    const walletCatLinks = this.buildWalletCatLinks(crossGroups, top5Ids);
+    // categoryIds가 비어 있으면 catTotals 키로 대체
+    const effectiveCategoryIds = categoryIds.size > 0
+      ? categoryIds
+      : new Set(Array.from(catTotals.keys()));
+
+    const walletCatLinks = this.buildWalletCatLinks(crossGroups, effectiveCategoryIds);
 
     const links = [
       ...Array.from(walletTotals.entries()).map(([walletType, value]) => ({
@@ -420,21 +432,18 @@ export class StatisticsService {
 
   private buildWalletCatLinks(
     crossGroups: WalletTypeCategoryGroup[],
-    top5Ids: Set<string>
+    categoryIds: Set<string>
   ): { source: string; target: string; value: number }[] {
     const linkMap = new Map<string, number>();
-    const othersMap = new Map<string, number>();
 
     for (const g of crossGroups) {
       const walletKey = g.walletType.toLowerCase();
       const catKey = String(g.categoryId);
       const amount = this.toNumber(g.amount);
 
-      if (top5Ids.has(catKey)) {
+      if (categoryIds.has(catKey)) {
         const key = `${walletKey}|cat_${catKey}`;
         linkMap.set(key, (linkMap.get(key) ?? 0) + amount);
-      } else {
-        othersMap.set(walletKey, (othersMap.get(walletKey) ?? 0) + amount);
       }
     }
 
@@ -442,10 +451,6 @@ export class StatisticsService {
       const [source, target] = key.split("|");
       return { source, target, value };
     });
-
-    for (const [walletKey, value] of othersMap.entries()) {
-      links.push({ source: walletKey, target: "cat_other", value });
-    }
 
     return links;
   }

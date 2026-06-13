@@ -15,7 +15,8 @@ vi.mock("../../entities/statistics/api/statisticsApi", () => ({
     getSummaryStatistics: vi.fn(),
     getCategoryTopStatistics: vi.fn(),
     getCalendarStatistics: vi.fn(),
-    getSankeyStatistics: vi.fn()
+    getSankeyStatistics: vi.fn(),
+    getSankeyIncomeStatistics: vi.fn()
   }
 }));
 
@@ -170,15 +171,33 @@ const SANKEY_DATA = {
       { id: "account", name: "계좌", value: 60000 },
       { id: "card", name: "카드", value: 30000 },
       { id: "cat_1", name: "식비", value: 50000 },
-      { id: "cat_other", name: "기타", value: 40000 }
+      { id: "cat_2", name: "교통", value: 40000 }
     ],
     links: [
       { source: "total", target: "account", value: 60000 },
       { source: "total", target: "card", value: 30000 },
       { source: "account", target: "cat_1", value: 35000 },
-      { source: "account", target: "cat_other", value: 25000 },
+      { source: "account", target: "cat_2", value: 25000 },
       { source: "card", target: "cat_1", value: 15000 },
-      { source: "card", target: "cat_other", value: 15000 }
+      { source: "card", target: "cat_2", value: 15000 }
+    ]
+  },
+  error: null
+};
+
+const SANKEY_INCOME_DATA = {
+  success: true,
+  data: {
+    month: "2026-06",
+    total_income: 300000,
+    nodes: [
+      { id: "total", name: "총 수입", value: 300000 },
+      { id: "account", name: "계좌", value: 300000 },
+      { id: "cat_3", name: "급여", value: 300000 }
+    ],
+    links: [
+      { source: "total", target: "account", value: 300000 },
+      { source: "account", target: "cat_3", value: 300000 }
     ]
   },
   error: null
@@ -194,6 +213,7 @@ describe("StatisticsPage", () => {
     mockedStatisticsApi.getCategoryStatistics.mockResolvedValue(CATEGORY_DATA);
     mockedStatisticsApi.getCalendarStatistics.mockResolvedValue(CALENDAR_DATA);
     mockedStatisticsApi.getSankeyStatistics.mockResolvedValue(SANKEY_DATA);
+    mockedStatisticsApi.getSankeyIncomeStatistics.mockResolvedValue(SANKEY_INCOME_DATA);
     mockedIconApi.getIcons.mockResolvedValue(ICON_EMPTY);
   });
 
@@ -319,6 +339,29 @@ describe("StatisticsPage", () => {
 
     render(<StatisticsPage />, { wrapper: createWrapper() });
     await userEvent.click(await screen.findByRole("button", { name: "지출 흐름" }));
+
+    expect(await screen.findByText("통계 데이터가 없습니다")).toBeInTheDocument();
+  });
+
+  it("switches to 수입 흐름 tab and renders income Sankey diagram", async () => {
+    render(<StatisticsPage />, { wrapper: createWrapper() });
+
+    await userEvent.click(await screen.findByRole("button", { name: "수입 흐름" }));
+
+    await waitFor(() => expect(mockedStatisticsApi.getSankeyIncomeStatistics).toHaveBeenCalled());
+    expect(await screen.findByLabelText("수입 흐름 Sankey 다이어그램")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "수입 흐름 Sankey 차트" })).toBeInTheDocument();
+  });
+
+  it("renders income Sankey empty state when total_income is 0", async () => {
+    mockedStatisticsApi.getSankeyIncomeStatistics.mockResolvedValueOnce({
+      success: true,
+      data: { month: "2026-06", total_income: 0, nodes: [], links: [] },
+      error: null
+    });
+
+    render(<StatisticsPage />, { wrapper: createWrapper() });
+    await userEvent.click(await screen.findByRole("button", { name: "수입 흐름" }));
 
     expect(await screen.findByText("통계 데이터가 없습니다")).toBeInTheDocument();
   });

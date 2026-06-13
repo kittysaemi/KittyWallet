@@ -22,7 +22,7 @@ export const IconPickerSheet: React.FC<IconPickerSheetProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 px-0 sm:items-center sm:px-4">
-      <div className="max-h-[82vh] w-full max-w-[480px] overflow-y-auto rounded-t-3xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] p-5 shadow-[0_4px_16px_var(--color-card-shadow)] sm:rounded-3xl">
+      <div className="flex max-h-[52vh] w-full max-w-[480px] flex-col rounded-t-3xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] p-5 shadow-[0_4px_16px_var(--color-card-shadow)] sm:rounded-3xl">
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="text-lg font-bold text-[var(--color-text-primary)]">{title}</h2>
           <button
@@ -34,7 +34,9 @@ export const IconPickerSheet: React.FC<IconPickerSheetProps> = ({
             <X size={20} aria-hidden="true" />
           </button>
         </div>
-        <IconSelect selectedIconId={selectedIconId} onSelect={onSelect} />
+        <div className="min-h-0 overflow-y-auto pr-1">
+          <IconSelect selectedIconId={selectedIconId} onSelect={onSelect} />
+        </div>
       </div>
     </div>
   );

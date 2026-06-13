@@ -3,6 +3,8 @@ import { clearUserApiCaches, deleteNamedCache } from "./cacheStorage.service";
 
 export async function invalidateTransactionCaches(): Promise<void> {
   await Promise.all([
+    deleteNamedCache(CACHE_NAMES.ACCOUNTS),
+    deleteNamedCache(CACHE_NAMES.CARDS),
     deleteNamedCache(CACHE_NAMES.DASHBOARD),
     deleteNamedCache(CACHE_NAMES.RECENT_TRANSACTIONS),
     deleteNamedCache(CACHE_NAMES.STATISTICS),

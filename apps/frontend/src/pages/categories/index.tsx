@@ -85,7 +85,7 @@ const CategoryErrorState: React.FC<CategoryErrorStateProps> = ({ onRetry }) => (
 
 interface CategoryRowProps {
   category: CategoryItem;
-  icon?: IconItem;
+  icon?: Pick<IconItem, "provider_type" | "provider_key">;
   disabled: boolean;
   editingNameId: number | null;
   editingName: string;
@@ -120,14 +120,14 @@ const CategoryRow: React.FC<CategoryRowProps> = ({
     return (
       <li
         aria-label={category.category_name}
-        className={`flex min-h-[96px] flex-col items-center justify-center gap-2 rounded-2xl border p-3 text-center shadow-[0_4px_16px_var(--color-card-shadow)] transition ${
+        className={`flex min-h-[66px] flex-col items-center justify-center gap-1 rounded-xl border p-1.5 text-center shadow-[0_4px_16px_var(--color-card-shadow)] transition ${
           category.show
             ? "border-[var(--color-border-primary)] bg-[var(--color-bg-card)]"
             : "border-[var(--gray-200)] bg-[var(--gray-100)]"
         }`}
       >
         <div
-          className={`flex h-12 w-12 items-center justify-center rounded-2xl ${
+          className={`flex h-8 w-8 items-center justify-center rounded-lg ${
             category.show
               ? "bg-[var(--color-primary-soft)] text-[var(--color-text-primary)]"
               : "bg-[var(--gray-100)] text-[var(--gray-500)] grayscale"
@@ -137,7 +137,7 @@ const CategoryRow: React.FC<CategoryRowProps> = ({
             <IconRenderer
               providerType={icon.provider_type}
               providerKey={icon.provider_key}
-              size={26}
+              size={18}
             />
           ) : (
             <span className="text-sm font-semibold" aria-hidden="true">
@@ -146,7 +146,7 @@ const CategoryRow: React.FC<CategoryRowProps> = ({
           )}
         </div>
         <p
-          className={`w-full truncate text-sm font-semibold ${
+          className={`w-full truncate text-xs font-semibold ${
             category.show ? "text-[var(--color-text-primary)]" : "text-[var(--gray-500)]"
           }`}
         >
@@ -167,75 +167,69 @@ const CategoryRow: React.FC<CategoryRowProps> = ({
       onKeyDown={(event) => {
         if (!disabled && (event.key === "Enter" || event.key === " ")) onToggleShow(category);
       }}
-      className={`${cardClass} col-span-full cursor-pointer`}
+      className={`col-span-full flex min-h-[64px] items-center gap-3 rounded-2xl border p-3 text-left shadow-[0_4px_16px_var(--color-card-shadow)] transition ${
+        category.show
+          ? "border-[var(--color-border-primary)] bg-[var(--color-bg-card)]"
+          : "border-[var(--gray-200)] bg-[var(--gray-100)]"
+      } cursor-pointer`}
     >
-      <div className="flex items-center gap-3">
+      <button
+        type="button"
+        aria-label={`${category.category_name} 아이콘 변경`}
+        disabled={!canEditDetails || disabled}
+        onClick={(event) => {
+          event.stopPropagation();
+          onIconEdit(category);
+        }}
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition disabled:cursor-not-allowed ${
+          category.show
+            ? "bg-[var(--color-primary-soft)] text-[var(--color-text-primary)]"
+            : "bg-[var(--gray-100)] text-[var(--gray-500)] grayscale"
+        }`}
+      >
+        {icon ? (
+          <IconRenderer providerType={icon.provider_type} providerKey={icon.provider_key} size={22} />
+        ) : (
+          <span className="text-sm font-semibold" aria-hidden="true">
+            {category.category_name.charAt(0)}
+          </span>
+        )}
+      </button>
+
+      {isEditingName ? (
+        <input
+          aria-label={`${category.category_name} 이름 수정`}
+          value={editingName}
+          onChange={(event) => onNameChange(event.target.value)}
+          onBlur={() => onNameSave(category)}
+          onKeyDown={(event) => {
+            event.stopPropagation();
+            if (event.key === "Enter") onNameSave(category);
+            if (event.key === "Escape") onNameCancel();
+          }}
+          onClick={(event) => event.stopPropagation()}
+          disabled={disabled}
+          autoFocus
+          className="min-h-10 min-w-0 flex-1 rounded-xl border border-[var(--color-primary)] bg-[var(--color-bg-input)] px-3 py-2 text-sm font-semibold text-[var(--color-text-primary)] outline-none"
+          maxLength={15}
+        />
+      ) : (
         <button
           type="button"
-          aria-label={`${category.category_name} 아이콘 변경`}
+          aria-label={`${category.category_name} 이름 변경`}
           disabled={!canEditDetails || disabled}
           onClick={(event) => {
             event.stopPropagation();
-            onIconEdit(category);
+            onStartNameEdit(category);
           }}
-          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border transition disabled:cursor-not-allowed ${
-            category.show
-              ? "border-[var(--color-border-primary)] bg-[var(--color-primary-soft)] text-[var(--color-text-primary)]"
-              : "border-[var(--gray-200)] bg-[var(--gray-100)] text-[var(--gray-500)]"
-          } ${canEditDetails ? "hover:bg-[var(--color-bg-secondary)]" : ""}`}
+          className={`min-w-0 flex-1 truncate text-left text-sm font-semibold disabled:cursor-not-allowed ${
+            category.show ? "text-[var(--color-text-primary)]" : "text-[var(--gray-500)]"
+          }`}
         >
-          {icon ? (
-            <IconRenderer
-              providerType={icon.provider_type}
-              providerKey={icon.provider_key}
-              size={26}
-            />
-          ) : (
-            <span className="text-sm font-semibold" aria-hidden="true">
-              {category.category_name.charAt(0)}
-            </span>
-          )}
+          {category.category_name}
         </button>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            {isEditingName ? (
-              <input
-                aria-label={`${category.category_name} 이름 수정`}
-                value={editingName}
-                onChange={(event) => onNameChange(event.target.value)}
-                onBlur={() => onNameSave(category)}
-                onKeyDown={(event) => {
-                  event.stopPropagation();
-                  if (event.key === "Enter") onNameSave(category);
-                  if (event.key === "Escape") onNameCancel();
-                }}
-                onClick={(event) => event.stopPropagation()}
-                disabled={disabled}
-                autoFocus
-                className="min-h-10 min-w-0 flex-1 rounded-xl border border-[var(--color-primary)] bg-[var(--color-bg-input)] px-3 py-2 text-base font-semibold text-[var(--color-text-primary)] outline-none ring-2 ring-[var(--color-primary-soft)]"
-                maxLength={15}
-              />
-            ) : (
-              <button
-                type="button"
-                aria-label={`${category.category_name} 이름 변경`}
-                disabled={!canEditDetails || disabled}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onStartNameEdit(category);
-                }}
-                className={`min-w-0 cursor-pointer select-none truncate text-left text-base font-semibold disabled:cursor-not-allowed ${
-                  category.show ? "text-[var(--color-text-primary)]" : "text-[var(--gray-500)]"
-                } ${canEditDetails ? "underline-offset-4 hover:underline" : ""}`}
-              >
-                {category.category_name}
-              </button>
-            )}
-          </div>
-          {error && <p className="mt-1 text-xs text-[var(--color-danger)]">{error}</p>}
-        </div>
-      </div>
+      )}
+      {error && <p className="shrink-0 text-xs text-[var(--color-danger)]">{error}</p>}
     </li>
   );
 };
@@ -476,12 +470,12 @@ const CategoriesPage: React.FC = () => {
         )}
         {!isLoading && !isError && categories.length === 0 && !isCreating && <CategoryEmptyState />}
         {!isLoading && !isError && categories.length > 0 && (
-          <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4" aria-label="카테고리 목록">
+          <ul className="grid grid-cols-5 gap-2" aria-label="카테고리 목록">
             {categories.map((category) => (
               <CategoryRow
                 key={category.category_id}
                 category={category}
-                icon={iconsById.get(category.icon_id)}
+                icon={category.icon ?? iconsById.get(category.icon_id)}
                 disabled={updateMutation.isPending}
                 editingNameId={editingNameId}
                 editingName={editingName}
