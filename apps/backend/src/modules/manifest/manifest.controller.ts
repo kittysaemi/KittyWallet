@@ -1,4 +1,4 @@
-import { Controller, Get, Header, Query, Res } from "@nestjs/common";
+import { Controller, Get, Header, Headers, Query, Res } from "@nestjs/common";
 import type { Response } from "express";
 import { Public } from "../../common/decorators/public.decorator";
 
@@ -15,13 +15,23 @@ function resolveTheme(theme: unknown): ThemeFolder {
   return "pink";
 }
 
+function cookieTheme(cookieHeader: string | undefined): string | undefined {
+  if (!cookieHeader) return undefined;
+  const m = cookieHeader.match(/(?:^|;\s*)kw_theme=([^;]+)/);
+  return m?.[1];
+}
+
 @Public()
 @Controller("manifest")
 export class ManifestController {
   @Get()
   @Header("Cache-Control", "no-cache, no-store")
-  getManifest(@Query("theme") theme: string, @Res() res: Response): void {
-    const folder = resolveTheme(theme);
+  getManifest(
+    @Query("theme") queryTheme: string,
+    @Headers("cookie") cookieHeader: string,
+    @Res() res: Response
+  ): void {
+    const folder = resolveTheme(queryTheme ?? cookieTheme(cookieHeader));
     const { theme_color, background_color } = THEME_CONFIG[folder];
     const base = `/kittywallet/icons/themes/${folder}/pwa`;
 

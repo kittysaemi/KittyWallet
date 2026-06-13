@@ -89,5 +89,7 @@ export function applyThemeSetting(theme: unknown): void {
 
   try {
     localStorage.setItem(THEME_LS_KEY, normalized);
+    // 쿠키에도 저장 — manifest 엔드포인트가 페이지 파싱 시점에 올바른 테마를 반환하도록
+    document.cookie = `kw_theme=${folder}; path=/; SameSite=Lax; max-age=31536000`;
   } catch { /* storage unavailable */ }
 }
