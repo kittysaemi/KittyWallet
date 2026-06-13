@@ -11,7 +11,8 @@ describe("StatisticsService", () => {
     groupAmountsByTransactionType: jest.fn(),
     groupDailyAmountsByTransactionType: jest.fn(),
     groupAmountsByCategory: jest.fn(),
-    groupExpensesByWalletTypeAndCategory: jest.fn()
+    groupExpensesByWalletAndCategory: jest.fn(),
+    groupIncomesByWalletAndCategory: jest.fn()
   } as unknown as jest.Mocked<StatisticsRepository>;
 
   const service = new StatisticsService(statisticsRepository);
@@ -294,10 +295,10 @@ describe("StatisticsService", () => {
   });
 
   it("returns sankey nodes and links for mixed wallet/category data", async () => {
-    statisticsRepository.groupExpensesByWalletTypeAndCategory.mockResolvedValue([
-      { walletType: "ACCOUNT", categoryId: BigInt(1), amount: decimal(100000), category: { categoryName: "식비", iconId: BigInt(3) } },
-      { walletType: "CARD", categoryId: BigInt(1), amount: decimal(50000), category: { categoryName: "식비", iconId: BigInt(3) } },
-      { walletType: "CARD", categoryId: BigInt(2), amount: decimal(30000), category: { categoryName: "교통", iconId: BigInt(5) } }
+    statisticsRepository.groupExpensesByWalletAndCategory.mockResolvedValue([
+      { walletId: BigInt(10), walletType: "ACCOUNT", walletName: "우리은행", categoryId: BigInt(1), amount: decimal(100000), category: { categoryName: "식비", iconId: BigInt(3) } },
+      { walletId: BigInt(20), walletType: "CARD", walletName: "신한카드", categoryId: BigInt(1), amount: decimal(50000), category: { categoryName: "식비", iconId: BigInt(3) } },
+      { walletId: BigInt(20), walletType: "CARD", walletName: "신한카드", categoryId: BigInt(2), amount: decimal(30000), category: { categoryName: "교통", iconId: BigInt(5) } }
     ]);
     statisticsRepository.groupAmountsByCategory.mockResolvedValue([
       { categoryId: BigInt(1), amount: decimal(150000), transactionCount: 2, category: { categoryName: "식비", iconId: BigInt(3) } },
@@ -308,14 +309,14 @@ describe("StatisticsService", () => {
 
     expect(result.total_expense).toBe(180000);
     expect(result.nodes.find((n: { id: string }) => n.id === "total")?.value).toBe(180000);
-    expect(result.nodes.find((n: { id: string }) => n.id === "account")?.value).toBe(100000);
-    expect(result.nodes.find((n: { id: string }) => n.id === "card")?.value).toBe(80000);
-    expect(result.links.some((l: { source: string; target: string }) => l.source === "total" && l.target === "account")).toBe(true);
-    expect(result.links.some((l: { source: string; target: string }) => l.source === "account" && l.target === "cat_1")).toBe(true);
+    expect(result.nodes.find((n: { id: string }) => n.id === "w_10")?.value).toBe(100000);
+    expect(result.nodes.find((n: { id: string }) => n.id === "w_20")?.value).toBe(80000);
+    expect(result.links.some((l: { source: string; target: string }) => l.source === "total" && l.target === "w_10")).toBe(true);
+    expect(result.links.some((l: { source: string; target: string }) => l.source === "w_10" && l.target === "cat_1")).toBe(true);
   });
 
   it("returns empty sankey when no expense data", async () => {
-    statisticsRepository.groupExpensesByWalletTypeAndCategory.mockResolvedValue([]);
+    statisticsRepository.groupExpensesByWalletAndCategory.mockResolvedValue([]);
     statisticsRepository.groupAmountsByCategory.mockResolvedValue([]);
 
     const result = await service.getSankeyStatistics({ userId: BigInt(1), month: "2026-06" });

@@ -549,19 +549,19 @@
     "total_expense": 820000,
     "nodes": [
       { "id": "total", "name": "총 지출", "value": 820000 },
-      { "id": "account", "name": "계좌", "value": 500000 },
-      { "id": "card", "name": "카드", "value": 320000 },
+      { "id": "w_1", "name": "우리은행 통장", "value": 500000 },
+      { "id": "w_2", "name": "신한카드", "value": 320000 },
       { "id": "cat_1", "name": "식비", "value": 300000 },
       { "id": "cat_2", "name": "교통", "value": 150000 },
       { "id": "cat_3", "name": "취미", "value": 370000 }
     ],
     "links": [
-      { "source": "total", "target": "account", "value": 500000 },
-      { "source": "total", "target": "card", "value": 320000 },
-      { "source": "account", "target": "cat_1", "value": 250000 },
-      { "source": "account", "target": "cat_3", "value": 250000 },
-      { "source": "card", "target": "cat_2", "value": 150000 },
-      { "source": "card", "target": "cat_3", "value": 170000 }
+      { "source": "total", "target": "w_1", "value": 500000 },
+      { "source": "total", "target": "w_2", "value": 320000 },
+      { "source": "w_1", "target": "cat_1", "value": 250000 },
+      { "source": "w_1", "target": "cat_3", "value": 250000 },
+      { "source": "w_2", "target": "cat_2", "value": 150000 },
+      { "source": "w_2", "target": "cat_3", "value": 170000 }
     ]
   },
   "error": null
@@ -573,7 +573,7 @@
 | month | string | 조회 월 |
 | total_expense | number | 해당 월 전체 지출 합계 |
 | nodes | array | Sankey 노드 목록. 데이터가 없으면 빈 배열 |
-| nodes[].id | string | 노드 식별자. `total`, `account`, `card`, `cat_{id}` 형식 |
+| nodes[].id | string | 노드 식별자. `total`, `w_{walletId}`, `cat_{id}` 형식 |
 | nodes[].name | string | 노드 표시 이름 |
 | nodes[].value | number | 노드 금액 |
 | links | array | Sankey 링크(흐름) 목록. 데이터가 없으면 빈 배열 |
@@ -584,7 +584,7 @@
 ### 노드 구조
 
 - **1단계 (좌):** `total` — 월 전체 지출
-- **2단계 (중):** `account`, `card` — 결제수단별 지출 합계. `wallet_type` 필터 적용 시 해당 결제수단만 포함
+- **2단계 (중):** `w_{walletId}` — 개별 지갑별 지출 합계 (계좌명 또는 카드명 표시). `wallet_type` 필터 적용 시 해당 지갑 유형만 포함
 - **3단계 (우):** 지출 전체 카테고리. `cat_other` 노드는 생성하지 않음
 
 ---
@@ -635,14 +635,14 @@
     "total_income": 2500000,
     "nodes": [
       { "id": "total", "name": "총 수입", "value": 2500000 },
-      { "id": "account", "name": "계좌", "value": 2500000 },
+      { "id": "w_1", "name": "우리은행 통장", "value": 2500000 },
       { "id": "cat_5", "name": "급여", "value": 2000000 },
       { "id": "cat_6", "name": "부수입", "value": 500000 }
     ],
     "links": [
-      { "source": "total", "target": "account", "value": 2500000 },
-      { "source": "account", "target": "cat_5", "value": 2000000 },
-      { "source": "account", "target": "cat_6", "value": 500000 }
+      { "source": "total", "target": "w_1", "value": 2500000 },
+      { "source": "w_1", "target": "cat_5", "value": 2000000 },
+      { "source": "w_1", "target": "cat_6", "value": 500000 }
     ]
   },
   "error": null
@@ -654,7 +654,7 @@
 | month | string | 조회 월 |
 | total_income | number | 해당 월 전체 수입 합계 |
 | nodes | array | Sankey 노드 목록. 데이터가 없으면 빈 배열 |
-| nodes[].id | string | 노드 식별자. `total`, `account`, `cat_{id}` 형식 |
+| nodes[].id | string | 노드 식별자. `total`, `w_{walletId}`, `cat_{id}` 형식 |
 | nodes[].name | string | 노드 표시 이름 |
 | nodes[].value | number | 노드 금액 |
 | links | array | Sankey 링크(흐름) 목록. 데이터가 없으면 빈 배열 |
@@ -665,7 +665,7 @@
 ### 노드 구조
 
 - **1단계 (좌):** `total` — 월 전체 수입
-- **2단계 (중):** `account` — 계좌 수입 합계. 카드는 수입 거래가 없으므로 `card` 노드는 생성되지 않음
+- **2단계 (중):** `w_{walletId}` — 개별 계좌별 수입 합계 (계좌명 표시). 카드는 수입 거래가 없으므로 표시되지 않음
 - **3단계 (우):** 수입 전체 카테고리. `cat_other` 노드는 생성하지 않음
 
 ---
@@ -685,4 +685,4 @@
 
 - `nodes`가 빈 배열이거나 `total_income`이 0이면 empty UI를 표시한다.
 - 노드 색상은 파란색 계열(`#38BDF8` 기준)로 지출 흐름과 시각적으로 구분한다.
-- 카드 노드는 수입 거래 특성상 표시되지 않는다.
+- 카드 지갑은 수입 거래 특성상 표시되지 않는다.

@@ -576,20 +576,19 @@ const HeatmapContent: React.FC<{
 
 /* ── Sankey 레이아웃 ──────────────────────────────────── */
 
-const SVG_W = 340;
-const SVG_MIN_H = 120;
-const MAX_SVG_H = 220;
-const NODE_W = 60;
-const COL_X: [number, number, number] = [10, 140, 270];
+const SVG_W = 440;
+const SVG_MIN_H = 200;
+const MAX_SVG_H = 812;
+const NODE_W = 120;
+const COL_X: [number, number, number] = [5, 160, 315];
 const NODE_GAP = 8;
 const PAD_V = 12;
-const MIN_NODE_H = 6;
+const MIN_NODE_H = 16;
 
 const CAT_COLORS = ["#A78BFA", "#34D399", "#FBBF24", "#F472B6", "#38BDF8", "#94A3B8"];
+const WALLET_COLORS = ["#60A5FA", "#F87171", "#34D399", "#FBBF24", "#A78BFA", "#38BDF8", "#FB923C"];
 const BASE_COLORS: Record<string, string> = {
-  total: "#F28A9B",
-  account: "#60A5FA",
-  card: "#F87171"
+  total: "#F28A9B"
 };
 
 interface SankeyLayoutNode {
@@ -617,18 +616,15 @@ function buildSankeyLayout(
 
     const col0 = nodes.filter(n => n.id === "total");
     const col1 = nodes
-      .filter(n => n.id === "account" || n.id === "card")
+      .filter(n => n.id.startsWith("w_"))
       .sort((a, b) => b.value - a.value);
     const col2 = nodes
       .filter(n => n.id.startsWith("cat_") && n.id !== "cat_other" && n.value > 0)
       .sort((a, b) => b.value - a.value);
 
-    const stackedMinHeight = Math.max(
-      col0.length * MIN_NODE_H + Math.max(0, col0.length - 1) * NODE_GAP,
-      col1.length * MIN_NODE_H + Math.max(0, col1.length - 1) * NODE_GAP,
-      col2.length * MIN_NODE_H + Math.max(0, col2.length - 1) * NODE_GAP
-    );
-    const svgHeight = Math.max(SVG_MIN_H, PAD_V * 2 + stackedMinHeight);
+    const maxColLen = Math.max(col0.length, col1.length, col2.length);
+    const minRequiredH = maxColLen * MIN_NODE_H + Math.max(0, maxColLen - 1) * NODE_GAP + 2 * PAD_V;
+    const svgHeight = Math.max(SVG_MIN_H, Math.min(MAX_SVG_H, minRequiredH));
     const scale = Math.max(0.001, getSankeyFlowHeight(col2.length) / total_expense);
 
     function positionCol(
@@ -641,7 +637,9 @@ function buildSankeyLayout(
         const color =
           colIdx === 2
             ? CAT_COLORS[i % CAT_COLORS.length]
-            : (BASE_COLORS[n.id] ?? "#94A3B8");
+            : colIdx === 1
+              ? WALLET_COLORS[i % WALLET_COLORS.length]
+              : (BASE_COLORS[n.id] ?? "#94A3B8");
         const node: SankeyLayoutNode = {
           id: n.id, name: n.name, value: n.value,
           x: COL_X[colIdx], y, h, color
@@ -657,7 +655,7 @@ function buildSankeyLayout(
       ...positionCol(col2, 2)
     ];
 
-    // 높이가 MAX_SVG_H를 초과하면 노드 위치·높이를 비례 축소
+    // 실제 컨텐츠 높이 계산 후 MIN_NODE_H를 보장하며 압축
     const rawContentH = layoutNodes.reduce((max, node) => Math.max(max, node.y + node.h), PAD_V);
     const rawHeight = Math.max(svgHeight, rawContentH + PAD_V);
     let linkScale = scale;
@@ -666,11 +664,13 @@ function buildSankeyLayout(
       layoutNodes = layoutNodes.map(n => ({
         ...n,
         y: PAD_V + (n.y - PAD_V) * sFactor,
-        h: n.h * sFactor
+        h: Math.max(MIN_NODE_H, n.h * sFactor)
       }));
       linkScale = scale * sFactor;
     }
-    const finalHeight = Math.min(MAX_SVG_H, rawHeight);
+    // 압축 후 실제 높이 재계산 (MIN_NODE_H 클램핑으로 늘어날 수 있음)
+    const clampedContentH = layoutNodes.reduce((max, node) => Math.max(max, node.y + node.h), PAD_V);
+    const finalHeight = Math.max(SVG_MIN_H, clampedContentH + PAD_V);
 
     const nodeMap = new Map(layoutNodes.map(n => [n.id, n]));
     const srcUsed = new Map(layoutNodes.map(n => [n.id, 0]));
@@ -753,13 +753,13 @@ const SankeyContent: React.FC<{
       <section className={`${cardClass} p-4`} aria-label="지출 흐름 Sankey 다이어그램">
         <h2 className="mb-1 text-base font-bold text-[var(--color-text-primary)]">지출 흐름</h2>
         <p className="mb-3 text-xs text-[var(--color-text-secondary)]">
-          총 지출 → 결제수단 → 카테고리 · 노드/링크 터치 시 상세 표시
+          총 지출 → 지갑 → 카테고리 · 노드/링크 터치 시 상세 표시
         </p>
 
         {/* 컬럼 헤더 */}
         <div className="mb-1 flex justify-between text-[10px] font-semibold text-[var(--color-text-secondary)]">
           <span>총 지출</span>
-          <span>결제수단</span>
+          <span>지갑</span>
           <span>카테고리</span>
         </div>
 
@@ -793,8 +793,8 @@ const SankeyContent: React.FC<{
             {/* 노드 */}
             {layout.nodes.map(node => {
               const isSel = selectedId === node.id;
-              const showName = node.h >= 10;
-              const showRatio = node.h >= 24;
+              const showName = node.h >= MIN_NODE_H;
+              const showRatio = node.h >= 30;
               const ratio = ((node.value / total) * 100).toFixed(1);
               const maxChars = Math.floor(NODE_W / 8);
 
@@ -898,10 +898,9 @@ const SankeyContent: React.FC<{
 };
 
 const INCOME_BASE_COLORS: Record<string, string> = {
-  total: "#38BDF8",
-  account: "#60A5FA",
-  card: "#F87171"
+  total: "#38BDF8"
 };
+const INCOME_WALLET_COLORS = ["#60A5FA", "#34D399", "#FBBF24", "#A78BFA", "#38BDF8", "#FB923C", "#F472B6"];
 
 function buildIncomeSankeyLayout(
   data: SankeyIncomeStatisticsData
@@ -912,7 +911,7 @@ function buildIncomeSankeyLayout(
 
     const col0 = nodes.filter(n => n.id === "total");
     const col1 = nodes
-      .filter(n => n.id === "account" || n.id === "card")
+      .filter(n => n.id.startsWith("w_"))
       .sort((a, b) => b.value - a.value);
     const col2 = nodes
       .filter(n => n.id.startsWith("cat_") && n.id !== "cat_other" && n.value > 0)
@@ -920,12 +919,9 @@ function buildIncomeSankeyLayout(
 
     if (col0.length === 0 || col1.length === 0) return null;
 
-    const stackedMinHeight = Math.max(
-      col0.length * MIN_NODE_H + Math.max(0, col0.length - 1) * NODE_GAP,
-      col1.length * MIN_NODE_H + Math.max(0, col1.length - 1) * NODE_GAP,
-      col2.length * MIN_NODE_H + Math.max(0, col2.length - 1) * NODE_GAP
-    );
-    const svgHeight = Math.max(SVG_MIN_H, PAD_V * 2 + stackedMinHeight);
+    const maxColLen = Math.max(col0.length, col1.length, col2.length);
+    const minRequiredH = maxColLen * MIN_NODE_H + Math.max(0, maxColLen - 1) * NODE_GAP + 2 * PAD_V;
+    const svgHeight = Math.max(SVG_MIN_H, Math.min(MAX_SVG_H, minRequiredH));
     const scale = Math.max(0.001, getSankeyFlowHeight(col2.length) / total_income);
 
     function positionCol(
@@ -938,7 +934,9 @@ function buildIncomeSankeyLayout(
         const color =
           colIdx === 2
             ? CAT_COLORS[i % CAT_COLORS.length]
-            : (INCOME_BASE_COLORS[n.id] ?? "#94A3B8");
+            : colIdx === 1
+              ? INCOME_WALLET_COLORS[i % INCOME_WALLET_COLORS.length]
+              : (INCOME_BASE_COLORS[n.id] ?? "#94A3B8");
         const node: SankeyLayoutNode = {
           id: n.id, name: n.name, value: n.value,
           x: COL_X[colIdx], y, h, color
@@ -954,7 +952,7 @@ function buildIncomeSankeyLayout(
       ...positionCol(col2, 2)
     ];
 
-    // 높이가 MAX_SVG_H를 초과하면 노드 위치·높이를 비례 축소
+    // 실제 컨텐츠 높이 계산 후 MIN_NODE_H를 보장하며 압축
     const rawContentH = layoutNodes.reduce((max, node) => Math.max(max, node.y + node.h), PAD_V);
     const rawHeight = Math.max(svgHeight, rawContentH + PAD_V);
     let linkScale = scale;
@@ -963,11 +961,13 @@ function buildIncomeSankeyLayout(
       layoutNodes = layoutNodes.map(n => ({
         ...n,
         y: PAD_V + (n.y - PAD_V) * sFactor,
-        h: n.h * sFactor
+        h: Math.max(MIN_NODE_H, n.h * sFactor)
       }));
       linkScale = scale * sFactor;
     }
-    const finalHeight = Math.min(MAX_SVG_H, rawHeight);
+    // 압축 후 실제 높이 재계산 (MIN_NODE_H 클램핑으로 늘어날 수 있음)
+    const clampedContentH = layoutNodes.reduce((max, node) => Math.max(max, node.y + node.h), PAD_V);
+    const finalHeight = Math.max(SVG_MIN_H, clampedContentH + PAD_V);
 
     const nodeMap = new Map(layoutNodes.map(n => [n.id, n]));
     const srcUsed = new Map(layoutNodes.map(n => [n.id, 0]));
@@ -1046,12 +1046,12 @@ const IncomeSankeyContent: React.FC<{
       <section className={`${cardClass} p-4`} aria-label="수입 흐름 Sankey 다이어그램">
         <h2 className="mb-1 text-base font-bold text-[var(--color-text-primary)]">수입 흐름</h2>
         <p className="mb-3 text-xs text-[var(--color-text-secondary)]">
-          총 수입 → 결제수단 → 카테고리 · 노드/링크 터치 시 상세 표시
+          총 수입 → 지갑 → 카테고리 · 노드/링크 터치 시 상세 표시
         </p>
 
         <div className="mb-1 flex justify-between text-[10px] font-semibold text-[var(--color-text-secondary)]">
           <span>총 수입</span>
-          <span>결제수단</span>
+          <span>지갑</span>
           <span>카테고리</span>
         </div>
 
@@ -1083,8 +1083,8 @@ const IncomeSankeyContent: React.FC<{
 
             {layout.nodes.map(node => {
               const isSel = selectedId === node.id;
-              const showName = node.h >= 10;
-              const showRatio = node.h >= 24;
+              const showName = node.h >= MIN_NODE_H;
+              const showRatio = node.h >= 30;
               const ratio = ((node.value / total) * 100).toFixed(1);
               const maxChars = Math.floor(NODE_W / 8);
 
