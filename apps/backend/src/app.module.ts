@@ -14,6 +14,7 @@ import { StatisticsModule } from "./modules/statistics/statistics.module";
 import { UsersModule } from "./modules/users/users.module";
 import { SettingsModule } from "./modules/settings/settings.module";
 import { SyncModule } from "./modules/sync/sync.module";
+import { ManifestModule } from "./modules/manifest/manifest.module";
 import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
 import { ApiResponseInterceptor } from "./common/interceptors/api-response.interceptor";
 
@@ -35,6 +36,7 @@ import { ApiResponseInterceptor } from "./common/interceptors/api-response.inter
     UsersModule,
     SettingsModule,
     SyncModule,
+    ManifestModule,
   ],
   providers: [
     {

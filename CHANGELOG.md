@@ -1,3 +1,16 @@
+# [1.2.0](https://github.com/kittysaemi/KittyWallet/compare/v1.1.0...v1.2.0) (2026-06-13)
+
+
+### Bug Fixes
+
+* **e2e:** pwa_check manifest link 셀렉터 수정 ([7c4bccd](https://github.com/kittysaemi/KittyWallet/commit/7c4bccdafbeb6e6b466dce5605a27197edf7222e)), closes [#manifest-link](https://github.com/kittysaemi/KittyWallet/issues/manifest-link)
+* **pwa:** manifest 동적 교체 방식 수정 — Vite 플러그인 + 쿠키 기반 ([002dbdd](https://github.com/kittysaemi/KittyWallet/commit/002dbdd2ac8cb61f0fe2df080173c8b92afdbb9a))
+
+
+### Features
+
+* **pwa:** manifest 동적 서빙 엔드포인트 구현 ([#238](https://github.com/kittysaemi/KittyWallet/issues/238)) ([0e03a19](https://github.com/kittysaemi/KittyWallet/commit/0e03a19a9c79a253145d2102a6e0ea0c8501ec5f)), closes [#manifest-link](https://github.com/kittysaemi/KittyWallet/issues/manifest-link)
+
 # [1.1.0](https://github.com/kittysaemi/KittyWallet/compare/v1.0.3...v1.1.0) (2026-06-13)
 
 
