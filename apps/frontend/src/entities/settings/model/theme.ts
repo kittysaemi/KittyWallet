@@ -15,6 +15,12 @@ const THEME_PRIMARY_COLORS: Record<ThemeSetting, string> = {
   "lavender": "#bfa8ff"
 };
 
+const THEME_FOLDER: Record<ThemeSetting, string> = {
+  "cat-pink": "pink",
+  "mint": "mint",
+  "lavender": "purple"
+};
+
 const THEME_LS_KEY = "kw_theme";
 
 export const THEME_OPTIONS: Array<{
@@ -61,12 +67,24 @@ export function getStoredTheme(): ThemeSetting {
   }
 }
 
+function updateLinkHref(id: string, href: string): void {
+  const el = document.querySelector<HTMLLinkElement>(`#${id}`);
+  if (el) el.href = href;
+}
+
 export function applyThemeSetting(theme: unknown): void {
   const normalized = normalizeThemeSetting(theme);
   document.documentElement.dataset.theme = normalized;
 
   const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
   if (meta) meta.content = THEME_PRIMARY_COLORS[normalized];
+
+  const folder = THEME_FOLDER[normalized];
+  const base = `/kittywallet/icons/themes/${folder}`;
+  updateLinkHref("favicon-ico", `${base}/favicon/favicon.ico`);
+  updateLinkHref("favicon-32", `${base}/favicon/favicon-32x32.png`);
+  updateLinkHref("favicon-16", `${base}/favicon/favicon-16x16.png`);
+  updateLinkHref("apple-touch-icon", `${base}/apple-touch/apple-touch-icon.png`);
 
   try {
     localStorage.setItem(THEME_LS_KEY, normalized);
