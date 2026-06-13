@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/kittysaemi/KittyWallet/compare/v1.0.3...v1.1.0) (2026-06-13)
+
+
+### Features
+
+* **pwa:** 테마별 앱 아이콘 패키지 적용 ([#239](https://github.com/kittysaemi/KittyWallet/issues/239)) ([bf29faa](https://github.com/kittysaemi/KittyWallet/commit/bf29faa2dd95d0aeae0bad7cb1fb0b53d0e4115c))
+
 ## [1.0.3](https://github.com/kittysaemi/KittyWallet/compare/v1.0.2...v1.0.3) (2026-06-13)
 
 
