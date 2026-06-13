@@ -594,21 +594,23 @@ Production 배포 전
 ## Trigger
 
 ```text
-main push
+release published
 workflow_dispatch
 ```
 
-운영 배포는 `main` 브랜치 push 시 자동 실행된다.
+운영 배포는 semantic-release가 GitHub Release를 published 상태로 생성한 뒤 자동 실행된다.
 수동 재실행은 GitHub Actions의 `workflow_dispatch`로 수행한다.
 
 ## Docker Image
 
 ```text
-ghcr.io/<owner>/kittywallet-api:<commit-sha>
-ghcr.io/<owner>/kittywallet-web:<commit-sha>
+ghcr.io/<owner>/kittywallet-api:<release-tag>
+ghcr.io/<owner>/kittywallet-web:<release-tag>
 ```
 
 `latest` 태그는 사용하지 않는다.
+Release 기반 자동 배포에서는 semantic-release가 생성한 Git tag를 Docker image tag로 사용한다.
+수동 실행(`workflow_dispatch`)에서는 실행 대상 commit SHA를 Docker image tag로 사용한다.
 
 ## Server Deploy
 
