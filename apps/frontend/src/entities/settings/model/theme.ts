@@ -92,7 +92,7 @@ function updateLinkHref(id: string, href: string): void {
   if (el) el.href = href;
 }
 
-export function applyThemeSetting(theme: unknown): void {
+export function applyThemeSetting(theme: unknown, persist = true): void {
   const normalized = normalizeThemeSetting(theme);
   document.documentElement.dataset.theme = normalized;
 
@@ -110,9 +110,10 @@ export function applyThemeSetting(theme: unknown): void {
   replaceLinkElement("apple-touch-icon", "apple-touch-icon", "image/png", undefined, `${base}/apple-touch/apple-touch-icon.png${bust}`);
   updateLinkHref("manifest-link", `/kittywallet/api/v1/manifest?theme=${folder}`);
 
-  try {
-    localStorage.setItem(THEME_LS_KEY, normalized);
-    // 쿠키에도 저장 — manifest 엔드포인트가 페이지 파싱 시점에 올바른 테마를 반환하도록
-    document.cookie = `kw_theme=${folder}; path=/; SameSite=Lax; max-age=31536000`;
-  } catch { /* storage unavailable */ }
+  if (persist) {
+    try {
+      localStorage.setItem(THEME_LS_KEY, normalized);
+      document.cookie = `kw_theme=${folder}; path=/; SameSite=Lax; max-age=31536000`;
+    } catch { /* storage unavailable */ }
+  }
 }

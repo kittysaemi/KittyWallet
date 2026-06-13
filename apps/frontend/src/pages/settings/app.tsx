@@ -24,6 +24,8 @@ const AppSettingsPage: React.FC = () => {
   const [settingsSavedMessage, setSettingsSavedMessage] = React.useState("");
   const savedThemeRef = React.useRef(DEFAULT_APP_SETTINGS.theme);
   const currentThemeRef = React.useRef(DEFAULT_APP_SETTINGS.theme);
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
   const settingsQuery = useQuery({
     queryKey: ["settings"],
@@ -54,7 +56,7 @@ const AppSettingsPage: React.FC = () => {
   React.useEffect(
     () => () => {
       if (currentThemeRef.current !== savedThemeRef.current) {
-        applyThemeSetting(savedThemeRef.current);
+        applyThemeSetting(savedThemeRef.current, !isIOS);
       }
     },
     []
@@ -90,7 +92,8 @@ const AppSettingsPage: React.FC = () => {
     setAppSettings((prev) => ({ ...prev, [key]: value }));
     if (key === "theme") {
       currentThemeRef.current = value as AppSettings["theme"];
-      applyThemeSetting(value);
+<<<<<<< Updated upstream
+      applyThemeSetting(value, !isIOS);
     }
     setSettingsError("");
     setSettingsSavedMessage("");
