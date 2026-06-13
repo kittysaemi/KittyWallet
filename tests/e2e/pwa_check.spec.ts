@@ -14,8 +14,8 @@ async function fulfillJson(route: import("@playwright/test").Route, status: numb
 test("PWA: HTML에 manifest 링크 및 theme-color meta 포함 확인", async ({ page }) => {
   await page.goto("/kittywallet/");
 
-  const manifestHref = await page.locator('link[rel="manifest"]').getAttribute("href");
-  expect(manifestHref).toBeTruthy();
+  const manifestHref = await page.locator('#manifest-link').getAttribute("href");
+  expect(manifestHref).toContain("/api/v1/manifest");
 
   const themeColor = await page.locator('meta[name="theme-color"]').getAttribute("content");
   expect(themeColor).toBe("#fda5e3");
