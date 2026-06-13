@@ -1262,6 +1262,20 @@ const StatisticsPage: React.FC = () => {
     enabled: activeTab === "top5" && viewMode === "WEEK"
   });
 
+  const categoryIncomeWeekQuery = useQuery({
+    queryKey: ["statistics", "category-income-week", weekRange.start, weekRange.end],
+    queryFn: () =>
+      statisticsApi.getCategoryStatistics({
+        start_date: weekRange.start,
+        end_date: weekRange.end,
+        transaction_type: "INCOME",
+        limit: 5
+      }),
+    staleTime: 30 * 1000,
+    retry: isOffline ? false : 2,
+    enabled: activeTab === "top5" && viewMode === "WEEK"
+  });
+
   const calendarQuery = useQuery({
     queryKey: ["statistics", "calendar", monthValue],
     queryFn: () => statisticsApi.getCalendarStatistics({ month: monthValue }),
@@ -1403,8 +1417,13 @@ const StatisticsPage: React.FC = () => {
         void summaryQuery.refetch();
         break;
       case "top5":
-        if (viewMode === "MONTH") void categoryTopMonthQuery.refetch();
-        else void categoryTopWeekQuery.refetch();
+        if (viewMode === "MONTH") {
+          void categoryTopMonthQuery.refetch();
+          void categoryTopIncomeMonthQuery.refetch();
+        } else {
+          void categoryTopWeekQuery.refetch();
+          void categoryIncomeWeekQuery.refetch();
+        }
         break;
       case "heatmap":
         void calendarQuery.refetch();
@@ -1540,7 +1559,26 @@ const StatisticsPage: React.FC = () => {
         {activeTab === "top5" && (
           <Top5Content
             data={top5Data}
-            incomeData={viewMode === "MONTH" ? (categoryTopIncomeMonthQuery.data?.data ?? null) : null}
+            incomeData={
+              viewMode === "MONTH"
+                ? (categoryTopIncomeMonthQuery.data?.data ?? null)
+                : (() => {
+                    const weekIncome = categoryIncomeWeekQuery.data?.data;
+                    if (!weekIncome) return null;
+                    return {
+                      month: weekRange.start.slice(0, 7),
+                      total_income: weekIncome.total_amount,
+                      items: weekIncome.items.map((item, idx) => ({
+                        rank: idx + 1,
+                        category_id: item.category_id,
+                        category_name: item.category_name,
+                        icon_id: item.icon_id,
+                        amount: item.amount,
+                        ratio: item.ratio
+                      }))
+                    } as import("../../entities/statistics/model/statistics.types").CategoryTopStatisticsData;
+                  })()
+            }
             iconMap={iconMap}
             isLoading={top5IsLoading}
             isError={top5IsError}
