@@ -4,7 +4,7 @@ import { AppRouter } from "./app/router";
 import { authApi } from "./entities/auth/api/authApi";
 import { useAuthStore } from "./entities/auth/store/authStore";
 import { settingsApi } from "./entities/settings/api/settingsApi";
-import { applyThemeSetting, DEFAULT_THEME } from "./entities/settings/model/theme";
+import { applyThemeSetting, DEFAULT_THEME, getStoredTheme } from "./entities/settings/model/theme";
 import { PwaStatusBanner } from "./pwa/sync/PwaStatusBanner";
 import { registerSyncQueueRunner } from "./pwa/sync/syncQueue.service";
 
@@ -34,7 +34,7 @@ const App: React.FC = () => {
   });
 
   useEffect(() => {
-    applyThemeSetting(DEFAULT_THEME);
+    applyThemeSetting(getStoredTheme());
   }, []);
 
   useEffect(() => {

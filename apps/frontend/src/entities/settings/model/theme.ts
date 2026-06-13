@@ -9,6 +9,14 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   transaction_list_page_size: 20
 };
 
+const THEME_PRIMARY_COLORS: Record<ThemeSetting, string> = {
+  "cat-pink": "#FDA5E3",
+  "mint": "#77D8B8",
+  "lavender": "#BFA8FF"
+};
+
+const THEME_LS_KEY = "kw_theme";
+
 export const THEME_OPTIONS: Array<{
   value: ThemeSetting;
   label: string;
@@ -45,6 +53,22 @@ export function normalizeAppSettings(settings: Partial<AppSettings> | undefined)
   };
 }
 
+export function getStoredTheme(): ThemeSetting {
+  try {
+    return normalizeThemeSetting(localStorage.getItem(THEME_LS_KEY));
+  } catch {
+    return DEFAULT_THEME;
+  }
+}
+
 export function applyThemeSetting(theme: unknown): void {
-  document.documentElement.dataset.theme = normalizeThemeSetting(theme);
+  const normalized = normalizeThemeSetting(theme);
+  document.documentElement.dataset.theme = normalized;
+
+  const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  if (meta) meta.content = THEME_PRIMARY_COLORS[normalized];
+
+  try {
+    localStorage.setItem(THEME_LS_KEY, normalized);
+  } catch { /* storage unavailable */ }
 }
