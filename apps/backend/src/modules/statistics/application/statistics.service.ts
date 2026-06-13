@@ -360,21 +360,46 @@ export class StatisticsService {
       return { month, total_income: 0, nodes: [], links: [] };
     }
 
-    const totalIncome = categoryGroups.reduce((sum, g) => sum + this.toNumber(g.amount), 0);
-
     const walletTotals = new Map<string, number>();
     for (const g of crossGroups) {
       const key = g.walletType;
       walletTotals.set(key, (walletTotals.get(key) ?? 0) + this.toNumber(g.amount));
     }
 
-    const categoryIds = new Set(categoryGroups.map((g) => String(g.categoryId)));
-
     const catTotals = new Map<string, number>();
     for (const g of crossGroups) {
       const catKey = String(g.categoryId);
       catTotals.set(catKey, (catTotals.get(catKey) ?? 0) + this.toNumber(g.amount));
     }
+
+    // categoryGroups로 total 집계, 없으면 crossGroups 합산으로 fallback
+    const totalIncome = categoryGroups.length > 0
+      ? categoryGroups.reduce((sum, g) => sum + this.toNumber(g.amount), 0)
+      : Array.from(catTotals.values()).reduce((sum, v) => sum + v, 0);
+
+    if (totalIncome === 0) {
+      return { month, total_income: 0, nodes: [], links: [] };
+    }
+
+    const categoryIds = new Set(categoryGroups.map((g) => String(g.categoryId)));
+
+    // categoryGroups가 비어 있으면 crossGroups에서 카테고리 목록을 구성
+    const effectiveCategoryEntries = categoryGroups.length > 0
+      ? categoryGroups.map((g) => ({
+          id: `cat_${g.categoryId}`,
+          name: g.category?.categoryName ?? "",
+          value: catTotals.get(String(g.categoryId)) ?? 0
+        }))
+      : Array.from(catTotals.entries())
+          .filter(([, v]) => v > 0)
+          .map(([catKey, value]) => {
+            const catGroup = crossGroups.find((g) => String(g.categoryId) === catKey);
+            return {
+              id: `cat_${catKey}`,
+              name: catGroup?.category?.categoryName ?? "",
+              value
+            };
+          });
 
     const nodes = [
       { id: "total", name: "총 수입", value: totalIncome },
@@ -383,14 +408,15 @@ export class StatisticsService {
         name: walletType === "ACCOUNT" ? "계좌" : "카드",
         value
       })),
-      ...categoryGroups.map((g) => ({
-        id: `cat_${g.categoryId}`,
-        name: g.category?.categoryName ?? "",
-        value: catTotals.get(String(g.categoryId)) ?? 0
-      }))
+      ...effectiveCategoryEntries
     ];
 
-    const walletCatLinks = this.buildWalletCatLinks(crossGroups, categoryIds);
+    // categoryIds가 비어 있으면 catTotals 키로 대체
+    const effectiveCategoryIds = categoryIds.size > 0
+      ? categoryIds
+      : new Set(Array.from(catTotals.keys()));
+
+    const walletCatLinks = this.buildWalletCatLinks(crossGroups, effectiveCategoryIds);
 
     const links = [
       ...Array.from(walletTotals.entries()).map(([walletType, value]) => ({

@@ -578,6 +578,7 @@ const HeatmapContent: React.FC<{
 
 const SVG_W = 340;
 const SVG_MIN_H = 160;
+const MAX_SVG_H = 320;
 const NODE_W = 60;
 const COL_X: [number, number, number] = [10, 140, 270];
 const NODE_GAP = 8;
@@ -601,9 +602,10 @@ interface SankeyLayoutLink {
 }
 
 function getSankeyFlowHeight(categoryCount: number): number {
-  const availableHeight = SVG_MIN_H - 2 * PAD_V;
-  const countBasedHeight = categoryCount * 18 + Math.max(0, categoryCount - 1) * NODE_GAP;
-  return Math.min(availableHeight, Math.max(28, countBasedHeight));
+  const gapTotal = Math.max(0, categoryCount - 1) * NODE_GAP;
+  const maxContent = MAX_SVG_H - 2 * PAD_V;
+  const available = Math.max(categoryCount * MIN_NODE_H, maxContent - gapTotal);
+  return Math.max(28, available);
 }
 
 function buildSankeyLayout(
@@ -617,10 +619,10 @@ function buildSankeyLayout(
     const col1 = nodes
       .filter(n => n.id === "account" || n.id === "card")
       .sort((a, b) => b.value - a.value);
-    const col2base = nodes
+    const col2 = nodes
       .filter(n => n.id.startsWith("cat_") && n.id !== "cat_other" && n.value > 0)
       .sort((a, b) => b.value - a.value);
-    const col2 = col2base;
+
     const stackedMinHeight = Math.max(
       col0.length * MIN_NODE_H + Math.max(0, col0.length - 1) * NODE_GAP,
       col1.length * MIN_NODE_H + Math.max(0, col1.length - 1) * NODE_GAP,
@@ -649,11 +651,26 @@ function buildSankeyLayout(
       });
     }
 
-    const layoutNodes: SankeyLayoutNode[] = [
+    let layoutNodes: SankeyLayoutNode[] = [
       ...positionCol(col0, 0),
       ...positionCol(col1, 1),
       ...positionCol(col2, 2)
     ];
+
+    // 높이가 MAX_SVG_H를 초과하면 노드 위치·높이를 비례 축소
+    const rawContentH = layoutNodes.reduce((max, node) => Math.max(max, node.y + node.h), PAD_V);
+    const rawHeight = Math.max(svgHeight, rawContentH + PAD_V);
+    let linkScale = scale;
+    if (rawHeight > MAX_SVG_H) {
+      const sFactor = (MAX_SVG_H - 2 * PAD_V) / (rawContentH - PAD_V);
+      layoutNodes = layoutNodes.map(n => ({
+        ...n,
+        y: PAD_V + (n.y - PAD_V) * sFactor,
+        h: n.h * sFactor
+      }));
+      linkScale = scale * sFactor;
+    }
+    const finalHeight = Math.min(MAX_SVG_H, rawHeight);
 
     const nodeMap = new Map(layoutNodes.map(n => [n.id, n]));
     const srcUsed = new Map(layoutNodes.map(n => [n.id, 0]));
@@ -666,7 +683,7 @@ function buildSankeyLayout(
       const tgt = nodeMap.get(lk.target);
       if (!src || !tgt) continue;
 
-      const lh = Math.max(2, lk.value * scale);
+      const lh = Math.max(2, lk.value * linkScale);
       const sy = src.y + (srcUsed.get(lk.source) ?? 0);
       const ty = tgt.y + (tgtUsed.get(lk.target) ?? 0);
       srcUsed.set(lk.source, (srcUsed.get(lk.source) ?? 0) + lh);
@@ -683,8 +700,7 @@ function buildSankeyLayout(
       layoutLinks.push({ source: lk.source, target: lk.target, value: lk.value, path, color });
     }
 
-    const contentHeight = layoutNodes.reduce((max, node) => Math.max(max, node.y + node.h), PAD_V);
-    return { nodes: layoutNodes, links: layoutLinks, height: Math.max(svgHeight, contentHeight + PAD_V) };
+    return { nodes: layoutNodes, links: layoutLinks, height: finalHeight };
   } catch {
     return null;
   }
@@ -898,10 +914,12 @@ function buildIncomeSankeyLayout(
     const col1 = nodes
       .filter(n => n.id === "account" || n.id === "card")
       .sort((a, b) => b.value - a.value);
-    const col2base = nodes
+    const col2 = nodes
       .filter(n => n.id.startsWith("cat_") && n.id !== "cat_other" && n.value > 0)
       .sort((a, b) => b.value - a.value);
-    const col2 = col2base;
+
+    if (col0.length === 0 || col1.length === 0) return null;
+
     const stackedMinHeight = Math.max(
       col0.length * MIN_NODE_H + Math.max(0, col0.length - 1) * NODE_GAP,
       col1.length * MIN_NODE_H + Math.max(0, col1.length - 1) * NODE_GAP,
@@ -930,11 +948,26 @@ function buildIncomeSankeyLayout(
       });
     }
 
-    const layoutNodes: SankeyLayoutNode[] = [
+    let layoutNodes: SankeyLayoutNode[] = [
       ...positionCol(col0, 0),
       ...positionCol(col1, 1),
       ...positionCol(col2, 2)
     ];
+
+    // 높이가 MAX_SVG_H를 초과하면 노드 위치·높이를 비례 축소
+    const rawContentH = layoutNodes.reduce((max, node) => Math.max(max, node.y + node.h), PAD_V);
+    const rawHeight = Math.max(svgHeight, rawContentH + PAD_V);
+    let linkScale = scale;
+    if (rawHeight > MAX_SVG_H) {
+      const sFactor = (MAX_SVG_H - 2 * PAD_V) / (rawContentH - PAD_V);
+      layoutNodes = layoutNodes.map(n => ({
+        ...n,
+        y: PAD_V + (n.y - PAD_V) * sFactor,
+        h: n.h * sFactor
+      }));
+      linkScale = scale * sFactor;
+    }
+    const finalHeight = Math.min(MAX_SVG_H, rawHeight);
 
     const nodeMap = new Map(layoutNodes.map(n => [n.id, n]));
     const srcUsed = new Map(layoutNodes.map(n => [n.id, 0]));
@@ -947,7 +980,7 @@ function buildIncomeSankeyLayout(
       const tgt = nodeMap.get(lk.target);
       if (!src || !tgt) continue;
 
-      const lh = Math.max(2, lk.value * scale);
+      const lh = Math.max(2, lk.value * linkScale);
       const sy = src.y + (srcUsed.get(lk.source) ?? 0);
       const ty = tgt.y + (tgtUsed.get(lk.target) ?? 0);
       srcUsed.set(lk.source, (srcUsed.get(lk.source) ?? 0) + lh);
@@ -964,8 +997,7 @@ function buildIncomeSankeyLayout(
       layoutLinks.push({ source: lk.source, target: lk.target, value: lk.value, path, color });
     }
 
-    const contentHeight = layoutNodes.reduce((max, node) => Math.max(max, node.y + node.h), PAD_V);
-    return { nodes: layoutNodes, links: layoutLinks, height: Math.max(svgHeight, contentHeight + PAD_V) };
+    return { nodes: layoutNodes, links: layoutLinks, height: finalHeight };
   } catch {
     return null;
   }
