@@ -1,3 +1,11 @@
+## [1.0.3](https://github.com/kittysaemi/KittyWallet/compare/v1.0.2...v1.0.3) (2026-06-13)
+
+
+### Bug Fixes
+
+* **theme:** THEME_PRIMARY_COLORS 헥스값 소문자로 수정 (E2E 테스트 통과) ([305a0c2](https://github.com/kittysaemi/KittyWallet/commit/305a0c286daa8d80201296ff29322b6a3c8f184d))
+* **ui:** Top5 주별 수입 표시 및 테마색 새로고침/PWA 타이틀바 수정 ([9fb7d53](https://github.com/kittysaemi/KittyWallet/commit/9fb7d536f34153babbb78006afdcc2086e575897))
+
 ## [1.0.2](https://github.com/kittysaemi/KittyWallet/compare/v1.0.1...v1.0.2) (2026-06-13)
 
 
