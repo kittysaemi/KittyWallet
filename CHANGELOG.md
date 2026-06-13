@@ -1,3 +1,10 @@
+## [1.2.2](https://github.com/kittysaemi/KittyWallet/compare/v1.2.1...v1.2.2) (2026-06-13)
+
+
+### Bug Fixes
+
+* **pwa:** favicon URL에 타임스탬프 쿼리 추가로 iOS WebKit 캐시 우회 ([cc6668f](https://github.com/kittysaemi/KittyWallet/commit/cc6668f500bd3a6e4351fe59adc1e74d1b7404fc))
+
 ## [1.2.1](https://github.com/kittysaemi/KittyWallet/compare/v1.2.0...v1.2.1) (2026-06-13)
 
 
