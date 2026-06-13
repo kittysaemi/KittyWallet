@@ -579,8 +579,8 @@ const HeatmapContent: React.FC<{
 const SVG_W = 440;
 const SVG_MIN_H = 200;
 const MAX_SVG_H = 812;
-const NODE_W = 120;
-const COL_X: [number, number, number] = [5, 160, 315];
+const NODE_W = 95;
+const COL_X: [number, number, number] = [5, 170, 335];
 const NODE_GAP = 8;
 const PAD_V = 12;
 const MIN_NODE_H = 16;
