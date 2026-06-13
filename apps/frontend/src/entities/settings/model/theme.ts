@@ -67,6 +67,26 @@ export function getStoredTheme(): ThemeSetting {
   }
 }
 
+// href 속성만 변경하면 Chrome이 favicon을 재fetch하지 않아 탭 아이콘이 바뀌지 않음.
+// 기존 link 요소를 제거하고 새로 추가해야 Chrome이 새 favicon을 인식함.
+function replaceLinkElement(
+  id: string,
+  rel: string,
+  type: string,
+  sizes: string | undefined,
+  href: string
+): void {
+  const existing = document.getElementById(id);
+  if (existing) existing.remove();
+  const link = document.createElement("link");
+  link.id = id;
+  link.rel = rel;
+  link.type = type;
+  if (sizes) link.setAttribute("sizes", sizes);
+  link.href = href;
+  document.head.appendChild(link);
+}
+
 function updateLinkHref(id: string, href: string): void {
   const el = document.querySelector<HTMLLinkElement>(`#${id}`);
   if (el) el.href = href;
@@ -81,10 +101,10 @@ export function applyThemeSetting(theme: unknown): void {
 
   const folder = THEME_FOLDER[normalized];
   const base = `/kittywallet/icons/themes/${folder}`;
-  updateLinkHref("favicon-ico", `${base}/favicon/favicon.ico`);
-  updateLinkHref("favicon-32", `${base}/favicon/favicon-32x32.png`);
-  updateLinkHref("favicon-16", `${base}/favicon/favicon-16x16.png`);
-  updateLinkHref("apple-touch-icon", `${base}/apple-touch/apple-touch-icon.png`);
+  replaceLinkElement("favicon-ico", "icon", "image/x-icon", undefined, `${base}/favicon/favicon.ico`);
+  replaceLinkElement("favicon-32", "icon", "image/png", "32x32", `${base}/favicon/favicon-32x32.png`);
+  replaceLinkElement("favicon-16", "icon", "image/png", "16x16", `${base}/favicon/favicon-16x16.png`);
+  replaceLinkElement("apple-touch-icon", "apple-touch-icon", "image/png", undefined, `${base}/apple-touch/apple-touch-icon.png`);
   updateLinkHref("manifest-link", `/kittywallet/api/v1/manifest?theme=${folder}`);
 
   try {
