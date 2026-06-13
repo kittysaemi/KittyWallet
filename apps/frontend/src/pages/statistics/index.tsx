@@ -767,7 +767,7 @@ const SankeyContent: React.FC<{
           <svg
             viewBox={`0 0 ${SVG_W} ${layout.height}`}
             width="100%"
-            style={{ display: "block" }}
+            style={{ display: "block", height: `${layout.height}px` }}
             role="img"
             aria-label="지출 흐름 Sankey 차트"
             onClick={() => setSelectedId(null)}
@@ -1059,7 +1059,7 @@ const IncomeSankeyContent: React.FC<{
           <svg
             viewBox={`0 0 ${SVG_W} ${layout.height}`}
             width="100%"
-            style={{ display: "block" }}
+            style={{ display: "block", height: `${layout.height}px` }}
             role="img"
             aria-label="수입 흐름 Sankey 차트"
             onClick={() => setSelectedId(null)}
