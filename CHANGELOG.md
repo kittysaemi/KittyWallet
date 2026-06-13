@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/kittysaemi/KittyWallet/compare/v1.0.1...v1.0.2) (2026-06-13)
+
+
+### Bug Fixes
+
+* **statistics:** Sankey 링크 가로 길이 확장 (NODE_W 95, gap 70px) ([ec4297a](https://github.com/kittysaemi/KittyWallet/commit/ec4297aad50014405af564dfd5bd8b45391beddf))
+
 ## [1.0.1](https://github.com/kittysaemi/KittyWallet/compare/v1.0.0...v1.0.1) (2026-06-13)
 
 
