@@ -22,7 +22,7 @@ export const runtimeCaching: RuntimeCaching = [
   },
   {
     urlPattern: ({ url }) => url.pathname.startsWith("/kittywallet/api/v1/statistics"),
-    handler: "StaleWhileRevalidate",
+    handler: "NetworkFirst",
     options: {
       cacheName: CACHE_NAMES.STATISTICS,
       expiration: { maxEntries: 20, maxAgeSeconds: 60 * 30 }

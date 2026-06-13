@@ -110,7 +110,7 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ item, iconMap, catego
         className={`shrink-0 text-sm font-semibold ${
           item.transaction_type === "INCOME"
             ? "text-blue-500"
-            : "text-[var(--color-text-primary)]"
+            : "text-[var(--color-danger)]"
         }`}
       >
         {formatAmount(item.amount, item.transaction_type)}
@@ -270,7 +270,7 @@ const TransactionsPage: React.FC = () => {
                         <span className="text-blue-500">+{income.toLocaleString("ko-KR")}원</span>
                       )}
                       {expense > 0 && (
-                        <span className="text-[var(--color-text-primary)]">-{expense.toLocaleString("ko-KR")}원</span>
+                        <span className="text-[var(--color-danger)]">-{expense.toLocaleString("ko-KR")}원</span>
                       )}
                     </div>
                   </div>

@@ -301,18 +301,12 @@ export class StatisticsService {
       walletTotals.set(key, (walletTotals.get(key) ?? 0) + this.toNumber(g.amount));
     }
 
-    const top5Categories = categoryGroups.slice(0, 5);
-    const top5Ids = new Set(top5Categories.map((g) => String(g.categoryId)));
+    const categoryIds = new Set(categoryGroups.map((g) => String(g.categoryId)));
 
     const catTotals = new Map<string, number>();
-    let othersTotal = 0;
     for (const g of crossGroups) {
       const catKey = String(g.categoryId);
-      if (top5Ids.has(catKey)) {
-        catTotals.set(catKey, (catTotals.get(catKey) ?? 0) + this.toNumber(g.amount));
-      } else {
-        othersTotal += this.toNumber(g.amount);
-      }
+      catTotals.set(catKey, (catTotals.get(catKey) ?? 0) + this.toNumber(g.amount));
     }
 
     const nodes = [
@@ -322,15 +316,14 @@ export class StatisticsService {
         name: walletType === "ACCOUNT" ? "계좌" : "카드",
         value
       })),
-      ...top5Categories.map((g) => ({
+      ...categoryGroups.map((g) => ({
         id: `cat_${g.categoryId}`,
         name: g.category?.categoryName ?? "",
         value: catTotals.get(String(g.categoryId)) ?? 0
-      })),
-      ...(othersTotal > 0 ? [{ id: "cat_other", name: "기타", value: othersTotal }] : [])
+      }))
     ];
 
-    const walletCatLinks = this.buildWalletCatLinks(crossGroups, top5Ids);
+    const walletCatLinks = this.buildWalletCatLinks(crossGroups, categoryIds);
 
     const links = [
       ...Array.from(walletTotals.entries()).map(([walletType, value]) => ({
@@ -375,18 +368,12 @@ export class StatisticsService {
       walletTotals.set(key, (walletTotals.get(key) ?? 0) + this.toNumber(g.amount));
     }
 
-    const top5Categories = categoryGroups.slice(0, 5);
-    const top5Ids = new Set(top5Categories.map((g) => String(g.categoryId)));
+    const categoryIds = new Set(categoryGroups.map((g) => String(g.categoryId)));
 
     const catTotals = new Map<string, number>();
-    let othersTotal = 0;
     for (const g of crossGroups) {
       const catKey = String(g.categoryId);
-      if (top5Ids.has(catKey)) {
-        catTotals.set(catKey, (catTotals.get(catKey) ?? 0) + this.toNumber(g.amount));
-      } else {
-        othersTotal += this.toNumber(g.amount);
-      }
+      catTotals.set(catKey, (catTotals.get(catKey) ?? 0) + this.toNumber(g.amount));
     }
 
     const nodes = [
@@ -396,15 +383,14 @@ export class StatisticsService {
         name: walletType === "ACCOUNT" ? "계좌" : "카드",
         value
       })),
-      ...top5Categories.map((g) => ({
+      ...categoryGroups.map((g) => ({
         id: `cat_${g.categoryId}`,
         name: g.category?.categoryName ?? "",
         value: catTotals.get(String(g.categoryId)) ?? 0
-      })),
-      ...(othersTotal > 0 ? [{ id: "cat_other", name: "기타", value: othersTotal }] : [])
+      }))
     ];
 
-    const walletCatLinks = this.buildWalletCatLinks(crossGroups, top5Ids);
+    const walletCatLinks = this.buildWalletCatLinks(crossGroups, categoryIds);
 
     const links = [
       ...Array.from(walletTotals.entries()).map(([walletType, value]) => ({
@@ -420,21 +406,18 @@ export class StatisticsService {
 
   private buildWalletCatLinks(
     crossGroups: WalletTypeCategoryGroup[],
-    top5Ids: Set<string>
+    categoryIds: Set<string>
   ): { source: string; target: string; value: number }[] {
     const linkMap = new Map<string, number>();
-    const othersMap = new Map<string, number>();
 
     for (const g of crossGroups) {
       const walletKey = g.walletType.toLowerCase();
       const catKey = String(g.categoryId);
       const amount = this.toNumber(g.amount);
 
-      if (top5Ids.has(catKey)) {
+      if (categoryIds.has(catKey)) {
         const key = `${walletKey}|cat_${catKey}`;
         linkMap.set(key, (linkMap.get(key) ?? 0) + amount);
-      } else {
-        othersMap.set(walletKey, (othersMap.get(walletKey) ?? 0) + amount);
       }
     }
 
@@ -442,10 +425,6 @@ export class StatisticsService {
       const [source, target] = key.split("|");
       return { source, target, value };
     });
-
-    for (const [walletKey, value] of othersMap.entries()) {
-      links.push({ source: walletKey, target: "cat_other", value });
-    }
 
     return links;
   }

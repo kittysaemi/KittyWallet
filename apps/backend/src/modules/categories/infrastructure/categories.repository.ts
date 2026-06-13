@@ -1,9 +1,10 @@
 import { Injectable } from "@nestjs/common";
-import { Category, CategoryUserSetting, Icon, Prisma } from "@prisma/client";
+import { Category, CategoryUserSetting, Icon, IconDictionary, Prisma } from "@prisma/client";
 import { PrismaService } from "../../../database/prisma.service";
 
 export type CategoryWithUserSettings = Category & {
   categoryUserSettings: CategoryUserSetting[];
+  icon: Icon & { iconDictionary: IconDictionary };
 };
 
 @Injectable()
@@ -16,6 +17,7 @@ export class CategoriesRepository {
         OR: [{ isDefault: true }, { userId }]
       },
       include: {
+        icon: { include: { iconDictionary: true } },
         categoryUserSettings: {
           where: { userId },
           take: 1
@@ -35,6 +37,7 @@ export class CategoriesRepository {
         OR: [{ isDefault: true }, { userId }]
       },
       include: {
+        icon: { include: { iconDictionary: true } },
         categoryUserSettings: {
           where: { userId },
           take: 1

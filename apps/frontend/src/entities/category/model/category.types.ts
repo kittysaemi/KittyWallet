@@ -2,6 +2,12 @@ export interface CategoryItem {
   category_id: number;
   category_name: string;
   icon_id: number;
+  icon?: {
+    icon_id: number;
+    icon_code: string;
+    provider_type: string;
+    provider_key: string;
+  };
   show: boolean;
   is_default: boolean;
   editable: boolean;

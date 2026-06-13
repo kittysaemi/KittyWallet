@@ -84,6 +84,7 @@ const SettingsPage: React.FC = () => {
       // 실패해도 로컬 상태는 제거
     }
     await clearUserApiCaches();
+    await deleteDb();
     clearAuth();
     void queryClient.clear();
     applyThemeSetting(DEFAULT_THEME);

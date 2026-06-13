@@ -11,11 +11,11 @@ interface IconSelectProps {
 }
 
 const IconSelectSkeleton: React.FC = () => (
-  <div className="grid grid-cols-4 gap-3" aria-label="아이콘 목록을 불러오는 중입니다.">
-    {Array.from({ length: 8 }).map((_, index) => (
+  <div className="grid grid-cols-5 gap-2" aria-label="아이콘 목록을 불러오는 중입니다.">
+    {Array.from({ length: 10 }).map((_, index) => (
       <div
         key={index}
-        className="h-16 rounded-2xl bg-[var(--color-bg-secondary)]"
+        className="h-14 rounded-xl bg-[var(--color-bg-secondary)]"
         aria-hidden="true"
       />
     ))}
@@ -56,7 +56,7 @@ export const IconSelect: React.FC<IconSelectProps> = ({ selectedIconId, onSelect
   }
 
   return (
-    <div className="grid grid-cols-4 gap-3" aria-label="아이콘 선택">
+    <div className="grid grid-cols-5 gap-2" aria-label="아이콘 선택">
       {items.map((icon) => {
         const selected = icon.icon_id === selectedIconId;
         return (
@@ -66,13 +66,13 @@ export const IconSelect: React.FC<IconSelectProps> = ({ selectedIconId, onSelect
             aria-label={`아이콘 선택: ${icon.icon_code}`}
             aria-pressed={selected}
             onClick={() => onSelect(icon)}
-            className={`flex h-16 items-center justify-center rounded-2xl border transition ${
+            className={`flex h-14 items-center justify-center rounded-xl border transition ${
               selected
                 ? "border-[var(--color-primary)] bg-[var(--color-primary-soft)] text-[var(--color-text-primary)]"
                 : "border-[var(--color-border-secondary)] bg-[var(--color-bg-card)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-primary)] hover:bg-[var(--color-bg-secondary)]"
             }`}
           >
-            <IconRenderer providerType={icon.provider_type} providerKey={icon.provider_key} size={26} />
+            <IconRenderer providerType={icon.provider_type} providerKey={icon.provider_key} size={22} />
           </button>
         );
       })}

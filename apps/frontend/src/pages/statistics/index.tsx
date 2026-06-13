@@ -13,6 +13,7 @@ import {
 import { ChevronLeft, ChevronRight, RefreshCw, WifiOff } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { statisticsApi } from "../../entities/statistics/api/statisticsApi";
+import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import type {
   CalendarStatisticsData,
   CategoryTopStatisticsData,
@@ -24,6 +25,7 @@ import type {
 } from "../../entities/statistics/model/statistics.types";
 import { iconApi } from "../../entities/icon/api/iconApi";
 import type { IconItem } from "../../entities/icon/model/icon.types";
+import type { TransactionItem } from "../../entities/transaction/model/transaction.types";
 import { IconRenderer } from "../../shared/ui/IconRenderer";
 
 Chart.register(CategoryScale, LinearScale, LineController, LineElement, PointElement, Filler, Tooltip);
@@ -69,6 +71,11 @@ function getWeekRange(date: Date): { start: string; end: string } {
 
 function formatAmount(amount: number): string {
   return `${amount.toLocaleString("ko-KR")}원`;
+}
+
+function formatSignedAmount(amount: number, type: "INCOME" | "EXPENSE"): string {
+  const sign = type === "INCOME" ? "+" : "-";
+  return `${sign}${amount.toLocaleString("ko-KR")}원`;
 }
 
 function formatMonthLabel(date: Date): string {
@@ -450,6 +457,21 @@ const HeatmapContent: React.FC<{
     return map;
   }, [data]);
 
+  const selectedTransactionsQuery = useQuery({
+    queryKey: ["transactions", "calendar-day", selectedDate],
+    queryFn: () =>
+      transactionApi.getTransactions({
+        start_date: selectedDate!,
+        end_date: selectedDate!,
+        transaction_type: "EXPENSE",
+        page: 1,
+        limit: 100
+      }),
+    enabled: selectedDate != null,
+    staleTime: 30 * 1000
+  });
+  const selectedTransactions = selectedTransactionsQuery.data?.data?.items ?? [];
+
   if (isLoading) return <TabSkeleton />;
   if (isError) return <ErrorCard onRetry={onRetry} />;
   if (!data || data.daily_items.length === 0) return <EmptyCard message="선택한 달에 기록된 지출이 없습니다." />;
@@ -508,13 +530,43 @@ const HeatmapContent: React.FC<{
         </div>
 
         {selectedDate != null && (
-          <div className="mt-4 rounded-xl bg-[var(--color-bg-secondary)] px-3 py-2 text-center text-sm">
-            <span className="text-[var(--color-text-secondary)]">
-              {parseInt(selectedDate.slice(8))}일 지출:{" "}
-            </span>
-            <span className="font-semibold text-[var(--color-danger)]">
-              {selectedExpense > 0 ? formatAmount(selectedExpense) : "없음"}
-            </span>
+          <div className="mt-4 rounded-xl bg-[var(--color-bg-secondary)] px-3 py-2 text-sm">
+            <div className="mb-2 text-center">
+              <span className="text-[var(--color-text-secondary)]">
+                {parseInt(selectedDate.slice(8))}일 지출:{" "}
+              </span>
+              <span className="font-semibold text-[var(--color-danger)]">
+                {selectedExpense > 0 ? formatAmount(selectedExpense) : "없음"}
+              </span>
+            </div>
+            {selectedTransactionsQuery.isLoading && (
+              <p className="text-center text-xs text-[var(--color-text-secondary)]">
+                거래 내역을 불러오는 중입니다.
+              </p>
+            )}
+            {!selectedTransactionsQuery.isLoading && selectedTransactions.length > 0 && (
+              <ul className="flex max-h-40 flex-col gap-1 overflow-y-auto">
+                {selectedTransactions.map((item: TransactionItem) => (
+                  <li
+                    key={item.transaction_id}
+                    className="flex items-center justify-between gap-2 rounded-lg bg-[var(--color-bg-card)] px-2 py-1.5"
+                  >
+                    <span className="min-w-0 truncate text-xs text-[var(--color-text-primary)]">
+                      {item.category_name}/{item.wallet_name}
+                    </span>
+                    <span
+                      className={`shrink-0 text-xs font-semibold ${
+                        item.transaction_type === "EXPENSE"
+                          ? "text-[var(--color-danger)]"
+                          : "text-blue-500"
+                      }`}
+                    >
+                      {formatSignedAmount(item.amount, item.transaction_type)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
       </section>
@@ -525,12 +577,12 @@ const HeatmapContent: React.FC<{
 /* ── Sankey 레이아웃 ──────────────────────────────────── */
 
 const SVG_W = 340;
-const SVG_H = 360;
+const SVG_MIN_H = 160;
 const NODE_W = 60;
 const COL_X: [number, number, number] = [10, 140, 270];
 const NODE_GAP = 8;
 const PAD_V = 12;
-const MIN_NODE_H = 18;
+const MIN_NODE_H = 6;
 
 const CAT_COLORS = ["#A78BFA", "#34D399", "#FBBF24", "#F472B6", "#38BDF8", "#94A3B8"];
 const BASE_COLORS: Record<string, string> = {
@@ -548,24 +600,34 @@ interface SankeyLayoutLink {
   path: string; color: string;
 }
 
+function getSankeyFlowHeight(categoryCount: number): number {
+  const availableHeight = SVG_MIN_H - 2 * PAD_V;
+  const countBasedHeight = categoryCount * 18 + Math.max(0, categoryCount - 1) * NODE_GAP;
+  return Math.min(availableHeight, Math.max(28, countBasedHeight));
+}
+
 function buildSankeyLayout(
   data: SankeyStatisticsData
-): { nodes: SankeyLayoutNode[]; links: SankeyLayoutLink[] } | null {
+): { nodes: SankeyLayoutNode[]; links: SankeyLayoutLink[]; height: number } | null {
   try {
     const { total_expense, nodes, links } = data;
     if (total_expense === 0 || nodes.length === 0) return null;
-
-    const scale = (SVG_H - 2 * PAD_V) / total_expense;
 
     const col0 = nodes.filter(n => n.id === "total");
     const col1 = nodes
       .filter(n => n.id === "account" || n.id === "card")
       .sort((a, b) => b.value - a.value);
     const col2base = nodes
-      .filter(n => n.id.startsWith("cat_") && n.id !== "cat_other")
+      .filter(n => n.id.startsWith("cat_") && n.id !== "cat_other" && n.value > 0)
       .sort((a, b) => b.value - a.value);
-    const col2other = nodes.filter(n => n.id === "cat_other");
-    const col2 = [...col2base, ...col2other];
+    const col2 = col2base;
+    const stackedMinHeight = Math.max(
+      col0.length * MIN_NODE_H + Math.max(0, col0.length - 1) * NODE_GAP,
+      col1.length * MIN_NODE_H + Math.max(0, col1.length - 1) * NODE_GAP,
+      col2.length * MIN_NODE_H + Math.max(0, col2.length - 1) * NODE_GAP
+    );
+    const svgHeight = Math.max(SVG_MIN_H, PAD_V * 2 + stackedMinHeight);
+    const scale = Math.max(0.001, getSankeyFlowHeight(col2.length) / total_expense);
 
     function positionCol(
       colNodes: typeof nodes,
@@ -599,6 +661,7 @@ function buildSankeyLayout(
 
     const layoutLinks: SankeyLayoutLink[] = [];
     for (const lk of links) {
+      if (lk.source === "cat_other" || lk.target === "cat_other") continue;
       const src = nodeMap.get(lk.source);
       const tgt = nodeMap.get(lk.target);
       if (!src || !tgt) continue;
@@ -620,7 +683,8 @@ function buildSankeyLayout(
       layoutLinks.push({ source: lk.source, target: lk.target, value: lk.value, path, color });
     }
 
-    return { nodes: layoutNodes, links: layoutLinks };
+    const contentHeight = layoutNodes.reduce((max, node) => Math.max(max, node.y + node.h), PAD_V);
+    return { nodes: layoutNodes, links: layoutLinks, height: Math.max(svgHeight, contentHeight + PAD_V) };
   } catch {
     return null;
   }
@@ -685,7 +749,7 @@ const SankeyContent: React.FC<{
 
         <div>
           <svg
-            viewBox={`0 0 ${SVG_W} ${SVG_H}`}
+            viewBox={`0 0 ${SVG_W} ${layout.height}`}
             width="100%"
             style={{ display: "block" }}
             role="img"
@@ -713,8 +777,8 @@ const SankeyContent: React.FC<{
             {/* 노드 */}
             {layout.nodes.map(node => {
               const isSel = selectedId === node.id;
-              const showName = node.h >= 18;
-              const showRatio = node.h >= 32;
+              const showName = node.h >= 10;
+              const showRatio = node.h >= 24;
               const ratio = ((node.value / total) * 100).toFixed(1);
               const maxChars = Math.floor(NODE_W / 8);
 
@@ -825,22 +889,26 @@ const INCOME_BASE_COLORS: Record<string, string> = {
 
 function buildIncomeSankeyLayout(
   data: SankeyIncomeStatisticsData
-): { nodes: SankeyLayoutNode[]; links: SankeyLayoutLink[] } | null {
+): { nodes: SankeyLayoutNode[]; links: SankeyLayoutLink[]; height: number } | null {
   try {
     const { total_income, nodes, links } = data;
     if (total_income === 0 || nodes.length === 0) return null;
-
-    const scale = (SVG_H - 2 * PAD_V) / total_income;
 
     const col0 = nodes.filter(n => n.id === "total");
     const col1 = nodes
       .filter(n => n.id === "account" || n.id === "card")
       .sort((a, b) => b.value - a.value);
     const col2base = nodes
-      .filter(n => n.id.startsWith("cat_") && n.id !== "cat_other")
+      .filter(n => n.id.startsWith("cat_") && n.id !== "cat_other" && n.value > 0)
       .sort((a, b) => b.value - a.value);
-    const col2other = nodes.filter(n => n.id === "cat_other");
-    const col2 = [...col2base, ...col2other];
+    const col2 = col2base;
+    const stackedMinHeight = Math.max(
+      col0.length * MIN_NODE_H + Math.max(0, col0.length - 1) * NODE_GAP,
+      col1.length * MIN_NODE_H + Math.max(0, col1.length - 1) * NODE_GAP,
+      col2.length * MIN_NODE_H + Math.max(0, col2.length - 1) * NODE_GAP
+    );
+    const svgHeight = Math.max(SVG_MIN_H, PAD_V * 2 + stackedMinHeight);
+    const scale = Math.max(0.001, getSankeyFlowHeight(col2.length) / total_income);
 
     function positionCol(
       colNodes: typeof nodes,
@@ -874,6 +942,7 @@ function buildIncomeSankeyLayout(
 
     const layoutLinks: SankeyLayoutLink[] = [];
     for (const lk of links) {
+      if (lk.source === "cat_other" || lk.target === "cat_other") continue;
       const src = nodeMap.get(lk.source);
       const tgt = nodeMap.get(lk.target);
       if (!src || !tgt) continue;
@@ -895,7 +964,8 @@ function buildIncomeSankeyLayout(
       layoutLinks.push({ source: lk.source, target: lk.target, value: lk.value, path, color });
     }
 
-    return { nodes: layoutNodes, links: layoutLinks };
+    const contentHeight = layoutNodes.reduce((max, node) => Math.max(max, node.y + node.h), PAD_V);
+    return { nodes: layoutNodes, links: layoutLinks, height: Math.max(svgHeight, contentHeight + PAD_V) };
   } catch {
     return null;
   }
@@ -955,7 +1025,7 @@ const IncomeSankeyContent: React.FC<{
 
         <div>
           <svg
-            viewBox={`0 0 ${SVG_W} ${SVG_H}`}
+            viewBox={`0 0 ${SVG_W} ${layout.height}`}
             width="100%"
             style={{ display: "block" }}
             role="img"
@@ -981,8 +1051,8 @@ const IncomeSankeyContent: React.FC<{
 
             {layout.nodes.map(node => {
               const isSel = selectedId === node.id;
-              const showName = node.h >= 18;
-              const showRatio = node.h >= 32;
+              const showName = node.h >= 10;
+              const showRatio = node.h >= 24;
               const ratio = ((node.value / total) * 100).toFixed(1);
               const maxChars = Math.floor(NODE_W / 8);
 
@@ -1341,8 +1411,8 @@ const StatisticsPage: React.FC = () => {
         )}
 
         {/* 통계 유형 탭 (가로 스크롤 pill) */}
-        <div className="mb-3 overflow-x-auto">
-          <div className="flex gap-2 pb-1">
+        <div className="mb-3">
+          <div className="flex flex-wrap gap-2">
             {TABS.map((tab) => (
               <button
                 key={tab.id}

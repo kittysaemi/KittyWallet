@@ -915,7 +915,7 @@ const CardsTab: React.FC = () => {
 // ─── Categories Tab ───────────────────────────────────────
 interface CategoryRowProps {
   category: CategoryItem;
-  icon?: IconItem;
+  icon?: Pick<IconItem, "provider_type" | "provider_key">;
   disabled: boolean;
   editingNameId: number | null;
   editingName: string;
@@ -950,20 +950,20 @@ const CategoryRow: React.FC<CategoryRowProps> = ({
     return (
       <li
         aria-label={category.category_name}
-        className={`flex min-h-[96px] flex-col items-center justify-center gap-2 rounded-2xl border p-3 text-center shadow-[0_4px_16px_var(--color-card-shadow)] transition ${
+        className={`flex min-h-[66px] flex-col items-center justify-center gap-1 rounded-xl border p-1.5 text-center shadow-[0_4px_16px_var(--color-card-shadow)] transition ${
           category.show
             ? "border-[var(--color-border-primary)] bg-[var(--color-bg-card)]"
             : "border-[var(--gray-200)] bg-[var(--gray-100)]"
         }`}
       >
         <div
-          className={`flex h-12 w-12 items-center justify-center rounded-2xl ${category.show ? "bg-[var(--color-primary-soft)] text-[var(--color-text-primary)]" : "bg-[var(--gray-100)] text-[var(--gray-500)] grayscale"}`}
+          className={`flex h-8 w-8 items-center justify-center rounded-lg ${category.show ? "bg-[var(--color-primary-soft)] text-[var(--color-text-primary)]" : "bg-[var(--gray-100)] text-[var(--gray-500)] grayscale"}`}
         >
           {icon ? (
             <IconRenderer
               providerType={icon.provider_type}
               providerKey={icon.provider_key}
-              size={26}
+              size={18}
             />
           ) : (
             <span className="text-sm font-semibold" aria-hidden="true">
@@ -972,7 +972,7 @@ const CategoryRow: React.FC<CategoryRowProps> = ({
           )}
         </div>
         <p
-          className={`w-full truncate text-sm font-semibold ${category.show ? "text-[var(--color-text-primary)]" : "text-[var(--gray-500)]"}`}
+          className={`w-full truncate text-xs font-semibold ${category.show ? "text-[var(--color-text-primary)]" : "text-[var(--gray-500)]"}`}
         >
           {category.category_name}
         </p>
@@ -991,68 +991,62 @@ const CategoryRow: React.FC<CategoryRowProps> = ({
       onKeyDown={(e) => {
         if (!disabled && (e.key === "Enter" || e.key === " ")) onToggleShow(category);
       }}
-      className="rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] p-4 shadow-[0_4px_16px_var(--color-card-shadow)] col-span-full cursor-pointer"
+      className={`col-span-full flex min-h-[64px] items-center gap-3 rounded-2xl border p-3 text-left shadow-[0_4px_16px_var(--color-card-shadow)] transition ${
+        category.show
+          ? "border-[var(--color-border-primary)] bg-[var(--color-bg-card)]"
+          : "border-[var(--gray-200)] bg-[var(--gray-100)]"
+      } cursor-pointer`}
     >
-      <div className="flex items-center gap-3">
+      <button
+        type="button"
+        aria-label={`${category.category_name} 아이콘 변경`}
+        disabled={!canEditDetails || disabled}
+        onClick={(e) => {
+          e.stopPropagation();
+          onIconEdit(category);
+        }}
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition disabled:cursor-not-allowed ${category.show ? "bg-[var(--color-primary-soft)] text-[var(--color-text-primary)]" : "bg-[var(--gray-100)] text-[var(--gray-500)] grayscale"}`}
+      >
+        {icon ? (
+          <IconRenderer providerType={icon.provider_type} providerKey={icon.provider_key} size={22} />
+        ) : (
+          <span className="text-sm font-semibold" aria-hidden="true">
+            {category.category_name.charAt(0)}
+          </span>
+        )}
+      </button>
+      {isEditingName ? (
+        <input
+          aria-label={`${category.category_name} 이름 수정`}
+          value={editingName}
+          onChange={(e) => onNameChange(e.target.value)}
+          onBlur={() => onNameSave(category)}
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            if (e.key === "Enter") onNameSave(category);
+            if (e.key === "Escape") onNameCancel();
+          }}
+          onClick={(e) => e.stopPropagation()}
+          disabled={disabled}
+          autoFocus
+          className="min-h-10 min-w-0 flex-1 rounded-xl border border-[var(--color-primary)] bg-[var(--color-bg-input)] px-3 py-2 text-sm font-semibold text-[var(--color-text-primary)] outline-none"
+          maxLength={15}
+        />
+      ) : (
         <button
           type="button"
-          aria-label={`${category.category_name} 아이콘 변경`}
+          aria-label={`${category.category_name} 이름 변경`}
           disabled={!canEditDetails || disabled}
           onClick={(e) => {
             e.stopPropagation();
-            onIconEdit(category);
+            onStartNameEdit(category);
           }}
-          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border transition disabled:cursor-not-allowed ${category.show ? "border-[var(--color-border-primary)] bg-[var(--color-primary-soft)] text-[var(--color-text-primary)]" : "border-[var(--gray-200)] bg-[var(--gray-100)] text-[var(--gray-500)]"} ${canEditDetails ? "hover:bg-[var(--color-bg-secondary)]" : ""}`}
+          className={`min-w-0 flex-1 truncate text-left text-sm font-semibold disabled:cursor-not-allowed ${category.show ? "text-[var(--color-text-primary)]" : "text-[var(--gray-500)]"}`}
         >
-          {icon ? (
-            <IconRenderer
-              providerType={icon.provider_type}
-              providerKey={icon.provider_key}
-              size={26}
-            />
-          ) : (
-            <span className="text-sm font-semibold" aria-hidden="true">
-              {category.category_name.charAt(0)}
-            </span>
-          )}
+          {category.category_name}
         </button>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            {isEditingName ? (
-              <input
-                aria-label={`${category.category_name} 이름 수정`}
-                value={editingName}
-                onChange={(e) => onNameChange(e.target.value)}
-                onBlur={() => onNameSave(category)}
-                onKeyDown={(e) => {
-                  e.stopPropagation();
-                  if (e.key === "Enter") onNameSave(category);
-                  if (e.key === "Escape") onNameCancel();
-                }}
-                onClick={(e) => e.stopPropagation()}
-                disabled={disabled}
-                autoFocus
-                className="min-h-10 min-w-0 flex-1 rounded-xl border border-[var(--color-primary)] bg-[var(--color-bg-input)] px-3 py-2 text-base font-semibold text-[var(--color-text-primary)] outline-none ring-2 ring-[var(--color-primary-soft)]"
-                maxLength={15}
-              />
-            ) : (
-              <button
-                type="button"
-                aria-label={`${category.category_name} 이름 변경`}
-                disabled={!canEditDetails || disabled}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onStartNameEdit(category);
-                }}
-                className={`min-w-0 cursor-pointer select-none truncate text-left text-base font-semibold disabled:cursor-not-allowed ${category.show ? "text-[var(--color-text-primary)]" : "text-[var(--gray-500)]"} ${canEditDetails ? "underline-offset-4 hover:underline" : ""}`}
-              >
-                {category.category_name}
-              </button>
-            )}
-          </div>
-          {error && <p className="mt-1 text-xs text-[var(--color-danger)]">{error}</p>}
-        </div>
-      </div>
+      )}
+      {error && <p className="shrink-0 text-xs text-[var(--color-danger)]">{error}</p>}
     </li>
   );
 };
@@ -1327,12 +1321,12 @@ const CategoriesTab: React.FC = () => {
         )}
 
         {!isLoading && !isError && categories.length > 0 && (
-          <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4" aria-label="카테고리 목록">
+          <ul className="grid grid-cols-5 gap-2" aria-label="카테고리 목록">
             {categories.map((category) => (
               <CategoryRow
                 key={category.category_id}
                 category={category}
-                icon={iconsById.get(category.icon_id)}
+                icon={category.icon ?? iconsById.get(category.icon_id)}
                 disabled={updateMutation.isPending}
                 editingNameId={editingNameId}
                 editingName={editingName}
@@ -1500,7 +1494,7 @@ const IconsTab: React.FC = () => {
                 </p>
               )}
             {searchResults.length > 0 && (
-              <div className="mt-4 grid grid-cols-4 gap-3" aria-label="아이콘 검색 결과">
+              <div className="mt-4 grid grid-cols-5 gap-2" aria-label="아이콘 검색 결과">
                 {searchResults.map((option) => {
                   const selected = option.icon_code === selectedOption?.icon_code;
                   return (
@@ -1510,12 +1504,12 @@ const IconsTab: React.FC = () => {
                       aria-label={`등록할 아이콘 선택: ${option.icon_code}`}
                       aria-pressed={selected}
                       onClick={() => setSelectedOption(option)}
-                      className={`flex h-16 items-center justify-center rounded-2xl border transition ${selected ? "border-[var(--color-primary)] bg-[var(--color-primary-soft)] text-[var(--color-text-primary)]" : "border-[var(--color-border-secondary)] bg-[var(--color-bg-card)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-primary)]"}`}
+                      className={`flex h-14 items-center justify-center rounded-xl border transition ${selected ? "border-[var(--color-primary)] bg-[var(--color-primary-soft)] text-[var(--color-text-primary)]" : "border-[var(--color-border-secondary)] bg-[var(--color-bg-card)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-primary)]"}`}
                     >
                       <IconRenderer
                         providerType={option.provider_type}
                         providerKey={option.provider_key}
-                        size={26}
+                        size={22}
                       />
                     </button>
                   );
@@ -1553,9 +1547,9 @@ const IconsTab: React.FC = () => {
         )}
 
         {iconsQuery.isLoading && (
-          <div className="mt-4 grid grid-cols-4 gap-3">
+          <div className="mt-4 grid grid-cols-5 gap-2">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-16 rounded-2xl bg-[var(--color-bg-secondary)]" />
+              <div key={i} className="h-14 rounded-xl bg-[var(--color-bg-secondary)]" />
             ))}
           </div>
         )}
@@ -1583,7 +1577,7 @@ const IconsTab: React.FC = () => {
         )}
 
         {!iconsQuery.isLoading && !isError && userIcons.length > 0 && (
-          <div className="mt-4 grid grid-cols-4 gap-3" aria-label="사용자 아이콘 목록">
+          <div className="mt-4 grid grid-cols-5 gap-2" aria-label="사용자 아이콘 목록">
             {userIcons.map((icon) => (
               <button
                 key={icon.icon_id}
@@ -1592,12 +1586,12 @@ const IconsTab: React.FC = () => {
                 aria-pressed={icon.show}
                 disabled={updateMutation.isPending}
                 onClick={() => updateMutation.mutate({ iconId: icon.icon_id, show: !icon.show })}
-                className={`flex h-16 items-center justify-center rounded-2xl border transition disabled:cursor-not-allowed disabled:opacity-60 ${icon.show ? "border-[var(--color-primary)] bg-[var(--color-primary-soft)] text-[var(--color-text-primary)]" : "border-[var(--gray-200)] bg-[var(--gray-100)] text-[var(--gray-500)]"}`}
+                className={`flex h-14 items-center justify-center rounded-xl border transition disabled:cursor-not-allowed disabled:opacity-60 ${icon.show ? "border-[var(--color-primary)] bg-[var(--color-primary-soft)] text-[var(--color-text-primary)]" : "border-[var(--gray-200)] bg-[var(--gray-100)] text-[var(--gray-500)]"}`}
               >
                 <IconRenderer
                   providerType={icon.provider_type}
                   providerKey={icon.provider_key}
-                  size={26}
+                  size={22}
                 />
               </button>
             ))}

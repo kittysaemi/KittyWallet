@@ -48,6 +48,7 @@
 - 카드 거래는 지출만 집계 대상이며 수입 통계에는 포함되지 않음
 - Top 5 카테고리 산출 시 카테고리가 5개를 초과하면 6번째 이후는 `기타`로 합산한다
 - Sankey와 Top 5는 지출 거래 중심으로 산출한다. 수입 흐름 Sankey와 수입 Top 5는 수입 거래 중심으로 별도 산출한다
+- Top 5 API는 6번째 이후 카테고리를 `기타`로 합산하지만, Sankey API는 카테고리를 `기타`로 합산하지 않고 전체 카테고리를 노드/링크로 반환한다
 - 기본 조회 기간은 현재 월이다
 
 # 월별 통계 API
@@ -552,15 +553,15 @@
       { "id": "card", "name": "카드", "value": 320000 },
       { "id": "cat_1", "name": "식비", "value": 300000 },
       { "id": "cat_2", "name": "교통", "value": 150000 },
-      { "id": "cat_other", "name": "기타", "value": 370000 }
+      { "id": "cat_3", "name": "취미", "value": 370000 }
     ],
     "links": [
       { "source": "total", "target": "account", "value": 500000 },
       { "source": "total", "target": "card", "value": 320000 },
       { "source": "account", "target": "cat_1", "value": 250000 },
-      { "source": "account", "target": "cat_other", "value": 250000 },
+      { "source": "account", "target": "cat_3", "value": 250000 },
       { "source": "card", "target": "cat_2", "value": 150000 },
-      { "source": "card", "target": "cat_other", "value": 170000 }
+      { "source": "card", "target": "cat_3", "value": 170000 }
     ]
   },
   "error": null
@@ -572,7 +573,7 @@
 | month | string | 조회 월 |
 | total_expense | number | 해당 월 전체 지출 합계 |
 | nodes | array | Sankey 노드 목록. 데이터가 없으면 빈 배열 |
-| nodes[].id | string | 노드 식별자. `total`, `account`, `card`, `cat_{id}`, `cat_other` 형식 |
+| nodes[].id | string | 노드 식별자. `total`, `account`, `card`, `cat_{id}` 형식 |
 | nodes[].name | string | 노드 표시 이름 |
 | nodes[].value | number | 노드 금액 |
 | links | array | Sankey 링크(흐름) 목록. 데이터가 없으면 빈 배열 |
@@ -584,7 +585,7 @@
 
 - **1단계 (좌):** `total` — 월 전체 지출
 - **2단계 (중):** `account`, `card` — 결제수단별 지출 합계. `wallet_type` 필터 적용 시 해당 결제수단만 포함
-- **3단계 (우):** 지출 카테고리 Top 5 + `cat_other`. 지출이 없거나 한 카테고리이면 `cat_other` 생략 가능
+- **3단계 (우):** 지출 전체 카테고리. `cat_other` 노드는 생성하지 않음
 
 ---
 
@@ -604,7 +605,7 @@
 - `nodes`가 빈 배열이면 Sankey를 렌더링하지 않고 empty UI를 표시한다.
 - Sankey 렌더링 실패(라이브러리 오류 등)가 발생해도 통계 화면 전체가 깨지지 않아야 한다.
 - 모바일 360px 폭에서 노드 라벨 겹침/잘림이 없어야 한다.
-- 카테고리가 1개뿐이면 `cat_other`를 포함하지 않는다.
+- Sankey는 카테고리 수와 관계없이 `cat_other`를 포함하지 않는다.
 
 # 수입 흐름 Sankey 통계 API
 
@@ -636,12 +637,12 @@
       { "id": "total", "name": "총 수입", "value": 2500000 },
       { "id": "account", "name": "계좌", "value": 2500000 },
       { "id": "cat_5", "name": "급여", "value": 2000000 },
-      { "id": "cat_other", "name": "기타", "value": 500000 }
+      { "id": "cat_6", "name": "부수입", "value": 500000 }
     ],
     "links": [
       { "source": "total", "target": "account", "value": 2500000 },
       { "source": "account", "target": "cat_5", "value": 2000000 },
-      { "source": "account", "target": "cat_other", "value": 500000 }
+      { "source": "account", "target": "cat_6", "value": 500000 }
     ]
   },
   "error": null
@@ -653,7 +654,7 @@
 | month | string | 조회 월 |
 | total_income | number | 해당 월 전체 수입 합계 |
 | nodes | array | Sankey 노드 목록. 데이터가 없으면 빈 배열 |
-| nodes[].id | string | 노드 식별자. `total`, `account`, `cat_{id}`, `cat_other` 형식 |
+| nodes[].id | string | 노드 식별자. `total`, `account`, `cat_{id}` 형식 |
 | nodes[].name | string | 노드 표시 이름 |
 | nodes[].value | number | 노드 금액 |
 | links | array | Sankey 링크(흐름) 목록. 데이터가 없으면 빈 배열 |
@@ -665,7 +666,7 @@
 
 - **1단계 (좌):** `total` — 월 전체 수입
 - **2단계 (중):** `account` — 계좌 수입 합계. 카드는 수입 거래가 없으므로 `card` 노드는 생성되지 않음
-- **3단계 (우):** 수입 카테고리 Top 5 + `cat_other`. 수입이 없거나 한 카테고리이면 `cat_other` 생략 가능
+- **3단계 (우):** 수입 전체 카테고리. `cat_other` 노드는 생성하지 않음
 
 ---
 

@@ -10,6 +10,12 @@ export interface CategoryItem {
   category_id: number;
   category_name: string;
   icon_id: number;
+  icon: {
+    icon_id: number;
+    icon_code: string;
+    provider_type: string;
+    provider_key: string;
+  };
   show: boolean;
   is_default: boolean;
   editable: boolean;
@@ -198,6 +204,12 @@ export class CategoriesService {
       category_id: Number(category.categoryId),
       category_name: category.categoryName,
       icon_id: Number(category.iconId),
+      icon: {
+        icon_id: Number(category.icon.iconId),
+        icon_code: category.icon.iconDictionary.iconCode,
+        provider_type: category.icon.iconDictionary.providerType,
+        provider_key: category.icon.iconDictionary.providerKey
+      },
       show,
       is_default: category.isDefault,
       editable: !category.isDefault,
