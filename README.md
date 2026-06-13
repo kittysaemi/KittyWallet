@@ -104,14 +104,14 @@
 
 ## Backend
 
-| 항목             | 기술            |
-| -------------- | ------------- |
-| Runtime        | Node.js 20    |
-| Framework      | NestJS        |
-| ORM            | Prisma        |
-| Database       | PostgreSQL 16 |
-| Authentication | JWT           |
-| Encryption     | bcryptjs      |
+| 항목             | 기술             |
+| -------------- | -------------- |
+| Runtime        | Node.js 22 LTS |
+| Framework      | NestJS         |
+| ORM            | Prisma         |
+| Database       | PostgreSQL 16  |
+| Authentication | JWT            |
+| Encryption     | bcryptjs       |
 
 ## PWA
 
@@ -130,13 +130,17 @@
 | Reverse Proxy | Nginx      |
 | Environment   | .env 기반 설정 |
 
+## 개발 환경 기준
+
+로컬 개발, GitHub Actions, 릴리즈 자동화, Docker build는 Node.js 22 LTS 기준으로 실행한다.
+
 ---
 
 # 버전 관리
 
 KittyWallet은 SemVer와 Conventional Commit을 기준으로 버전을 관리합니다.
 
-`main` 브랜치에 PR이 merge되면 Release workflow가 `lint`, `type-check`, `test`, `build`를 실행한 뒤 semantic-release로 다음 항목을 자동 생성하거나 갱신합니다.
+`main` 브랜치에 PR이 merge되면 Release workflow가 Node.js 22 LTS 기준으로 `lint`, `type-check`, `test`, `build`를 실행한 뒤 semantic-release로 다음 항목을 자동 생성하거나 갱신합니다.
 
 * Git tag
 * GitHub Release
