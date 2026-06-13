@@ -1,3 +1,10 @@
+## [1.2.3](https://github.com/kittysaemi/KittyWallet/compare/v1.2.2...v1.2.3) (2026-06-13)
+
+
+### Bug Fixes
+
+* **pwa:** iOS 환경에서만 파싱 시점에 favicon 테마 교체 ([ca0a96f](https://github.com/kittysaemi/KittyWallet/commit/ca0a96f90160d00322ea95b6b38924cf75f41728))
+
 ## [1.2.2](https://github.com/kittysaemi/KittyWallet/compare/v1.2.1...v1.2.2) (2026-06-13)
 
 
