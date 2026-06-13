@@ -422,7 +422,7 @@ const Top5Content: React.FC<{
       </section>
       )}
 
-      {incomeData && incomeData.items.length > 0 && (
+      {incomeData && incomeData.items.length > 0 && (incomeData.total_income ?? 0) > 0 && (
       <section className={`${cardClass} p-4`} aria-label="수입 Top 5 카테고리">
         <div className="mb-4 flex items-center justify-between">
           <div>
@@ -577,8 +577,8 @@ const HeatmapContent: React.FC<{
 /* ── Sankey 레이아웃 ──────────────────────────────────── */
 
 const SVG_W = 340;
-const SVG_MIN_H = 160;
-const MAX_SVG_H = 320;
+const SVG_MIN_H = 120;
+const MAX_SVG_H = 220;
 const NODE_W = 60;
 const COL_X: [number, number, number] = [10, 140, 270];
 const NODE_GAP = 8;
