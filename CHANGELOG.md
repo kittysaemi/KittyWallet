@@ -1,3 +1,11 @@
+## [1.2.4](https://github.com/kittysaemi/KittyWallet/compare/v1.2.3...v1.2.4) (2026-06-13)
+
+
+### Bug Fixes
+
+* app.tsx 머지 충돌 마커 제거 ([34a6dfe](https://github.com/kittysaemi/KittyWallet/commit/34a6dfe95b732c6d4c52cb656cc915297a8b9b3f))
+* **settings:** iOS 전용 — 테마 미리보기 시 localStorage 변경 방지 ([aa594fa](https://github.com/kittysaemi/KittyWallet/commit/aa594fa3e81595449bc644e9684f4ae07bc00b0f))
+
 ## [1.2.3](https://github.com/kittysaemi/KittyWallet/compare/v1.2.2...v1.2.3) (2026-06-13)
 
 
