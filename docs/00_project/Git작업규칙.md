@@ -255,6 +255,8 @@ docs(issue-74): 서브이슈 PR 분리 예외 기준 추가
 
 커밋 전 필수 검증:
 
+검증 명령은 프로젝트의 Node.js 22 LTS 기준 환경에서 실행한다.
+
 ```bash
 npm run lint
 npm run type-check
@@ -441,7 +443,7 @@ v1.1.1
 
 ## 자동 릴리즈 흐름
 
-`main` 브랜치에 push되면 Release workflow가 다음 순서로 실행된다.
+`main` 브랜치에 push되면 Release workflow가 Node.js 22 LTS 기준으로 다음 순서로 실행된다.
 
 ```text
 npm ci
