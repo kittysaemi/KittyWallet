@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["icons/*.png"],
+      includeAssets: ["icons/themes/**/*.png", "icons/themes/**/*.ico"],
       manifest: {
         name: "KittyWallet",
         short_name: "KittyWall",
@@ -22,17 +22,17 @@ export default defineConfig({
         background_color: "#fce2f4",
         icons: [
           {
-            src: "/kittywallet/icons/icon-192x192.png",
+            src: "/kittywallet/icons/themes/pink/pwa/icon-192x192.png",
             sizes: "192x192",
             type: "image/png"
           },
           {
-            src: "/kittywallet/icons/icon-512x512.png",
+            src: "/kittywallet/icons/themes/pink/pwa/icon-512x512.png",
             sizes: "512x512",
             type: "image/png"
           },
           {
-            src: "/kittywallet/icons/icon-512x512-maskable.png",
+            src: "/kittywallet/icons/themes/pink/pwa/maskable-icon-512x512.png",
             sizes: "512x512",
             type: "image/png",
             purpose: "any maskable"
