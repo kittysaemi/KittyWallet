@@ -1,4 +1,4 @@
-FROM node:20-alpine AS deps
+FROM node:22-alpine AS deps
 WORKDIR /app
 RUN apk add --no-cache openssl
 
@@ -20,7 +20,7 @@ RUN npm prune --omit=dev
 RUN PRISMA_VERSION=$(node -p 'require("./node_modules/@prisma/client/package.json").version') \
   && npm install --omit=dev --no-save "prisma@$PRISMA_VERSION"
 
-FROM node:20-alpine AS runtime
+FROM node:22-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
