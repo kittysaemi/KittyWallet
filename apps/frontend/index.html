@@ -9,6 +9,18 @@
     <link id="favicon-16" rel="icon" type="image/png" sizes="16x16" href="/kittywallet/icons/themes/pink/favicon/favicon-16x16.png" />
     <link id="apple-touch-icon" rel="apple-touch-icon" href="/kittywallet/icons/themes/pink/apple-touch/apple-touch-icon.png" />
     <title>KittyWallet</title>
+    <script>
+      (function () {
+        try {
+          var m = { 'cat-pink': 'pink', 'mint': 'mint', 'lavender': 'purple' };
+          var folder = m[localStorage.getItem('kw_theme')] || 'pink';
+          // manifest link는 Vite 빌드 플러그인이 /api/v1/manifest 로 교체함.
+          // 쿠키가 없거나 localStorage와 불일치하면 여기서 동기화.
+          // 쿠키는 다음 페이지 로드 시 manifest 요청에 자동으로 포함됨.
+          document.cookie = 'kw_theme=' + folder + '; path=/; SameSite=Lax; max-age=31536000';
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
