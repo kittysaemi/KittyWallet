@@ -1,3 +1,11 @@
+## [1.0.1](https://github.com/kittysaemi/KittyWallet/compare/v1.0.0...v1.0.1) (2026-06-13)
+
+
+### Bug Fixes
+
+* **statistics:** Sankey 그래프 지갑별 분류 및 UI 개선 ([a1edd6b](https://github.com/kittysaemi/KittyWallet/commit/a1edd6bc7e1793dae1d81981ce83263280a0299e)), closes [#172](https://github.com/kittysaemi/KittyWallet/issues/172)
+* **test:** 프론트엔드 Sankey 테스트 mock 노드 ID 업데이트 ([ba8f613](https://github.com/kittysaemi/KittyWallet/commit/ba8f6135836ede039a3577cc8988aed82306745f))
+
 # 1.0.0 (2026-06-13)
 
 
