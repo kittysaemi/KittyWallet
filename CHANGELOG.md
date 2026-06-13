@@ -1,3 +1,10 @@
+## [1.2.1](https://github.com/kittysaemi/KittyWallet/compare/v1.2.0...v1.2.1) (2026-06-13)
+
+
+### Bug Fixes
+
+* **pwa:** 테마 변경 시 파비콘 DOM 요소 교체로 Chrome 재fetch 강제 ([9fc9aa0](https://github.com/kittysaemi/KittyWallet/commit/9fc9aa01c088404b26981491d8e6c2da48e799f6)), closes [#238](https://github.com/kittysaemi/KittyWallet/issues/238)
+
 # [1.2.0](https://github.com/kittysaemi/KittyWallet/compare/v1.1.0...v1.2.0) (2026-06-13)
 
 
