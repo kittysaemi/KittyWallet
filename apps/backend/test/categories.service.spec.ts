@@ -32,6 +32,23 @@ describe("CategoriesService", () => {
         isDefault: true,
         createdAt: now,
         updatedAt: now,
+        icon: {
+          iconId: BigInt(10),
+          userId: null,
+          iconDictionaryId: BigInt(20),
+          show: true,
+          isDefault: true,
+          createdAt: now,
+          updatedAt: now,
+          iconDictionary: {
+            iconDictionaryId: BigInt(20),
+            iconCode: "food",
+            providerType: "material",
+            providerKey: "restaurant",
+            createdAt: now,
+            updatedAt: now
+          }
+        },
         categoryUserSettings: [
           {
             categoryUserSettingId: BigInt(100),
@@ -51,6 +68,12 @@ describe("CategoriesService", () => {
           category_id: 1,
           category_name: "식비",
           icon_id: 10,
+          icon: {
+            icon_id: 10,
+            icon_code: "food",
+            provider_type: "material",
+            provider_key: "restaurant"
+          },
           show: false,
           is_default: true,
           editable: false,
