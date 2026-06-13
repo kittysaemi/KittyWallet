@@ -92,7 +92,6 @@ const AppSettingsPage: React.FC = () => {
     setAppSettings((prev) => ({ ...prev, [key]: value }));
     if (key === "theme") {
       currentThemeRef.current = value as AppSettings["theme"];
-<<<<<<< Updated upstream
       applyThemeSetting(value, !isIOS);
     }
     setSettingsError("");
