@@ -126,6 +126,7 @@
 | theme | string | cat-pink | cat-pink/mint/lavender |
 | currency | string | KRW | 표시 통화 |
 | sync_enabled | boolean | true | 네트워크 복구 시 자동 동기화 사용 여부 |
+| timezone | string | Asia/Seoul | 가계부 날짜 계산 기준 시간대. IANA timezone 식별자. 지원 목록은 `시간대정책.md` 참조 |
 | transaction_list_page_size | number | 20 | 거래내역 페이지네이션 정책 확정 전까지 화면에 노출하지 않는 호환/예약 설정 |
 
 과거 저장값인 `system`, `light`, `dark`는 조회 시 `cat-pink`로 보정한다.

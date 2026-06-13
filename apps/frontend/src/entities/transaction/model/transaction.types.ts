@@ -31,6 +31,7 @@ export interface CreateTransactionRequest {
   amount: number;
   memo?: string;
   transaction_date: string;
+  timezone?: string;
 }
 
 export interface CreateTransactionResult {
@@ -47,6 +48,7 @@ export interface UpdateTransactionRequest {
   amount?: number;
   memo?: string | null;
   transaction_date?: string;
+  timezone?: string;
 }
 
 export interface UpdateTransactionResult {

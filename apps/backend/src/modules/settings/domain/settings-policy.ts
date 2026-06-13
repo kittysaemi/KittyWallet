@@ -1,10 +1,15 @@
 import { HttpStatus } from "@nestjs/common";
 import { AppException } from "../../../common/exceptions/app.exception";
 
+export const SUPPORTED_TIMEZONES = ["Asia/Seoul"] as const;
+export type TimezoneSetting = (typeof SUPPORTED_TIMEZONES)[number];
+export const DEFAULT_TIMEZONE: TimezoneSetting = "Asia/Seoul";
+
 export const SETTING_DEFAULTS = {
   theme: "cat-pink",
   currency: "KRW",
   sync_enabled: true,
+  timezone: DEFAULT_TIMEZONE,
   transaction_list_page_size: 20
 } as const;
 
@@ -13,6 +18,7 @@ export interface SettingsMap {
   theme: "cat-pink" | "mint" | "lavender";
   currency: "KRW";
   sync_enabled: boolean;
+  timezone: TimezoneSetting;
   transaction_list_page_size: number;
 }
 
@@ -57,6 +63,11 @@ function normalizeSettingValue(key: SettingKey, value: unknown): SettingValue {
     case "sync_enabled":
       if (typeof value === "boolean") {
         return value;
+      }
+      break;
+    case "timezone":
+      if (SUPPORTED_TIMEZONES.includes(value as TimezoneSetting)) {
+        return value as TimezoneSetting;
       }
       break;
     case "transaction_list_page_size":

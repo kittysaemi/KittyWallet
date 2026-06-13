@@ -88,7 +88,8 @@
 | transaction_type | string | Y | INCOME/EXPENSE |
 | amount | number | Y | 거래 금액 |
 | memo | string | N | 메모 |
-| transaction_date | string | Y | 거래 날짜. 사용자 로컬 캘린더 날짜 기준 `YYYY-MM-DD` |
+| transaction_date | string | Y | 거래 날짜. 사용자 설정 timezone 기준 캘린더 날짜 `YYYY-MM-DD` |
+| timezone | string | N | 미래 날짜 검증 기준 시간대. IANA 식별자 (예: `Asia/Seoul`). 미전달 시 `Asia/Seoul` 기본값 사용 |
 
 ---
 
@@ -214,7 +215,8 @@
 | transaction_type | string | N | INCOME/EXPENSE |
 | amount | number | N | 변경할 거래 금액. 0보다 커야 함 |
 | memo | string/null | N | 변경할 메모. null 또는 빈 문자열 허용 |
-| transaction_date | string | N | 변경할 거래 날짜. 사용자 로컬 캘린더 날짜 기준 `YYYY-MM-DD` |
+| transaction_date | string | N | 변경할 거래 날짜. 사용자 설정 timezone 기준 캘린더 날짜 `YYYY-MM-DD` |
+| timezone | string | N | 미래 날짜 검증 기준 시간대. IANA 식별자 (예: `Asia/Seoul`). 미전달 시 `Asia/Seoul` 기본값 사용 |
 
 ---
 

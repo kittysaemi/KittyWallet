@@ -18,28 +18,30 @@ import type { IconItem } from "../../entities/icon/model/icon.types";
 import { IconRenderer } from "../../shared/ui/IconRenderer";
 import { Button } from "../../shared/ui/Button";
 import { Input } from "../../shared/ui/Input";
+import { useTimezone } from "../../shared/hooks/useTimezone";
+import { getTodayInTimezone } from "../../shared/utils/date";
 
-const today = new Date().toISOString().split("T")[0];
-
-const schema = z
-  .object({
-    transaction_type: z.enum(["INCOME", "EXPENSE"]),
-    wallet_type: z.enum(["ACCOUNT", "CARD"]),
-    wallet_id: z.number().min(1, "지갑을 선택해주세요."),
-    category_id: z.number().min(1, "카테고리를 선택해주세요."),
-    amount: z
-      .number({ invalid_type_error: "금액을 입력해주세요." })
-      .min(1, "금액은 1원 이상이어야 합니다."),
-    transaction_date: z
-      .string()
-      .min(1, "날짜를 선택해주세요.")
-      .refine((v) => v <= today, "미래 날짜는 등록할 수 없습니다."),
-    memo: z.string().max(200, "메모는 200자 이하여야 합니다.").optional()
-  })
-  .refine((d) => !(d.transaction_type === "INCOME" && d.wallet_type === "CARD"), {
-    message: "카드로 수입 거래를 저장할 수 없습니다.",
-    path: ["wallet_type"]
-  });
+function createSchema(today: string) {
+  return z
+    .object({
+      transaction_type: z.enum(["INCOME", "EXPENSE"]),
+      wallet_type: z.enum(["ACCOUNT", "CARD"]),
+      wallet_id: z.number().min(1, "지갑을 선택해주세요."),
+      category_id: z.number().min(1, "카테고리를 선택해주세요."),
+      amount: z
+        .number({ invalid_type_error: "금액을 입력해주세요." })
+        .min(1, "금액은 1원 이상이어야 합니다."),
+      transaction_date: z
+        .string()
+        .min(1, "날짜를 선택해주세요.")
+        .refine((v) => v <= today, "미래 날짜는 등록할 수 없습니다."),
+      memo: z.string().max(200, "메모는 200자 이하여야 합니다.").optional()
+    })
+    .refine((d) => !(d.transaction_type === "INCOME" && d.wallet_type === "CARD"), {
+      message: "카드로 수입 거래를 저장할 수 없습니다.",
+      path: ["wallet_type"]
+    });
+}
 
 const API_ERRORS: Record<string, string> = {
   TX_001: "미래 날짜는 등록할 수 없습니다.",
@@ -213,6 +215,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 }) => {
   const isEditMode = !!transactionId;
   const queryClient = useQueryClient();
+  const timezone = useTimezone();
+  const today = React.useMemo(() => getTodayInTimezone(timezone), [timezone]);
+  const schema = React.useMemo(() => createSchema(today), [today]);
 
   const [txType, setTxType] = React.useState<"INCOME" | "EXPENSE">(
     initialData?.transaction_type ?? "EXPENSE"
@@ -225,7 +230,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const [amountStr, setAmountStr] = React.useState<string>(
     initialData ? initialData.amount.toLocaleString("ko-KR") : ""
   );
-  const [date, setDate] = React.useState<string>(initialData?.transaction_date ?? today);
+  const [date, setDate] = React.useState<string>(() => initialData?.transaction_date ?? getTodayInTimezone(timezone));
   const [memo, setMemo] = React.useState<string>(initialData?.memo ?? "");
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [apiError, setApiError] = React.useState<string>("");
@@ -420,10 +425,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         category_id: parsed.data.category_id,
         amount: parsed.data.amount,
         memo: parsed.data.memo ?? null,
-        transaction_date: parsed.data.transaction_date
+        transaction_date: parsed.data.transaction_date,
+        timezone
       });
     } else {
-      createMutation.mutate(parsed.data);
+      createMutation.mutate({ ...parsed.data, timezone });
       void runSyncQueue(queryClient);
     }
   }

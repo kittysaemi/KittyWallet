@@ -1,5 +1,6 @@
 import { HttpStatus, Injectable } from "@nestjs/common";
 import { AppException } from "../../../common/exceptions/app.exception";
+import { getTodayInTimezone } from "../../../common/utils/date.util";
 import { DashboardRepository } from "../infrastructure/dashboard.repository";
 import { DashboardQueryDto } from "../presentation/dto/request/dashboard-query.dto";
 
@@ -14,7 +15,9 @@ export class DashboardService {
       ? new Date(query.base_date)
       : new Date();
 
-    const baseDateStr = baseDate.toISOString().split("T")[0];
+    const baseDateStr = query.base_date
+      ? query.base_date
+      : getTodayInTimezone();
     const { startDate, endDate } = this.calcPeriod(summaryPeriod, baseDate);
 
     const user = await this.dashboardRepository.getUser(userId);

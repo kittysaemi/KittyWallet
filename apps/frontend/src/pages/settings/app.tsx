@@ -8,7 +8,8 @@ import {
   applyThemeSetting,
   DEFAULT_APP_SETTINGS,
   normalizeAppSettings,
-  THEME_OPTIONS
+  THEME_OPTIONS,
+  TIMEZONE_OPTIONS
 } from "../../entities/settings/model/theme";
 import { Button } from "../../shared/ui/Button";
 import { APP_VERSION } from "../../shared/constants/version";
@@ -40,7 +41,8 @@ const AppSettingsPage: React.FC = () => {
   const isSettingsDirty =
     appSettings.theme !== savedSettings.theme ||
     appSettings.currency !== savedSettings.currency ||
-    appSettings.sync_enabled !== savedSettings.sync_enabled;
+    appSettings.sync_enabled !== savedSettings.sync_enabled ||
+    appSettings.timezone !== savedSettings.timezone;
 
   React.useEffect(() => {
     if (settingsQuery.data?.success && settingsQuery.data.data) {
@@ -186,6 +188,21 @@ const AppSettingsPage: React.FC = () => {
                   className="min-h-11 rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 text-sm text-[var(--color-text-primary)] outline-none"
                 >
                   <option value="KRW">KRW</option>
+                </select>
+              </label>
+
+              <label className="flex flex-col gap-2 text-sm font-medium text-[var(--color-text-primary)]">
+                시간대
+                <select
+                  value={appSettings.timezone}
+                  onChange={(e) =>
+                    handleChangeAppSetting("timezone", e.target.value as AppSettings["timezone"])
+                  }
+                  className="min-h-11 rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 text-sm text-[var(--color-text-primary)] outline-none"
+                >
+                  {TIMEZONE_OPTIONS.map((tz) => (
+                    <option key={tz.value} value={tz.value}>{tz.label}</option>
+                  ))}
                 </select>
               </label>
 

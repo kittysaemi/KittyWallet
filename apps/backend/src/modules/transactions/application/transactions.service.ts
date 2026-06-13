@@ -1,6 +1,7 @@
 import { HttpStatus, Injectable } from "@nestjs/common";
 import { Prisma, TransactionType, WalletType } from "@prisma/client";
 import { AppException } from "../../../common/exceptions/app.exception";
+import { getTodayInTimezone } from "../../../common/utils/date.util";
 import { BalanceViolationError } from "../domain/errors";
 import {
   AccountBalanceTransaction,
@@ -35,6 +36,7 @@ interface UpdateTransactionCommand {
   amount?: number;
   memo?: string | null;
   transactionDate?: string;
+  timezone?: string;
 }
 
 interface GetTransactionsCommand {
@@ -60,6 +62,7 @@ interface CreateTransactionCommand {
   amount: number;
   memo?: string;
   transactionDate: string;
+  timezone?: string;
 }
 
 interface BalanceCandidate {
@@ -164,7 +167,7 @@ export class TransactionsService {
       );
     }
 
-    const todayStr = new Date().toISOString().split("T")[0];
+    const todayStr = getTodayInTimezone(command.timezone);
     if (command.transactionDate && command.transactionDate > todayStr) {
       throw new AppException("TX_001", "미래 날짜는 등록할 수 없습니다.", HttpStatus.BAD_REQUEST);
     }
@@ -447,7 +450,7 @@ export class TransactionsService {
       );
     }
 
-    const todayStr = new Date().toISOString().split("T")[0];
+    const todayStr = getTodayInTimezone(command.timezone);
     if (command.transactionDate > todayStr) {
       throw new AppException("TX_001", "미래 날짜는 등록할 수 없습니다.", HttpStatus.BAD_REQUEST);
     }
