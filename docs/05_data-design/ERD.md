@@ -280,7 +280,7 @@ erDiagram
 
 | 대상 | 제약 |
 |---|---|
-| USER_SETTING | `(user_id, setting_key)` unique |
+| USER_SETTING | `(user_id, setting_key)` unique. 주요 setting_key: `theme`, `currency`, `sync_enabled`, `timezone`(기본값 `Asia/Seoul`), `transaction_list_page_size` |
 | SYNC_CLIENT | `(user_id, client_id)` unique |
 | TRANSACTION | `(user_id, sync_client_id, client_temp_id)` unique. 단 `client_temp_id`가 null인 온라인 거래는 제외 |
 | SYNC_HISTORY | `sync_client_id`, `client_temp_id`, `sync_action`, `server_applied_at` 기준 조회 인덱스 |

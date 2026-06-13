@@ -1,4 +1,5 @@
 import { IsDateString, IsIn, IsInt, IsOptional, IsString, MaxLength, Min } from "class-validator";
+import { SUPPORTED_TIMEZONES } from "../../../../settings/domain/settings-policy";
 
 export class CreateTransactionRequestDto {
   @IsIn(["ACCOUNT", "CARD"])
@@ -26,4 +27,8 @@ export class CreateTransactionRequestDto {
 
   @IsDateString()
   transaction_date!: string;
+
+  @IsOptional()
+  @IsIn(SUPPORTED_TIMEZONES)
+  timezone?: string;
 }

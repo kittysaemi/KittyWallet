@@ -42,6 +42,7 @@ describe("SettingsUseCases", () => {
         theme: "mint",
         currency: "KRW",
         sync_enabled: true,
+        timezone: "Asia/Seoul",
         transaction_list_page_size: 50
       },
       updated_at: "2026-01-02T00:00:00.000Z"
@@ -89,6 +90,7 @@ describe("SettingsUseCases", () => {
         theme: "lavender",
         currency: "KRW",
         sync_enabled: false,
+        timezone: "Asia/Seoul",
         transaction_list_page_size: 20
       },
       updated_at: "2026-01-01T00:00:00.000Z"

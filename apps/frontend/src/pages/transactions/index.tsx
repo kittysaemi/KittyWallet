@@ -8,6 +8,8 @@ import { categoryApi } from "../../entities/category/api/categoryApi";
 import { iconApi } from "../../entities/icon/api/iconApi";
 import type { IconItem } from "../../entities/icon/model/icon.types";
 import { IconRenderer } from "../../shared/ui/IconRenderer";
+import { useTimezone } from "../../shared/hooks/useTimezone";
+import { getTodayInTimezone } from "../../shared/utils/date";
 
 const cardClass =
   "rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] shadow-[0_4px_16px_var(--color-card-shadow)]";
@@ -120,9 +122,10 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ item, iconMap, catego
 };
 
 const TransactionsPage: React.FC = () => {
-  const now = new Date();
-  const [year, setYear] = React.useState(now.getFullYear());
-  const [month, setMonth] = React.useState(now.getMonth() + 1);
+  const timezone = useTimezone();
+  const todayStr = getTodayInTimezone(timezone);
+  const [year, setYear] = React.useState(() => parseInt(todayStr.slice(0, 4), 10));
+  const [month, setMonth] = React.useState(() => parseInt(todayStr.slice(5, 7), 10));
   const [page, setPage] = React.useState(1);
   const isOffline = !navigator.onLine;
 
@@ -172,14 +175,19 @@ const TransactionsPage: React.FC = () => {
   }
 
   function nextMonth() {
-    const n = new Date();
-    if (year > n.getFullYear() || (year === n.getFullYear() && month >= n.getMonth() + 1)) return;
+    const nowStr = getTodayInTimezone(timezone);
+    const nowYear = parseInt(nowStr.slice(0, 4), 10);
+    const nowMonth = parseInt(nowStr.slice(5, 7), 10);
+    if (year > nowYear || (year === nowYear && month >= nowMonth)) return;
     if (month === 12) { setYear(y => y + 1); setMonth(1); }
     else setMonth(m => m + 1);
     setPage(1);
   }
 
-  const isCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1;
+  const isCurrentMonth = (() => {
+    const nowStr = getTodayInTimezone(timezone);
+    return year === parseInt(nowStr.slice(0, 4), 10) && month === parseInt(nowStr.slice(5, 7), 10);
+  })();
 
   return (
     <div className="bg-[var(--color-bg-primary)]">

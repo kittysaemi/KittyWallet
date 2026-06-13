@@ -1,6 +1,7 @@
 import { HttpStatus, Injectable } from "@nestjs/common";
 import { Prisma, TransactionType, WalletType } from "@prisma/client";
 import { AppException } from "../../../common/exceptions/app.exception";
+import { getTodayInTimezone } from "../../../common/utils/date.util";
 import {
   StatisticsRepository,
   TransactionTypeAmountGroup,
@@ -46,7 +47,7 @@ export class StatisticsService {
   constructor(private readonly statisticsRepository: StatisticsRepository) {}
 
   async getMonthlyStatistics(command: GetMonthlyStatisticsCommand) {
-    const month = command.month ?? new Date().toISOString().slice(0, 7);
+    const month = command.month ?? getTodayInTimezone().slice(0, 7);
     const { startDate, endDate } = this.parseMonth(month);
     const condition = {
       userId: command.userId,
@@ -159,7 +160,7 @@ export class StatisticsService {
   }
 
   async getSummaryStatistics(command: GetVisualizationCommand) {
-    const month = command.month ?? new Date().toISOString().slice(0, 7);
+    const month = command.month ?? getTodayInTimezone().slice(0, 7);
     const { startDate, endDate } = this.parseMonth(month);
     const condition = {
       userId: command.userId,
@@ -197,7 +198,7 @@ export class StatisticsService {
   }
 
   async getCategoryTopStatistics(command: GetVisualizationCommand) {
-    const month = command.month ?? new Date().toISOString().slice(0, 7);
+    const month = command.month ?? getTodayInTimezone().slice(0, 7);
     const { startDate, endDate } = this.parseMonth(month);
     const isIncome = command.transactionType === "INCOME";
     const txType = isIncome ? TransactionType.INCOME : TransactionType.EXPENSE;
@@ -244,7 +245,7 @@ export class StatisticsService {
   }
 
   async getCalendarStatistics(command: GetVisualizationCommand) {
-    const month = command.month ?? new Date().toISOString().slice(0, 7);
+    const month = command.month ?? getTodayInTimezone().slice(0, 7);
     const { startDate, endDate } = this.parseMonth(month);
     const dailyGroups = await this.statisticsRepository.groupDailyAmountsByTransactionType({
       userId: command.userId,
@@ -271,7 +272,7 @@ export class StatisticsService {
   }
 
   async getSankeyStatistics(command: GetVisualizationCommand) {
-    const month = command.month ?? new Date().toISOString().slice(0, 7);
+    const month = command.month ?? getTodayInTimezone().slice(0, 7);
     const { startDate, endDate } = this.parseMonth(month);
     const condition = {
       userId: command.userId,
@@ -342,7 +343,7 @@ export class StatisticsService {
   }
 
   async getSankeyIncomeStatistics(command: GetVisualizationCommand) {
-    const month = command.month ?? new Date().toISOString().slice(0, 7);
+    const month = command.month ?? getTodayInTimezone().slice(0, 7);
     const { startDate, endDate } = this.parseMonth(month);
     const condition = {
       userId: command.userId,

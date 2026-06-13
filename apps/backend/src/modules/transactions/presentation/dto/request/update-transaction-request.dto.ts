@@ -1,4 +1,5 @@
 import { IsDateString, IsIn, IsInt, IsOptional, IsString, MaxLength, Min, ValidateIf } from "class-validator";
+import { SUPPORTED_TIMEZONES } from "../../../../settings/domain/settings-policy";
 
 export class UpdateTransactionRequestDto {
   @IsOptional()
@@ -33,4 +34,8 @@ export class UpdateTransactionRequestDto {
   @IsOptional()
   @IsDateString()
   transaction_date?: string;
+
+  @IsOptional()
+  @IsIn(SUPPORTED_TIMEZONES)
+  timezone?: string;
 }

@@ -68,7 +68,8 @@ export class TransactionsController {
       transactionType: dto.transaction_type,
       amount: dto.amount,
       memo: dto.memo,
-      transactionDate: dto.transaction_date
+      transactionDate: dto.transaction_date,
+      timezone: dto.timezone
     });
   }
 
@@ -88,7 +89,8 @@ export class TransactionsController {
       transactionType: dto.transaction_type,
       amount: dto.amount,
       memo: dto.memo,
-      transactionDate: dto.transaction_date
+      transactionDate: dto.transaction_date,
+      timezone: dto.timezone
     });
   }
 }

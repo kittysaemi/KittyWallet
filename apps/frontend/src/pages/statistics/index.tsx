@@ -12,6 +12,8 @@ import {
 } from "chart.js";
 import { ChevronLeft, ChevronRight, RefreshCw, WifiOff } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
+import { useTimezone } from "../../shared/hooks/useTimezone";
+import { getTodayInTimezone } from "../../shared/utils/date";
 import { statisticsApi } from "../../entities/statistics/api/statisticsApi";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import type {
@@ -1189,9 +1191,17 @@ const IncomeSankeyContent: React.FC<{
 /* ── 메인 페이지 ───────────────────────────────────────── */
 
 const StatisticsPage: React.FC = () => {
-  const today = React.useMemo(() => new Date(), []);
+  const timezone = useTimezone();
+  const todayStr = getTodayInTimezone(timezone);
+  const today = React.useMemo(() => {
+    const [y, m, d] = todayStr.split("-").map(Number);
+    return new Date(y, m - 1, d);
+  }, [todayStr]);
   const [searchParams, setSearchParams] = useSearchParams();
-  const [baseDate, setBaseDate] = React.useState(today);
+  const [baseDate, setBaseDate] = React.useState(() => {
+    const [y, m, d] = todayStr.split("-").map(Number);
+    return new Date(y, m - 1, d);
+  });
   const isOffline = !navigator.onLine;
 
   // 탭 상태

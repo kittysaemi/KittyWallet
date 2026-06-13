@@ -10,16 +10,17 @@ import { categoryApi } from "../../entities/category/api/categoryApi";
 import { iconApi } from "../../entities/icon/api/iconApi";
 import type { IconItem } from "../../entities/icon/model/icon.types";
 import { IconRenderer } from "../../shared/ui/IconRenderer";
+import { useTimezone } from "../../shared/hooks/useTimezone";
+import { getTodayInTimezone } from "../../shared/utils/date";
 
 const cardClass =
   "rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] shadow-[0_4px_16px_var(--color-card-shadow)]";
 
-const today = new Date().toISOString().split("T")[0];
-const threeMonthsAgo = (() => {
+function getThreeMonthsAgo(timezone: string): string {
   const d = new Date();
   d.setMonth(d.getMonth() - 3);
-  return d.toISOString().split("T")[0];
-})();
+  return d.toLocaleDateString("sv-SE", { timeZone: timezone });
+}
 
 // 검색 상태 캐시 (뒤로가기 복원용)
 interface BrowseCacheState {
@@ -43,7 +44,7 @@ interface SearchPageCache {
 }
 const _sc: SearchPageCache = {
   tab: "browse",
-  browse: { startDate: threeMonthsAgo, endDate: today, walletOpt: undefined, categoryOpt: undefined, searched: false, params: null },
+  browse: { startDate: "", endDate: "", walletOpt: undefined, categoryOpt: undefined, searched: false, params: null },
   keyword: { keyword: "", submittedKeyword: "", triggered: false, searched: false }
 };
 
@@ -273,8 +274,10 @@ const BrowseTab: React.FC<BrowseTabProps> = ({
   categoriesLoading,
   walletsLoading
 }) => {
-  const [startDate, setStartDate] = React.useState(() => _sc.browse.startDate);
-  const [endDate, setEndDate] = React.useState(() => _sc.browse.endDate);
+  const timezone = useTimezone();
+  const today = React.useMemo(() => getTodayInTimezone(timezone), [timezone]);
+  const [startDate, setStartDate] = React.useState(() => _sc.browse.startDate || getThreeMonthsAgo(timezone));
+  const [endDate, setEndDate] = React.useState(() => _sc.browse.endDate || getTodayInTimezone(timezone));
   const [walletOpt, setWalletOpt] = React.useState<SelectOption | undefined>(() => _sc.browse.walletOpt);
   const [categoryOpt, setCategoryOpt] = React.useState<SelectOption | undefined>(() => _sc.browse.categoryOpt);
   const [searched, setSearched] = React.useState(() => _sc.browse.searched);
@@ -327,7 +330,7 @@ const BrowseTab: React.FC<BrowseTabProps> = ({
   }
 
   function handleReset() {
-    const fresh = { startDate: threeMonthsAgo, endDate: today, walletOpt: undefined, categoryOpt: undefined, searched: false, params: null };
+    const fresh = { startDate: getThreeMonthsAgo(timezone), endDate: getTodayInTimezone(timezone), walletOpt: undefined, categoryOpt: undefined, searched: false, params: null };
     _sc.browse = fresh;
     setStartDate(fresh.startDate);
     setEndDate(fresh.endDate);

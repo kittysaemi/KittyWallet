@@ -1,11 +1,19 @@
-import type { AppSettings, ThemeSetting } from "./settings.types";
+import type { AppSettings, ThemeSetting, TimezoneSetting } from "./settings.types";
 
 export const DEFAULT_THEME: ThemeSetting = "cat-pink";
+export const DEFAULT_TIMEZONE: TimezoneSetting = "Asia/Seoul";
+
+export const SUPPORTED_TIMEZONES: ReadonlyArray<TimezoneSetting> = ["Asia/Seoul"] as const;
+
+export const TIMEZONE_OPTIONS: Array<{ value: TimezoneSetting; label: string }> = [
+  { value: "Asia/Seoul", label: "한국 (KST, UTC+9)" }
+];
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   theme: DEFAULT_THEME,
   currency: "KRW",
   sync_enabled: true,
+  timezone: DEFAULT_TIMEZONE,
   transaction_list_page_size: 20
 };
 
@@ -51,11 +59,18 @@ export function normalizeThemeSetting(value: unknown): ThemeSetting {
   return themeValues.includes(value as ThemeSetting) ? (value as ThemeSetting) : DEFAULT_THEME;
 }
 
+export function normalizeTimezoneSetting(value: unknown): TimezoneSetting {
+  return SUPPORTED_TIMEZONES.includes(value as TimezoneSetting)
+    ? (value as TimezoneSetting)
+    : DEFAULT_TIMEZONE;
+}
+
 export function normalizeAppSettings(settings: Partial<AppSettings> | undefined): AppSettings {
   return {
     ...DEFAULT_APP_SETTINGS,
     ...settings,
-    theme: normalizeThemeSetting(settings?.theme)
+    theme: normalizeThemeSetting(settings?.theme),
+    timezone: normalizeTimezoneSetting(settings?.timezone)
   };
 }
 
