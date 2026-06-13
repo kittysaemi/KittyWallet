@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/kittysaemi/KittyWallet/compare/v1.2.4...v1.3.0) (2026-06-13)
+
+
+### Features
+
+* **settings:** 시간대 설정 기능 추가 및 날짜 계산 전체 적용 ([#249](https://github.com/kittysaemi/KittyWallet/issues/249)) ([a50220a](https://github.com/kittysaemi/KittyWallet/commit/a50220a34361c3f6cdf8202cd7d9e4622edf3418))
+
 ## [1.2.4](https://github.com/kittysaemi/KittyWallet/compare/v1.2.3...v1.2.4) (2026-06-13)
 
 
