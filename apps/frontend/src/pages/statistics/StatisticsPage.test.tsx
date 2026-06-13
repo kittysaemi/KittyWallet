@@ -168,18 +168,18 @@ const SANKEY_DATA = {
     total_expense: 90000,
     nodes: [
       { id: "total", name: "총 지출", value: 90000 },
-      { id: "account", name: "계좌", value: 60000 },
-      { id: "card", name: "카드", value: 30000 },
+      { id: "w_1", name: "우리은행", value: 60000 },
+      { id: "w_2", name: "신한카드", value: 30000 },
       { id: "cat_1", name: "식비", value: 50000 },
       { id: "cat_2", name: "교통", value: 40000 }
     ],
     links: [
-      { source: "total", target: "account", value: 60000 },
-      { source: "total", target: "card", value: 30000 },
-      { source: "account", target: "cat_1", value: 35000 },
-      { source: "account", target: "cat_2", value: 25000 },
-      { source: "card", target: "cat_1", value: 15000 },
-      { source: "card", target: "cat_2", value: 15000 }
+      { source: "total", target: "w_1", value: 60000 },
+      { source: "total", target: "w_2", value: 30000 },
+      { source: "w_1", target: "cat_1", value: 35000 },
+      { source: "w_1", target: "cat_2", value: 25000 },
+      { source: "w_2", target: "cat_1", value: 15000 },
+      { source: "w_2", target: "cat_2", value: 15000 }
     ]
   },
   error: null
@@ -192,12 +192,12 @@ const SANKEY_INCOME_DATA = {
     total_income: 300000,
     nodes: [
       { id: "total", name: "총 수입", value: 300000 },
-      { id: "account", name: "계좌", value: 300000 },
+      { id: "w_1", name: "우리은행", value: 300000 },
       { id: "cat_3", name: "급여", value: 300000 }
     ],
     links: [
-      { source: "total", target: "account", value: 300000 },
-      { source: "account", target: "cat_3", value: 300000 }
+      { source: "total", target: "w_1", value: 300000 },
+      { source: "w_1", target: "cat_3", value: 300000 }
     ]
   },
   error: null
