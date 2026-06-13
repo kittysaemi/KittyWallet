@@ -54,7 +54,7 @@ const AppSettingsPage: React.FC = () => {
   React.useEffect(
     () => () => {
       if (currentThemeRef.current !== savedThemeRef.current) {
-        applyThemeSetting(savedThemeRef.current);
+        applyThemeSetting(savedThemeRef.current, false);
       }
     },
     []
@@ -90,7 +90,7 @@ const AppSettingsPage: React.FC = () => {
     setAppSettings((prev) => ({ ...prev, [key]: value }));
     if (key === "theme") {
       currentThemeRef.current = value as AppSettings["theme"];
-      applyThemeSetting(value);
+      applyThemeSetting(value, false);
     }
     setSettingsError("");
     setSettingsSavedMessage("");

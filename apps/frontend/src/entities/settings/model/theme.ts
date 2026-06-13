@@ -92,7 +92,9 @@ function updateLinkHref(id: string, href: string): void {
   if (el) el.href = href;
 }
 
-export function applyThemeSetting(theme: unknown): void {
+// persist=false: 설정 미리보기 시 사용 — 화면만 바꾸고 localStorage/cookie는 건드리지 않음.
+// persist=true(기본값): 실제 저장 시 사용 — localStorage·cookie까지 갱신.
+export function applyThemeSetting(theme: unknown, persist = true): void {
   const normalized = normalizeThemeSetting(theme);
   document.documentElement.dataset.theme = normalized;
 
@@ -101,8 +103,6 @@ export function applyThemeSetting(theme: unknown): void {
 
   const folder = THEME_FOLDER[normalized];
   const base = `/kittywallet/icons/themes/${folder}`;
-  // ?v= 쿼리로 URL을 고유하게 만들어 WebKit(iOS Chrome 포함)의 HTTP 캐시를 우회함.
-  // 동일 경로 파일이라도 URL이 달라지면 브라우저가 반드시 재fetch함.
   const bust = `?v=${Date.now()}`;
   replaceLinkElement("favicon-ico", "icon", "image/x-icon", undefined, `${base}/favicon/favicon.ico${bust}`);
   replaceLinkElement("favicon-32", "icon", "image/png", "32x32", `${base}/favicon/favicon-32x32.png${bust}`);
@@ -110,9 +110,10 @@ export function applyThemeSetting(theme: unknown): void {
   replaceLinkElement("apple-touch-icon", "apple-touch-icon", "image/png", undefined, `${base}/apple-touch/apple-touch-icon.png${bust}`);
   updateLinkHref("manifest-link", `/kittywallet/api/v1/manifest?theme=${folder}`);
 
-  try {
-    localStorage.setItem(THEME_LS_KEY, normalized);
-    // 쿠키에도 저장 — manifest 엔드포인트가 페이지 파싱 시점에 올바른 테마를 반환하도록
-    document.cookie = `kw_theme=${folder}; path=/; SameSite=Lax; max-age=31536000`;
-  } catch { /* storage unavailable */ }
+  if (persist) {
+    try {
+      localStorage.setItem(THEME_LS_KEY, normalized);
+      document.cookie = `kw_theme=${folder}; path=/; SameSite=Lax; max-age=31536000`;
+    } catch { /* storage unavailable */ }
+  }
 }
