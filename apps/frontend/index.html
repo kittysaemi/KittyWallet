@@ -14,10 +14,24 @@
         try {
           var m = { 'cat-pink': 'pink', 'mint': 'mint', 'lavender': 'purple' };
           var folder = m[localStorage.getItem('kw_theme')] || 'pink';
-          // manifest link는 Vite 빌드 플러그인이 /api/v1/manifest 로 교체함.
-          // 쿠키가 없거나 localStorage와 불일치하면 여기서 동기화.
-          // 쿠키는 다음 페이지 로드 시 manifest 요청에 자동으로 포함됨.
           document.cookie = 'kw_theme=' + folder + '; path=/; SameSite=Lax; max-age=31536000';
+          // iOS WebKit은 JS로 동적 파비콘 변경이 불가하므로 파싱 시점에 올바른 테마로 교체.
+          // iPad Pro는 userAgent가 MacIntel로 표시되어 maxTouchPoints로 구분.
+          var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+          if (isIOS && folder !== 'pink') {
+            var base = '/kittywallet/icons/themes/' + folder;
+            var links = [
+              ['favicon-ico', base + '/favicon/favicon.ico'],
+              ['favicon-32', base + '/favicon/favicon-32x32.png'],
+              ['favicon-16', base + '/favicon/favicon-16x16.png'],
+              ['apple-touch-icon', base + '/apple-touch/apple-touch-icon.png']
+            ];
+            for (var i = 0; i < links.length; i++) {
+              var el = document.getElementById(links[i][0]);
+              if (el) el.setAttribute('href', links[i][1]);
+            }
+          }
         } catch (e) {}
       })();
     </script>
