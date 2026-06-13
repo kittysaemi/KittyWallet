@@ -10,9 +10,9 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
 };
 
 const THEME_PRIMARY_COLORS: Record<ThemeSetting, string> = {
-  "cat-pink": "#FDA5E3",
-  "mint": "#77D8B8",
-  "lavender": "#BFA8FF"
+  "cat-pink": "#fda5e3",
+  "mint": "#77d8b8",
+  "lavender": "#bfa8ff"
 };
 
 const THEME_LS_KEY = "kw_theme";
