@@ -2,10 +2,22 @@ import type { VitePWAOptions } from "vite-plugin-pwa";
 import { CACHE_NAMES } from "./cacheNames";
 
 type RuntimeCaching = NonNullable<VitePWAOptions["workbox"]>["runtimeCaching"];
+type UrlPatternContext = { url: URL };
+type RequestPatternContext = { request: Request };
+
+const startsWithApiPath =
+  (path: string) =>
+  ({ url }: UrlPatternContext) =>
+    url.pathname.startsWith(path);
+
+const hasRequestDestination =
+  (destination: RequestDestination) =>
+  ({ request }: RequestPatternContext) =>
+    request.destination === destination;
 
 export const runtimeCaching: RuntimeCaching = [
   {
-    urlPattern: ({ url }) => url.pathname.startsWith("/kittywallet/api/v1/dashboard"),
+    urlPattern: startsWithApiPath("/kittywallet/api/v1/dashboard"),
     handler: "NetworkFirst",
     options: {
       cacheName: CACHE_NAMES.DASHBOARD,
@@ -13,7 +25,7 @@ export const runtimeCaching: RuntimeCaching = [
     }
   },
   {
-    urlPattern: ({ url }) => url.pathname.startsWith("/kittywallet/api/v1/transactions/recent"),
+    urlPattern: startsWithApiPath("/kittywallet/api/v1/transactions/recent"),
     handler: "NetworkFirst",
     options: {
       cacheName: CACHE_NAMES.RECENT_TRANSACTIONS,
@@ -21,7 +33,7 @@ export const runtimeCaching: RuntimeCaching = [
     }
   },
   {
-    urlPattern: ({ url }) => url.pathname.startsWith("/kittywallet/api/v1/statistics"),
+    urlPattern: startsWithApiPath("/kittywallet/api/v1/statistics"),
     handler: "NetworkFirst",
     options: {
       cacheName: CACHE_NAMES.STATISTICS,
@@ -29,7 +41,7 @@ export const runtimeCaching: RuntimeCaching = [
     }
   },
   {
-    urlPattern: ({ url }) => url.pathname.startsWith("/kittywallet/api/v1/accounts"),
+    urlPattern: startsWithApiPath("/kittywallet/api/v1/accounts"),
     handler: "StaleWhileRevalidate",
     options: {
       cacheName: CACHE_NAMES.ACCOUNTS,
@@ -37,7 +49,7 @@ export const runtimeCaching: RuntimeCaching = [
     }
   },
   {
-    urlPattern: ({ url }) => url.pathname.startsWith("/kittywallet/api/v1/cards"),
+    urlPattern: startsWithApiPath("/kittywallet/api/v1/cards"),
     handler: "StaleWhileRevalidate",
     options: {
       cacheName: CACHE_NAMES.CARDS,
@@ -45,7 +57,7 @@ export const runtimeCaching: RuntimeCaching = [
     }
   },
   {
-    urlPattern: ({ url }) => url.pathname.startsWith("/kittywallet/api/v1/categories"),
+    urlPattern: startsWithApiPath("/kittywallet/api/v1/categories"),
     handler: "StaleWhileRevalidate",
     options: {
       cacheName: CACHE_NAMES.CATEGORIES,
@@ -53,7 +65,7 @@ export const runtimeCaching: RuntimeCaching = [
     }
   },
   {
-    urlPattern: ({ request }) => request.destination === "image",
+    urlPattern: hasRequestDestination("image"),
     handler: "CacheFirst",
     options: {
       cacheName: CACHE_NAMES.IMAGES,
@@ -61,7 +73,7 @@ export const runtimeCaching: RuntimeCaching = [
     }
   },
   {
-    urlPattern: ({ request }) => request.destination === "font",
+    urlPattern: hasRequestDestination("font"),
     handler: "CacheFirst",
     options: {
       cacheName: CACHE_NAMES.FONTS,
