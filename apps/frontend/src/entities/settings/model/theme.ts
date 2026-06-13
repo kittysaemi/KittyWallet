@@ -101,10 +101,13 @@ export function applyThemeSetting(theme: unknown): void {
 
   const folder = THEME_FOLDER[normalized];
   const base = `/kittywallet/icons/themes/${folder}`;
-  replaceLinkElement("favicon-ico", "icon", "image/x-icon", undefined, `${base}/favicon/favicon.ico`);
-  replaceLinkElement("favicon-32", "icon", "image/png", "32x32", `${base}/favicon/favicon-32x32.png`);
-  replaceLinkElement("favicon-16", "icon", "image/png", "16x16", `${base}/favicon/favicon-16x16.png`);
-  replaceLinkElement("apple-touch-icon", "apple-touch-icon", "image/png", undefined, `${base}/apple-touch/apple-touch-icon.png`);
+  // ?v= 쿼리로 URL을 고유하게 만들어 WebKit(iOS Chrome 포함)의 HTTP 캐시를 우회함.
+  // 동일 경로 파일이라도 URL이 달라지면 브라우저가 반드시 재fetch함.
+  const bust = `?v=${Date.now()}`;
+  replaceLinkElement("favicon-ico", "icon", "image/x-icon", undefined, `${base}/favicon/favicon.ico${bust}`);
+  replaceLinkElement("favicon-32", "icon", "image/png", "32x32", `${base}/favicon/favicon-32x32.png${bust}`);
+  replaceLinkElement("favicon-16", "icon", "image/png", "16x16", `${base}/favicon/favicon-16x16.png${bust}`);
+  replaceLinkElement("apple-touch-icon", "apple-touch-icon", "image/png", undefined, `${base}/apple-touch/apple-touch-icon.png${bust}`);
   updateLinkHref("manifest-link", `/kittywallet/api/v1/manifest?theme=${folder}`);
 
   try {
