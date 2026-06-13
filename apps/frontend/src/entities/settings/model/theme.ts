@@ -85,6 +85,7 @@ export function applyThemeSetting(theme: unknown): void {
   updateLinkHref("favicon-32", `${base}/favicon/favicon-32x32.png`);
   updateLinkHref("favicon-16", `${base}/favicon/favicon-16x16.png`);
   updateLinkHref("apple-touch-icon", `${base}/apple-touch/apple-touch-icon.png`);
+  updateLinkHref("manifest-link", `/kittywallet/api/v1/manifest?theme=${folder}`);
 
   try {
     localStorage.setItem(THEME_LS_KEY, normalized);

@@ -9,6 +9,25 @@
     <link id="favicon-16" rel="icon" type="image/png" sizes="16x16" href="/kittywallet/icons/themes/pink/favicon/favicon-16x16.png" />
     <link id="apple-touch-icon" rel="apple-touch-icon" href="/kittywallet/icons/themes/pink/apple-touch/apple-touch-icon.png" />
     <title>KittyWallet</title>
+    <script>
+      (function () {
+        try {
+          var m = { 'cat-pink': 'pink', 'mint': 'mint', 'lavender': 'purple' };
+          var folder = m[localStorage.getItem('kw_theme')] || 'pink';
+          var el = document.querySelector('link[rel="manifest"]');
+          if (el) {
+            el.id = 'manifest-link';
+            el.href = '/kittywallet/api/v1/manifest?theme=' + folder;
+          } else {
+            var link = document.createElement('link');
+            link.id = 'manifest-link';
+            link.rel = 'manifest';
+            link.href = '/kittywallet/api/v1/manifest?theme=' + folder;
+            document.head.appendChild(link);
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
