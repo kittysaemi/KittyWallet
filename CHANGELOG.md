@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/kittysaemi/KittyWallet/compare/v1.3.1...v1.4.0) (2026-06-14)
+
+
+### Features
+
+* **api:** apply category statistics inclusion ([cb203a5](https://github.com/kittysaemi/KittyWallet/commit/cb203a5f217a8a6820616df0b02e8fff53ab710b))
+
 ## [1.3.1](https://github.com/kittysaemi/KittyWallet/compare/v1.3.0...v1.3.1) (2026-06-14)
 
 
