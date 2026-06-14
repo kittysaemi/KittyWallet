@@ -46,6 +46,9 @@
 - 월별/카테고리별 조회 지원
 - 계좌 거래와 카드 거래는 `wallet_type` 기준으로 독립 집계 가능
 - 카드 거래는 지출만 집계 대상이며 수입 통계에는 포함되지 않음
+- 현재 사용자 기준 `include_in_statistics=false`인 카테고리의 거래는 모든 통계 집계에서 제외
+- 카테고리 통계 제외는 월별, 기간별, 카테고리별, 요약, Top 5, 히트맵, 지출 Sankey, 수입 Sankey에 동일하게 적용
+- 카테고리 통계 제외는 거래내역, 최근 거래, 거래 상세, 거래 검색, 계좌 잔액에는 영향을 주지 않음
 - Top 5 카테고리 산출 시 카테고리가 5개를 초과하면 6번째 이후는 `기타`로 합산한다
 - Sankey와 Top 5는 지출 거래 중심으로 산출한다. 수입 흐름 Sankey와 수입 Top 5는 수입 거래 중심으로 별도 산출한다
 - Top 5 API는 6번째 이후 카테고리를 `기타`로 합산하지만, Sankey API는 카테고리를 `기타`로 합산하지 않고 전체 카테고리를 노드/링크로 반환한다
@@ -101,7 +104,7 @@
 | income_amount | number | 수입 합계 |
 | expense_amount | number | 지출 합계 |
 | net_amount | number | 수입 합계 - 지출 합계 |
-| transaction_count | number | 삭제되지 않은 거래 건수 |
+| transaction_count | number | 삭제되지 않았고 통계 포함 카테고리에 속한 거래 건수 |
 | daily_items | array | 일자별 합계 목록. 데이터가 없으면 빈 배열 |
 
 ---
@@ -171,7 +174,7 @@
 | 필드 | 타입 | 설명 |
 |---|---|---|
 | total_amount | number | 조회 조건에 해당하는 거래 금액 합계 |
-| items | array | 카테고리별 통계 목록. 데이터가 없으면 빈 배열 |
+| items | array | 통계 포함 카테고리별 통계 목록. 데이터가 없으면 빈 배열 |
 | ratio | number | `total_amount` 대비 비율. 소수점 둘째 자리까지 반올림 |
 
 ---
@@ -244,7 +247,7 @@
 | income_amount | number | 기간 내 수입 합계 |
 | expense_amount | number | 기간 내 지출 합계 |
 | net_amount | number | 수입 합계 - 지출 합계 |
-| items | array | `group_by` 기준 기간별 합계 목록 |
+| items | array | `group_by` 기준 기간별 합계 목록. 통계 제외 카테고리 거래는 포함하지 않음 |
 
 ---
 
@@ -319,8 +322,8 @@
 | income_amount | number | 수입 합계 |
 | expense_amount | number | 지출 합계 |
 | net_amount | number | 수입 합계 - 지출 합계 |
-| transaction_count | number | 삭제되지 않은 거래 건수 |
-| top_category | object/null | 해당 월 최고 지출 카테고리. 지출 거래가 없으면 null |
+| transaction_count | number | 삭제되지 않았고 통계 포함 카테고리에 속한 거래 건수 |
+| top_category | object/null | 해당 월 최고 지출 카테고리. 통계 포함 지출 거래가 없으면 null |
 | top_category.category_id | number | 카테고리 ID |
 | top_category.category_name | string | 카테고리명 |
 | top_category.icon_id | number/null | 아이콘 ID |
@@ -422,9 +425,9 @@
 | 필드 | 타입 | 설명 |
 |---|---|---|
 | month | string | 조회 월 |
-| total_expense | number | 해당 월 전체 지출 합계. `transaction_type=EXPENSE`(기본값) 시 포함 |
-| total_income | number | 해당 월 전체 수입 합계. `transaction_type=INCOME` 시 포함 |
-| items | array | Top 5 카테고리 + 기타 목록. 데이터가 없으면 빈 배열 |
+| total_expense | number | 해당 월 통계 포함 카테고리 기준 지출 합계. `transaction_type=EXPENSE`(기본값) 시 포함 |
+| total_income | number | 해당 월 통계 포함 카테고리 기준 수입 합계. `transaction_type=INCOME` 시 포함 |
+| items | array | 통계 포함 카테고리 기준 Top 5 카테고리 + 기타 목록. 데이터가 없으면 빈 배열 |
 | items[].rank | number/null | 순위. `기타` 항목은 null |
 | items[].category_id | number/null | 카테고리 ID. `기타` 항목은 null |
 | items[].category_name | string | 카테고리명. 6위 이후는 `기타` |
@@ -498,8 +501,8 @@
 | 필드 | 타입 | 설명 |
 |---|---|---|
 | month | string | 조회 월 |
-| max_daily_expense | number | 해당 월 일별 지출 최댓값. 색상 강도 계산 기준. 지출 없으면 0 |
-| daily_items | array | 지출이 있는 날짜 목록. 지출 없는 날짜는 포함하지 않음 |
+| max_daily_expense | number | 해당 월 통계 포함 카테고리 기준 일별 지출 최댓값. 색상 강도 계산 기준. 지출 없으면 0 |
+| daily_items | array | 통계 포함 지출이 있는 날짜 목록. 지출 없는 날짜는 포함하지 않음 |
 | daily_items[].date | string | 날짜 `YYYY-MM-DD` |
 | daily_items[].expense_amount | number | 해당 날짜 지출 합계 |
 
@@ -571,7 +574,7 @@
 | 필드 | 타입 | 설명 |
 |---|---|---|
 | month | string | 조회 월 |
-| total_expense | number | 해당 월 전체 지출 합계 |
+| total_expense | number | 해당 월 통계 포함 카테고리 기준 전체 지출 합계 |
 | nodes | array | Sankey 노드 목록. 데이터가 없으면 빈 배열 |
 | nodes[].id | string | 노드 식별자. `total`, `w_{walletId}`, `cat_{id}` 형식 |
 | nodes[].name | string | 노드 표시 이름 |
@@ -585,7 +588,7 @@
 
 - **1단계 (좌):** `total` — 월 전체 지출
 - **2단계 (중):** `w_{walletId}` — 개별 지갑별 지출 합계 (계좌명 또는 카드명 표시). `wallet_type` 필터 적용 시 해당 지갑 유형만 포함
-- **3단계 (우):** 지출 전체 카테고리. `cat_other` 노드는 생성하지 않음
+- **3단계 (우):** 통계 포함 지출 카테고리. `cat_other` 노드는 생성하지 않음
 
 ---
 
@@ -652,7 +655,7 @@
 | 필드 | 타입 | 설명 |
 |---|---|---|
 | month | string | 조회 월 |
-| total_income | number | 해당 월 전체 수입 합계 |
+| total_income | number | 해당 월 통계 포함 카테고리 기준 전체 수입 합계 |
 | nodes | array | Sankey 노드 목록. 데이터가 없으면 빈 배열 |
 | nodes[].id | string | 노드 식별자. `total`, `w_{walletId}`, `cat_{id}` 형식 |
 | nodes[].name | string | 노드 표시 이름 |
@@ -666,7 +669,7 @@
 
 - **1단계 (좌):** `total` — 월 전체 수입
 - **2단계 (중):** `w_{walletId}` — 개별 계좌별 수입 합계 (계좌명 표시). 카드는 수입 거래가 없으므로 표시되지 않음
-- **3단계 (우):** 수입 전체 카테고리. `cat_other` 노드는 생성하지 않음
+- **3단계 (우):** 통계 포함 수입 카테고리. `cat_other` 노드는 생성하지 않음
 
 ---
 

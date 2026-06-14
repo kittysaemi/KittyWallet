@@ -60,6 +60,8 @@
 - 계좌 자산은 현재 보유 금액 기준으로 계산한다.
 - 카드 거래는 자산 합계에는 직접 반영하지 않고 소비 요약 및 최근 거래에 반영한다.
 - 최근 거래는 최신 거래일 기준으로 제한된 개수만 반환한다.
+- `spending_summary`는 통계 기준을 따르므로 `include_in_statistics=false` 카테고리 거래를 제외한다.
+- `asset_summary`와 `recent_transactions`는 카테고리 통계 제외 설정의 영향을 받지 않는다.
 - 대시보드는 여러 화면 데이터를 과도하게 분리 호출하지 않도록 요약 데이터를 함께 반환한다.
 - 오프라인 상태에서는 마지막 성공 응답을 캐시 데이터로 표시할 수 있다.
 - 동기화 실패 또는 대기 상태가 있으면 대시보드에 상태 표시가 가능해야 한다.
@@ -195,10 +197,10 @@ Authorization: Bearer {access_token}
 | period_type | string | 요약 기간 유형 |
 | start_date | string | 요약 시작일 |
 | end_date | string | 요약 종료일 |
-| income_amount | number | 기간 내 수입 합계 |
-| expense_amount | number | 기간 내 지출 합계 |
+| income_amount | number | 기간 내 통계 포함 카테고리 기준 수입 합계 |
+| expense_amount | number | 기간 내 통계 포함 카테고리 기준 지출 합계 |
 | net_amount | number | 수입 - 지출 |
-| transaction_count | number | 기간 내 거래 건수 |
+| transaction_count | number | 기간 내 통계 포함 카테고리에 속한 거래 건수 |
 
 ### recent_transactions
 

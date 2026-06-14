@@ -92,6 +92,7 @@ erDiagram
         BIGINT user_id FK "사용자 ID"
         BIGINT category_id FK "카테고리 ID"
         BOOLEAN show "사용자별 표시 여부"
+        BOOLEAN include_in_statistics "사용자별 통계 포함 여부. false면 통계 집계 제외"
         DATETIME created_at "생성일시"
         DATETIME updated_at "수정일시"
     }
