@@ -1,7 +1,7 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, RefreshCw, WifiOff } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import type { TransactionItem } from "../../entities/transaction/model/transaction.types";
 import { categoryApi } from "../../entities/category/api/categoryApi";
@@ -126,8 +126,12 @@ let _savedTxState: { year: number; month: number; page: number; scrollTop?: numb
 const TransactionsPage: React.FC = () => {
   const timezone = useTimezone();
   const todayStr = getTodayInTimezone(timezone);
+  const location = useLocation();
 
-  const [year, setYear] = React.useState(_savedTxState?.year ?? parseInt(todayStr.slice(0, 4), 10));
+  const [year, setYear] = React.useState(() => {
+    if ((location.state as { reset?: boolean } | null)?.reset) _savedTxState = null;
+    return _savedTxState?.year ?? parseInt(todayStr.slice(0, 4), 10);
+  });
   const [month, setMonth] = React.useState(_savedTxState?.month ?? parseInt(todayStr.slice(5, 7), 10));
   const [page, setPage] = React.useState(_savedTxState?.page ?? 1);
   const pageRef = React.useRef<HTMLDivElement>(null);
