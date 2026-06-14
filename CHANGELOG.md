@@ -1,3 +1,10 @@
+## [1.5.3](https://github.com/kittysaemi/KittyWallet/compare/v1.5.2...v1.5.3) (2026-06-14)
+
+
+### Bug Fixes
+
+* 대시보드 전체보기로 거래내역 진입 시 페이지·스크롤 초기화 ([6a935f7](https://github.com/kittysaemi/KittyWallet/commit/6a935f76581323a73cd881bcc9bbfb9906bdd251))
+
 ## [1.5.2](https://github.com/kittysaemi/KittyWallet/compare/v1.5.1...v1.5.2) (2026-06-14)
 
 
