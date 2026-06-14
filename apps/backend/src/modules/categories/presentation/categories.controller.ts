@@ -38,7 +38,8 @@ export class CategoriesController {
       userId: BigInt(user.sub),
       categoryName: dto.category_name,
       iconId: dto.icon_id === undefined ? undefined : BigInt(dto.icon_id),
-      show: dto.show
+      show: dto.show,
+      includeInStatistics: dto.include_in_statistics
     });
   }
 }

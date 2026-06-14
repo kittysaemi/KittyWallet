@@ -131,6 +131,7 @@ model CategoryUserSetting {
   userId                BigInt   @map("user_id")
   categoryId            BigInt   @map("category_id")
   show                  Boolean  @default(true)
+  includeInStatistics   Boolean  @default(true) @map("include_in_statistics")
   createdAt             DateTime @default(now()) @map("created_at")
   updatedAt             DateTime @updatedAt @map("updated_at")
 
@@ -141,6 +142,7 @@ model CategoryUserSetting {
   @@index([userId])
   @@index([categoryId])
   @@index([show])
+  @@index([includeInStatistics])
   @@map("CATEGORY_USER_SETTING")
 }
 

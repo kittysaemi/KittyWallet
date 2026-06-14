@@ -1,5 +1,4 @@
 import { HttpStatus, Injectable } from "@nestjs/common";
-import { Category } from "@prisma/client";
 import { AppException } from "../../../common/exceptions/app.exception";
 import {
   CategoriesRepository,
@@ -17,6 +16,7 @@ export interface CategoryItem {
     provider_key: string;
   };
   show: boolean;
+  include_in_statistics: boolean;
   is_default: boolean;
   editable: boolean;
   created_at: string;
@@ -36,6 +36,7 @@ interface UpdateCategoryCommand {
   categoryName?: string;
   iconId?: bigint;
   show?: boolean;
+  includeInStatistics?: boolean;
 }
 
 @Injectable()
@@ -73,7 +74,8 @@ export class CategoriesService {
     if (
       command.categoryName === undefined &&
       command.iconId === undefined &&
-      command.show === undefined
+      command.show === undefined &&
+      command.includeInStatistics === undefined
     ) {
       throw new AppException(
         "VALIDATION_001",
@@ -100,7 +102,7 @@ export class CategoriesService {
   private async updateDefaultCategory(
     category: CategoryWithUserSettings,
     command: UpdateCategoryCommand
-  ): Promise<Pick<CategoryItem, "category_id" | "show">> {
+  ): Promise<Pick<CategoryItem, "category_id" | "show" | "include_in_statistics">> {
     if (command.categoryName !== undefined || command.iconId !== undefined) {
       throw new AppException(
         "VALIDATION_001",
@@ -109,7 +111,7 @@ export class CategoriesService {
       );
     }
 
-    if (command.show === undefined) {
+    if (command.show === undefined && command.includeInStatistics === undefined) {
       throw new AppException(
         "VALIDATION_001",
         "수정 가능한 필드가 없습니다.",
@@ -117,22 +119,29 @@ export class CategoriesService {
       );
     }
 
-    const setting = await this.categoriesRepository.upsertDefaultCategoryShow(
+    const setting = await this.categoriesRepository.upsertCategoryUserSetting(
       command.userId,
       category.categoryId,
-      command.show
+      {
+        ...(command.show === undefined ? {} : { show: command.show }),
+        ...(command.includeInStatistics === undefined
+          ? {}
+          : { includeInStatistics: command.includeInStatistics })
+      },
+      category.show
     );
 
     return {
       category_id: Number(category.categoryId),
-      show: setting.show
+      show: setting.show,
+      include_in_statistics: setting.includeInStatistics
     };
   }
 
   private async updateUserCategory(
-    category: Category,
+    category: CategoryWithUserSettings,
     command: UpdateCategoryCommand
-  ): Promise<Pick<CategoryItem, "category_id" | "show">> {
+  ): Promise<Pick<CategoryItem, "category_id" | "show" | "include_in_statistics">> {
     const data: {
       categoryName?: string;
       icon?: { connect: { iconId: bigint } };
@@ -154,18 +163,39 @@ export class CategoriesService {
       data.show = command.show;
     }
 
-    const updated = await this.categoriesRepository.updateUserCategory(category.categoryId, data);
+    const hasCategoryUpdate = Object.keys(data).length > 0;
+    const updated = hasCategoryUpdate
+      ? await this.categoriesRepository.updateUserCategory(category.categoryId, data)
+      : category;
+
+    const setting =
+      command.includeInStatistics === undefined
+        ? undefined
+        : await this.categoriesRepository.upsertCategoryUserSetting(
+            command.userId,
+            category.categoryId,
+            { includeInStatistics: command.includeInStatistics },
+            updated.show
+          );
+
+    const existingSetting = category.categoryUserSettings[0];
 
     return {
       category_id: Number(updated.categoryId),
-      show: updated.show
+      show: updated.show,
+      include_in_statistics:
+        setting?.includeInStatistics ?? existingSetting?.includeInStatistics ?? true
     };
   }
 
   private normalizeName(categoryName: string): string {
     const normalizedName = categoryName.trim();
     if (!normalizedName) {
-      throw new AppException("VALIDATION_001", "카테고리명을 입력해주세요.", HttpStatus.BAD_REQUEST);
+      throw new AppException(
+        "VALIDATION_001",
+        "카테고리명을 입력해주세요.",
+        HttpStatus.BAD_REQUEST
+      );
     }
     return normalizedName;
   }
@@ -199,6 +229,7 @@ export class CategoriesService {
   private toItem(category: CategoryWithUserSettings): CategoryItem {
     const userSetting = category.categoryUserSettings[0];
     const show = category.isDefault ? (userSetting?.show ?? category.show) : category.show;
+    const includeInStatistics = userSetting?.includeInStatistics ?? true;
 
     return {
       category_id: Number(category.categoryId),
@@ -211,6 +242,7 @@ export class CategoriesService {
         provider_key: category.icon.iconDictionary.providerKey
       },
       show,
+      include_in_statistics: includeInStatistics,
       is_default: category.isDefault,
       editable: !category.isDefault,
       created_at: category.createdAt.toISOString(),

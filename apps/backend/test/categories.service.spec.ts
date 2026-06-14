@@ -12,7 +12,7 @@ describe("CategoriesService", () => {
     findAvailableIcon: jest.fn(),
     createUserCategory: jest.fn(),
     updateUserCategory: jest.fn(),
-    upsertDefaultCategoryShow: jest.fn()
+    upsertCategoryUserSetting: jest.fn()
   } as unknown as jest.Mocked<CategoriesRepository>;
 
   const service = new CategoriesService(categoriesRepository);
@@ -55,6 +55,7 @@ describe("CategoriesService", () => {
             userId: BigInt(1),
             categoryId: BigInt(1),
             show: false,
+            includeInStatistics: false,
             createdAt: now,
             updatedAt: now
           }
@@ -75,10 +76,65 @@ describe("CategoriesService", () => {
             provider_key: "restaurant"
           },
           show: false,
+          include_in_statistics: false,
           is_default: true,
           editable: false,
           created_at: "2026-01-01T00:00:00.000Z",
           updated_at: "2026-01-01T00:00:00.000Z"
+        }
+      ]
+    });
+  });
+
+  it("keeps statistics exclusion independent from show filtering", async () => {
+    categoriesRepository.findManyForUser.mockResolvedValue([
+      {
+        categoryId: BigInt(1),
+        userId: null,
+        iconId: BigInt(10),
+        categoryName: "식비",
+        show: true,
+        isDefault: true,
+        createdAt: now,
+        updatedAt: now,
+        icon: {
+          iconId: BigInt(10),
+          userId: null,
+          iconDictionaryId: BigInt(20),
+          show: true,
+          isDefault: true,
+          createdAt: now,
+          updatedAt: now,
+          iconDictionary: {
+            iconDictionaryId: BigInt(20),
+            iconCode: "food",
+            providerType: "material",
+            providerKey: "restaurant",
+            searchKeywords: [],
+            createdAt: now,
+            updatedAt: now
+          }
+        },
+        categoryUserSettings: [
+          {
+            categoryUserSettingId: BigInt(100),
+            userId: BigInt(1),
+            categoryId: BigInt(1),
+            show: true,
+            includeInStatistics: false,
+            createdAt: now,
+            updatedAt: now
+          }
+        ]
+      }
+    ]);
+
+    await expect(service.getCategories(BigInt(1), true)).resolves.toMatchObject({
+      items: [
+        {
+          category_id: 1,
+          show: true,
+          include_in_statistics: false
         }
       ]
     });
@@ -120,11 +176,12 @@ describe("CategoriesService", () => {
       updatedAt: now,
       categoryUserSettings: []
     });
-    categoriesRepository.upsertDefaultCategoryShow.mockResolvedValue({
+    categoriesRepository.upsertCategoryUserSetting.mockResolvedValue({
       categoryUserSettingId: BigInt(100),
       userId: BigInt(1),
       categoryId: BigInt(1),
       show: false,
+      includeInStatistics: true,
       createdAt: now,
       updatedAt: now
     });
@@ -137,8 +194,50 @@ describe("CategoriesService", () => {
       })
     ).resolves.toEqual({
       category_id: 1,
-      show: false
+      show: false,
+      include_in_statistics: true
     });
+  });
+
+  it("updates default category statistics inclusion per user", async () => {
+    categoriesRepository.findAvailableCategoryById.mockResolvedValue({
+      categoryId: BigInt(1),
+      userId: null,
+      iconId: BigInt(10),
+      categoryName: "식비",
+      show: true,
+      isDefault: true,
+      createdAt: now,
+      updatedAt: now,
+      categoryUserSettings: []
+    });
+    categoriesRepository.upsertCategoryUserSetting.mockResolvedValue({
+      categoryUserSettingId: BigInt(100),
+      userId: BigInt(1),
+      categoryId: BigInt(1),
+      show: true,
+      includeInStatistics: false,
+      createdAt: now,
+      updatedAt: now
+    });
+
+    await expect(
+      service.updateCategory({
+        userId: BigInt(1),
+        categoryId: BigInt(1),
+        includeInStatistics: false
+      })
+    ).resolves.toEqual({
+      category_id: 1,
+      show: true,
+      include_in_statistics: false
+    });
+    expect(categoriesRepository.upsertCategoryUserSetting).toHaveBeenCalledWith(
+      BigInt(1),
+      BigInt(1),
+      { includeInStatistics: false },
+      true
+    );
   });
 
   it("rejects default category name and icon changes", async () => {
@@ -198,6 +297,15 @@ describe("CategoriesService", () => {
       createdAt: now,
       updatedAt: now
     });
+    categoriesRepository.upsertCategoryUserSetting.mockResolvedValue({
+      categoryUserSettingId: BigInt(101),
+      userId: BigInt(1),
+      categoryId: BigInt(2),
+      show: false,
+      includeInStatistics: false,
+      createdAt: now,
+      updatedAt: now
+    });
 
     await expect(
       service.updateCategory({
@@ -205,11 +313,13 @@ describe("CategoriesService", () => {
         categoryId: BigInt(2),
         categoryName: "외식",
         iconId: BigInt(11),
-        show: false
+        show: false,
+        includeInStatistics: false
       })
     ).resolves.toEqual({
       category_id: 2,
-      show: false
+      show: false,
+      include_in_statistics: false
     });
   });
 });

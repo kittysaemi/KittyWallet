@@ -55,6 +55,14 @@ export class StatisticsRepository {
         gte: condition.startDate,
         lte: condition.endDate
       },
+      category: {
+        categoryUserSettings: {
+          none: {
+            userId: condition.userId,
+            includeInStatistics: false
+          }
+        }
+      },
       ...(condition.walletType ? { walletType: condition.walletType } : {}),
       ...(condition.walletId ? { walletId: condition.walletId } : {}),
       ...(condition.transactionType ? { transactionType: condition.transactionType } : {})
@@ -130,7 +138,12 @@ export class StatisticsRepository {
   }
 
   private async attachWalletAndCategoryNames(
-    rows: { walletId: bigint; walletType: WalletType; categoryId: bigint; _sum: { amount: Prisma.Decimal | null } }[]
+    rows: {
+      walletId: bigint;
+      walletType: WalletType;
+      categoryId: bigint;
+      _sum: { amount: Prisma.Decimal | null };
+    }[]
   ): Promise<WalletCategoryGroup[]> {
     const categoryIds = [...new Set(rows.map((r) => r.categoryId))];
     const accountIds = rows.filter((r) => r.walletType === "ACCOUNT").map((r) => r.walletId);

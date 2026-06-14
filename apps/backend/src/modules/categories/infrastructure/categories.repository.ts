@@ -80,10 +80,11 @@ export class CategoriesRepository {
     });
   }
 
-  upsertDefaultCategoryShow(
+  upsertCategoryUserSetting(
     userId: bigint,
     categoryId: bigint,
-    show: boolean
+    data: { show?: boolean; includeInStatistics?: boolean },
+    createShow: boolean
   ): Promise<CategoryUserSetting> {
     return this.prisma.categoryUserSetting.upsert({
       where: {
@@ -92,11 +93,12 @@ export class CategoriesRepository {
           categoryId
         }
       },
-      update: { show },
+      update: data,
       create: {
         user: { connect: { userId } },
         category: { connect: { categoryId } },
-        show
+        show: data.show ?? createShow,
+        includeInStatistics: data.includeInStatistics ?? true
       }
     });
   }
