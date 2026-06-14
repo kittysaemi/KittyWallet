@@ -398,4 +398,48 @@ describe("StatisticsService", () => {
       statusCode: HttpStatus.BAD_REQUEST
     } satisfies Partial<AppException>);
   });
+
+  it("passes userId to repository for category statistics exclusion filtering", async () => {
+    statisticsRepository.groupAmountsByTransactionType.mockResolvedValue([]);
+    statisticsRepository.groupDailyAmountsByTransactionType.mockResolvedValue([]);
+    statisticsRepository.groupAmountsByCategory.mockResolvedValue([]);
+
+    await service.getMonthlyStatistics({ userId: BigInt(42), month: "2026-06" });
+
+    expect(statisticsRepository.groupAmountsByTransactionType).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: BigInt(42) })
+    );
+    expect(statisticsRepository.groupDailyAmountsByTransactionType).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: BigInt(42) })
+    );
+  });
+
+  it("passes userId to repository for period statistics exclusion filtering", async () => {
+    statisticsRepository.groupDailyAmountsByTransactionType.mockResolvedValue([]);
+
+    await service.getPeriodStatistics({
+      userId: BigInt(42),
+      startDate: "2026-06-01",
+      endDate: "2026-06-30"
+    });
+
+    expect(statisticsRepository.groupDailyAmountsByTransactionType).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: BigInt(42) })
+    );
+  });
+
+  it("passes userId to repository for category exclusion in category statistics", async () => {
+    statisticsRepository.groupAmountsByCategory.mockResolvedValue([]);
+
+    await service.getCategoryStatistics({
+      userId: BigInt(42),
+      startDate: "2026-06-01",
+      endDate: "2026-06-30",
+      limit: 10
+    });
+
+    expect(statisticsRepository.groupAmountsByCategory).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: BigInt(42) })
+    );
+  });
 });
