@@ -1,3 +1,11 @@
+## [1.5.2](https://github.com/kittysaemi/KittyWallet/compare/v1.5.1...v1.5.2) (2026-06-14)
+
+
+### Bug Fixes
+
+* **ui:** 아이콘 관리 등록버튼 스타일을 계좌·카드·카테고리와 통일 ([df9248c](https://github.com/kittysaemi/KittyWallet/commit/df9248c9870b1c956c56d0ddc5a03aab475185e4))
+* **ui:** 아이콘 등록버튼 항상 표시 및 토글 방식으로 변경 ([c5d0c21](https://github.com/kittysaemi/KittyWallet/commit/c5d0c2187cedd9e4fa0d9f9ae6c3ea02912ac0fd))
+
 ## [1.5.1](https://github.com/kittysaemi/KittyWallet/compare/v1.5.0...v1.5.1) (2026-06-14)
 
 
