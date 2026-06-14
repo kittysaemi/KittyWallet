@@ -18,6 +18,7 @@
 * 계좌/카드는 `use_yn`으로 사용 여부 관리
 * 카테고리/아이콘은 `show` 값으로 화면 표시 여부 관리
 * 기본 카테고리와 기본 아이콘은 공통 데이터로 저장하고, 기본 카테고리의 사용자별 숨김 상태는 별도 테이블로 관리
+* 카테고리 통계 포함 여부는 사용자별 설정으로 관리하며 거래 원본과 잔액에는 영향을 주지 않는다
 
 ---
 
@@ -130,6 +131,7 @@ erDiagram
         BIGINT user_id FK "사용자 ID"
         BIGINT category_id FK "카테고리 ID"
         BOOLEAN show "사용자별 표시 여부"
+        BOOLEAN include_in_statistics "사용자별 통계 포함 여부. false면 통계 집계 제외"
         DATETIME created_at "생성일시"
         DATETIME updated_at "수정일시"
     }
@@ -200,13 +202,13 @@ erDiagram
 | USER → ACCOUNT         | 1:N | 한 사용자는 여러 계좌를 등록할 수 있다.                       |
 | USER → CARD            | 1:N | 한 사용자는 여러 카드를 등록할 수 있다.                       |
 | USER → CATEGORY        | 1:N | 한 사용자는 여러 사용자 카테고리를 등록할 수 있다. 기본 카테고리는 user_id가 NULL인 공통 데이터이다. |
-| USER → CATEGORY_USER_SETTING | 1:N | 한 사용자는 기본 카테고리의 표시 여부를 사용자별로 설정할 수 있다. |
+| USER → CATEGORY_USER_SETTING | 1:N | 한 사용자는 카테고리의 표시 여부와 통계 포함 여부를 사용자별로 설정할 수 있다. |
 | USER → ICON            | 1:N | 한 사용자는 여러 사용자 아이콘을 등록할 수 있다. 기본 아이콘은 user_id가 NULL인 공통 데이터이다. |
 | USER → USER_SETTING    | 1:N | 한 사용자는 여러 설정 값을 저장할 수 있다.                      |
 | USER → SYNC_CLIENT     | 1:N | 한 사용자는 여러 동기화 클라이언트 또는 기기를 가질 수 있다.        |
 | USER → SYNC_HISTORY    | 1:N | 한 사용자는 여러 동기화 이력을 가진다.                          |
 | TRANSACTION → CATEGORY | N:1 | 하나의 거래 내역은 하나의 카테고리에 연결된다.                    |
-| CATEGORY → CATEGORY_USER_SETTING | 1:N | 기본 카테고리는 사용자별 표시 설정을 가질 수 있다. |
+| CATEGORY → CATEGORY_USER_SETTING | 1:N | 카테고리는 사용자별 표시 설정과 통계 포함 설정을 가질 수 있다. |
 | TRANSACTION → ACCOUNT  | N:1 | 계좌 거래는 `wallet_type = ACCOUNT`이고 `wallet_id = account_id` 기준으로 계좌를 참조한다. |
 | TRANSACTION → CARD     | N:1 | 카드 거래는 `wallet_type = CARD`이고 `wallet_id = card_id` 기준으로 카드를 참조한다.       |
 | TRANSACTION → SYNC_CLIENT | N:1 | 오프라인 생성 거래는 서버 반영 시 클라이언트 식별자를 참조한다. |
@@ -257,6 +259,7 @@ erDiagram
 | CARD          | deleted_yn | 카드 아카이브(영구 삭제) 시 `true`로 변경한다. 연결 거래는 `delete_transactions` 옵션에 따라 함께 삭제 처리하거나 보존한다. 아카이브된 카드의 거래는 조회만 가능하고 수정 불가. |
 | CATEGORY      | show       | 사용자 카테고리 선택 목록 제외 시 `false`로 변경한다. 기본 카테고리의 기본 표시값이다. |
 | CATEGORY_USER_SETTING | show | 기본 카테고리의 사용자별 선택 목록 표시 여부를 관리한다. |
+| CATEGORY_USER_SETTING | include_in_statistics | 카테고리의 사용자별 통계 포함 여부를 관리한다. `false`면 모든 통계 집계에서 제외한다. |
 | ICON          | show       | 아이콘 선택 목록 제외 시 `false`로 변경한다.  |
 | REFRESH_TOKEN | revoked_at | 폐기 시 `revoked_at`을 현재 일시로 설정한다. 로그아웃, 비밀번호 재설정, 회원탈퇴 시 해당 사용자의 모든 토큰을 폐기한다. |
 

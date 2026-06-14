@@ -47,6 +47,9 @@
 - show=true 데이터만 신규 거래 선택 목록에 표시
 - 기본 카테고리는 명칭과 아이콘 수정 불가, 숨김 가능
 - 사용자 카테고리는 명칭, 아이콘, 표시 여부 수정 가능
+- 모든 카테고리는 사용자별 `include_in_statistics` 값을 가지며 기본값은 true
+- `include_in_statistics=false`는 통계 API 집계에서만 제외하며 거래내역, 최근 거래, 계좌 잔액에는 영향을 주지 않음
+- `show`와 `include_in_statistics`는 독립 설정이다
 - 카테고리 물리 삭제 API는 제공하지 않으며, 숨김은 `PUT /api/v1/categories/{id}`에서 `show=false`로 처리
 
 ## 기본 카테고리
@@ -156,6 +159,7 @@
         "category_name": "식비",
         "icon_id": 1,
         "show": true,
+        "include_in_statistics": true,
         "is_default": true,
         "editable": false,
         "created_at": "2026-05-30T02:00:00Z",
@@ -174,6 +178,7 @@
 | category_name | string | 카테고리명 |
 | icon_id | number | 카테고리 아이콘 ID |
 | show | boolean | 현재 사용자 기준 거래 등록 선택 목록 표시 여부 |
+| include_in_statistics | boolean | 현재 사용자 기준 통계 포함 여부. false면 통계 집계에서 제외 |
 | is_default | boolean | 기본 카테고리 여부 |
 | editable | boolean | 명칭/아이콘 수정 가능 여부. 기본 카테고리는 false |
 | created_at | string | 생성 시각, UTC ISO-8601 |
@@ -198,6 +203,8 @@
 - 카테고리 관리 화면은 `show`를 생략해 숨김 카테고리까지 표시한다.
 - 숨김 카테고리는 기존 거래 상세에서는 표시할 수 있으나 신규 거래 선택 목록에는 노출하지 않는다.
 - 기본 카테고리의 show 값은 사용자별 숨김 설정을 반영한 값이다.
+- 통계 제외 관리 UI는 `include_in_statistics` 값을 사용한다.
+- 통계 제외 상태는 신규 거래 선택 목록 표시 여부와 독립적으로 표시하고 저장한다.
 - 기본 카테고리는 관리 화면에서 숨김/표시 변경만 제공하고 명칭/아이콘 수정 UI는 제공하지 않는다.
 
 # 카테고리 수정/숨김 API
@@ -214,7 +221,8 @@
 {
   "category_name": "외식",
   "icon_id": 2,
-  "show": false
+  "show": false,
+  "include_in_statistics": false
 }
 ```
 
@@ -223,15 +231,17 @@
 | category_name | string | N | 변경할 카테고리명. 사용자 카테고리만 가능 |
 | icon_id | number | N | 변경할 아이콘 ID. 사용자 카테고리만 가능 |
 | show | boolean | N | 표시 여부. false면 거래 등록 선택 목록에서 제외 |
+| include_in_statistics | boolean | N | 통계 포함 여부. false면 통계 API 집계에서 제외 |
 
 ---
 
 ## 비즈니스 규칙
 
-- 기본 카테고리는 `show`만 변경할 수 있다.
+- 기본 카테고리는 `show`, `include_in_statistics`만 변경할 수 있다.
 - 기본 카테고리의 `category_name`, `icon_id` 변경 요청은 실패 처리한다.
-- 사용자 카테고리는 `category_name`, `icon_id`, `show`를 변경할 수 있다.
+- 사용자 카테고리는 `category_name`, `icon_id`, `show`, `include_in_statistics`를 변경할 수 있다.
 - 카테고리 숨김은 신규 거래 선택 목록에서만 제외하는 처리이며, 기존 거래에서는 계속 표시한다.
+- 카테고리 통계 제외는 통계 API 집계에서만 제외하는 처리이며, 거래내역, 최근 거래, 계좌 잔액에는 영향을 주지 않는다.
 - `PATCH /api/v1/categories/{id}`는 사용하지 않는다.
 
 ---
@@ -243,7 +253,8 @@
   "success": true,
   "data": {
     "category_id": 1,
-    "show": false
+    "show": false,
+    "include_in_statistics": false
   },
   "error": null
 }
