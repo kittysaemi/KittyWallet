@@ -285,6 +285,7 @@ const DashboardPage: React.FC = () => {
               <p className="text-xs font-medium text-[var(--color-text-secondary)]">최근 내역</p>
               <Link
                 to="/transactions"
+                state={{ reset: true }}
                 className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
               >
                 전체 보기 →
