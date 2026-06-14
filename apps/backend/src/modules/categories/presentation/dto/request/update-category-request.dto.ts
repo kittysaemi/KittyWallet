@@ -14,4 +14,8 @@ export class UpdateCategoryRequestDto {
   @IsOptional()
   @IsBoolean()
   show?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  include_in_statistics?: boolean;
 }

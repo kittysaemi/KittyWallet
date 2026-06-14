@@ -56,10 +56,7 @@ export class DashboardRepository {
       })
     ]);
 
-    const total_asset_amount = accounts.reduce(
-      (sum, a) => sum + a.currentBalance.toNumber(),
-      0
-    );
+    const total_asset_amount = accounts.reduce((sum, a) => sum + a.currentBalance.toNumber(), 0);
 
     return {
       total_asset_amount,
@@ -77,7 +74,15 @@ export class DashboardRepository {
     const baseWhere = {
       userId,
       deletedYn: false,
-      transactionDate: { gte: startDate, lte: endDate }
+      transactionDate: { gte: startDate, lte: endDate },
+      category: {
+        categoryUserSettings: {
+          none: {
+            userId,
+            includeInStatistics: false
+          }
+        }
+      }
     };
 
     const [incomeResult, expenseResult, cardExpenseResult] = await Promise.all([
@@ -112,10 +117,7 @@ export class DashboardRepository {
     };
   }
 
-  async getRecentTransactions(
-    userId: bigint,
-    limit: number
-  ): Promise<RecentTransactionData[]> {
+  async getRecentTransactions(userId: bigint, limit: number): Promise<RecentTransactionData[]> {
     const transactions = await this.prisma.transaction.findMany({
       where: { userId, deletedYn: false },
       include: { category: true },
@@ -126,9 +128,7 @@ export class DashboardRepository {
     const accountIds = transactions
       .filter((t) => t.walletType === "ACCOUNT")
       .map((t) => t.walletId);
-    const cardIds = transactions
-      .filter((t) => t.walletType === "CARD")
-      .map((t) => t.walletId);
+    const cardIds = transactions.filter((t) => t.walletType === "CARD").map((t) => t.walletId);
 
     const [accounts, cards] = await Promise.all([
       accountIds.length > 0
