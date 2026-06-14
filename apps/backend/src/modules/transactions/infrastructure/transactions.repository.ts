@@ -112,10 +112,10 @@ export class TransactionsRepository {
 
   findCardsByIds(
     ids: bigint[]
-  ): Promise<Pick<Card, "cardId" | "cardName" | "deletedYn">[]> {
+  ): Promise<Pick<Card, "cardId" | "cardName" | "deletedYn" | "useYn">[]> {
     return this.prisma.card.findMany({
       where: { cardId: { in: ids } },
-      select: { cardId: true, cardName: true, deletedYn: true }
+      select: { cardId: true, cardName: true, deletedYn: true, useYn: true }
     });
   }
 
