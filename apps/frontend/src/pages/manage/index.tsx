@@ -1469,19 +1469,18 @@ const IconsTab: React.FC = () => {
           <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
             사용자 아이콘
           </h2>
-          {!isRegistering && (
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => {
-                setIsRegistering(true);
-                setSearchText("");
-                setSelectedOption(undefined);
-              }}
-            >
-              등록
-            </Button>
-          )}
+          <button
+            type="button"
+            aria-label="아이콘 등록"
+            onClick={() => {
+              setIsRegistering((prev) => !prev);
+              setSearchText("");
+              setSelectedOption(undefined);
+            }}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-primary)] text-[var(--color-text-primary)] transition hover:bg-[var(--color-primary-hover)]"
+          >
+            <Plus size={20} aria-hidden="true" />
+          </button>
         </div>
 
         {isRegistering && (
