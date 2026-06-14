@@ -1470,17 +1470,18 @@ const IconsTab: React.FC = () => {
             사용자 아이콘
           </h2>
           {!isRegistering && (
-            <Button
+            <button
               type="button"
-              variant="secondary"
+              aria-label="아이콘 등록"
               onClick={() => {
                 setIsRegistering(true);
                 setSearchText("");
                 setSelectedOption(undefined);
               }}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-primary)] text-[var(--color-text-primary)] transition hover:bg-[var(--color-primary-hover)]"
             >
-              등록
-            </Button>
+              <Plus size={20} aria-hidden="true" />
+            </button>
           )}
         </div>
 
