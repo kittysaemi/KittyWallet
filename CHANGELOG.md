@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/kittysaemi/KittyWallet/compare/v1.4.0...v1.5.0) (2026-06-14)
+
+
+### Features
+
+* **ui:** 카테고리 관리 통계 제외 바텀시트 추가 ([#256](https://github.com/kittysaemi/KittyWallet/issues/256)) ([692eb98](https://github.com/kittysaemi/KittyWallet/commit/692eb9805e34c4f05ba8846069a6d120192644dc))
+
 # [1.4.0](https://github.com/kittysaemi/KittyWallet/compare/v1.3.1...v1.4.0) (2026-06-14)
 
 
