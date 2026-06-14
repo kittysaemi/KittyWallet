@@ -408,7 +408,7 @@ export class TransactionsService {
       accounts.map((a) => [String(a.accountId), { name: a.accountName, deleted: a.deletedYn }])
     );
     const cardMap = new Map(
-      cards.map((c) => [String(c.cardId), { name: c.cardName, deleted: c.deletedYn }])
+      cards.map((c) => [String(c.cardId), { name: c.cardName, deleted: c.deletedYn || !c.useYn }])
     );
 
     return transactions.map((t) => this.toItem(t, accountMap, cardMap));
@@ -429,7 +429,7 @@ export class TransactionsService {
       wallet_type: t.walletType,
       wallet_id: Number(t.walletId),
       wallet_name: wallet?.name ?? "",
-      wallet_deleted: wallet?.deleted ?? false,
+      wallet_deleted: wallet?.deleted ?? true,
       category_id: Number(t.categoryId),
       category_name: t.category.categoryName,
       transaction_type: t.transactionType,
