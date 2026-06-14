@@ -3,7 +3,6 @@ import { Navigate, Route, Routes, useLocation, useSearchParams } from "react-rou
 import { useAuthStore } from "../../entities/auth/store/authStore";
 import { BottomNav } from "../../shared/ui/BottomNav";
 import DashboardPage from "../../pages/dashboard";
-import AccountsPage from "../../pages/accounts";
 import TransactionsPage from "../../pages/transactions";
 import TransactionNewPage from "../../pages/transactions/new";
 import TransactionEditPage from "../../pages/transactions/edit";
@@ -11,9 +10,6 @@ import TransactionDetailPage from "../../pages/transactions/detail";
 import TransactionSearchPage from "../../pages/transactions/search";
 import StatisticsPage from "../../pages/statistics";
 import ManagePage from "../../pages/manage";
-import CardsPage from "../../pages/cards";
-import CategoriesPage from "../../pages/categories";
-import IconsPage from "../../pages/icons";
 import LoginPage from "../../pages/login";
 import SignupPage from "../../pages/signup";
 import ResetPasswordPage from "../../pages/reset-password";
@@ -99,38 +95,6 @@ export const AppRouter: React.FC = () => (
       element={
         <ProtectedRoute>
           <NavLayout><ManagePage /></NavLayout>
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path="/accounts"
-      element={
-        <ProtectedRoute>
-          <NavLayout><AccountsPage /></NavLayout>
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path="/cards"
-      element={
-        <ProtectedRoute>
-          <NavLayout><CardsPage /></NavLayout>
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path="/icons"
-      element={
-        <ProtectedRoute>
-          <NavLayout><IconsPage /></NavLayout>
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path="/categories"
-      element={
-        <ProtectedRoute>
-          <NavLayout><CategoriesPage /></NavLayout>
         </ProtectedRoute>
       }
     />
