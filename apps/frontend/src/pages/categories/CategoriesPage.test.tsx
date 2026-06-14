@@ -51,6 +51,7 @@ const successCategories = {
         show: true,
         is_default: true,
         editable: false,
+        include_in_statistics: true,
         created_at: "2026-06-02T00:00:00Z",
         updated_at: "2026-06-02T00:00:00Z"
       },
@@ -61,6 +62,7 @@ const successCategories = {
         show: false,
         is_default: false,
         editable: true,
+        include_in_statistics: true,
         created_at: "2026-06-02T00:00:00Z",
         updated_at: "2026-06-02T00:00:00Z"
       },
@@ -71,6 +73,7 @@ const successCategories = {
         show: true,
         is_default: false,
         editable: true,
+        include_in_statistics: true,
         created_at: "2026-06-02T00:00:00Z",
         updated_at: "2026-06-02T00:00:00Z"
       }

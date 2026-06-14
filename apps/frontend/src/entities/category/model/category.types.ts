@@ -9,6 +9,7 @@ export interface CategoryItem {
     provider_key: string;
   };
   show: boolean;
+  include_in_statistics: boolean;
   is_default: boolean;
   editable: boolean;
   created_at: string;
@@ -29,6 +30,7 @@ export interface UpdateCategoryRequest {
   category_name?: string;
   icon_id?: number;
   show?: boolean;
+  include_in_statistics?: boolean;
 }
 
 export interface ApiError {

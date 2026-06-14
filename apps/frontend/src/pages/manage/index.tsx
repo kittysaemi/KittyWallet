@@ -1,7 +1,7 @@
 import React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
-import { Plus, RotateCw, X } from "lucide-react";
+import { BadgeMinus, Plus, RotateCw, X } from "lucide-react";
 import { z } from "zod";
 import { accountApi } from "../../entities/account/api/accountApi";
 import type { AccountItem } from "../../entities/account/model/account.types";
@@ -13,6 +13,7 @@ import { iconApi } from "../../entities/icon/api/iconApi";
 import type { IconItem, IconOptionItem } from "../../entities/icon/model/icon.types";
 import { IconPickerSheet } from "../../features/icons/IconPickerSheet";
 import { IconSelect } from "../../features/icons/IconSelect";
+import { StatisticsExcludeSheet } from "../../features/categories/StatisticsExcludeSheet";
 import { Button } from "../../shared/ui/Button";
 import { IconRenderer } from "../../shared/ui/IconRenderer";
 import { useSearchParams } from "react-router-dom";
@@ -1059,6 +1060,7 @@ const CategoriesTab: React.FC = () => {
   const [isCreating, setIsCreating] = React.useState(false);
   const [newName, setNewName] = React.useState("");
   const [newIconId, setNewIconId] = React.useState<number | undefined>();
+  const [isExcludeSheetOpen, setIsExcludeSheetOpen] = React.useState(false);
   const [pickerTarget, setPickerTarget] = React.useState<
     { type: "create" } | { type: "edit"; item: CategoryItem } | null
   >(null);
@@ -1211,14 +1213,24 @@ const CategoriesTab: React.FC = () => {
           <p className="text-sm text-[var(--color-text-secondary)]">
             거래에 사용할 카테고리의 표시 여부를 관리합니다.
           </p>
-          <button
-            type="button"
-            aria-label="카테고리 등록"
-            onClick={() => setIsCreating((prev) => !prev)}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-primary)] text-[var(--color-text-primary)] transition hover:bg-[var(--color-primary-hover)]"
-          >
-            <Plus size={20} aria-hidden="true" />
-          </button>
+          <div className="flex shrink-0 gap-2">
+            <button
+              type="button"
+              aria-label="통계 제외 관리"
+              onClick={() => setIsExcludeSheetOpen(true)}
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-card)]"
+            >
+              <BadgeMinus size={20} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              aria-label="카테고리 등록"
+              onClick={() => setIsCreating((prev) => !prev)}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-primary)] text-[var(--color-text-primary)] transition hover:bg-[var(--color-primary-hover)]"
+            >
+              <Plus size={20} aria-hidden="true" />
+            </button>
+          </div>
         </header>
 
         {isLoading && (
@@ -1362,6 +1374,18 @@ const CategoriesTab: React.FC = () => {
         selectedIconId={pickerTarget?.type === "create" ? newIconId : pickerTarget?.item.icon_id}
         onClose={() => setPickerTarget(null)}
         onSelect={selectIcon}
+      />
+      <StatisticsExcludeSheet
+        isOpen={isExcludeSheetOpen}
+        categories={categories}
+        disabled={updateMutation.isPending}
+        onClose={() => setIsExcludeSheetOpen(false)}
+        onToggle={(category) =>
+          updateMutation.mutate({
+            categoryId: category.category_id,
+            data: { include_in_statistics: !category.include_in_statistics }
+          })
+        }
       />
     </>
   );
