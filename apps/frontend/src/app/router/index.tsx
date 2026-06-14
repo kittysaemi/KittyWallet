@@ -51,7 +51,7 @@ const RootRedirect: React.FC = () => {
 };
 
 const NavLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="flex h-screen flex-col overflow-hidden bg-[var(--color-bg-primary)]">
+  <div className="flex h-[100dvh] flex-col overflow-hidden bg-[var(--color-bg-primary)]">
     <div className="scrollbar-hide flex-1 overflow-y-auto">
       {children}
     </div>
