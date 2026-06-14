@@ -60,20 +60,26 @@ interface TransactionCardProps {
   item: TransactionItem;
   iconMap: Map<number, IconItem>;
   categoryIconMap: Map<number, number>;
+  onNavigate: () => void;
 }
 
-const TransactionCard: React.FC<TransactionCardProps> = ({ item, iconMap, categoryIconMap }) => {
+const TransactionCard: React.FC<TransactionCardProps> = ({ item, iconMap, categoryIconMap, onNavigate }) => {
   const navigate = useNavigate();
   const iconId = categoryIconMap.get(item.category_id);
   const icon = iconId ? iconMap.get(iconId) : undefined;
 
+  const handleNavigate = () => {
+    onNavigate();
+    navigate(`/transactions/${item.transaction_id}/edit`);
+  };
+
   return (
     <div
       className={`${cardClass} flex cursor-pointer items-center gap-3 p-4 transition hover:bg-[var(--color-bg-secondary)]`}
-      onClick={() => navigate(`/transactions/${item.transaction_id}/edit`)}
+      onClick={handleNavigate}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => e.key === "Enter" && navigate(`/transactions/${item.transaction_id}/edit`)}
+      onKeyDown={(e) => e.key === "Enter" && handleNavigate()}
     >
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-bg-secondary)]">
         {icon ? (
@@ -121,12 +127,33 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ item, iconMap, catego
   );
 };
 
+const TX_PAGE_STATE_KEY = "txPageState";
+
 const TransactionsPage: React.FC = () => {
   const timezone = useTimezone();
   const todayStr = getTodayInTimezone(timezone);
-  const [year, setYear] = React.useState(() => parseInt(todayStr.slice(0, 4), 10));
-  const [month, setMonth] = React.useState(() => parseInt(todayStr.slice(5, 7), 10));
-  const [page, setPage] = React.useState(1);
+
+  const initialRef = React.useRef<{ year: number; month: number; page: number } | null>(null);
+  if (initialRef.current === null) {
+    try {
+      const saved = sessionStorage.getItem(TX_PAGE_STATE_KEY);
+      if (saved) {
+        sessionStorage.removeItem(TX_PAGE_STATE_KEY);
+        initialRef.current = JSON.parse(saved) as { year: number; month: number; page: number };
+      }
+    } catch {}
+    if (initialRef.current === null) {
+      initialRef.current = {
+        year: parseInt(todayStr.slice(0, 4), 10),
+        month: parseInt(todayStr.slice(5, 7), 10),
+        page: 1,
+      };
+    }
+  }
+
+  const [year, setYear] = React.useState(initialRef.current.year);
+  const [month, setMonth] = React.useState(initialRef.current.month);
+  const [page, setPage] = React.useState(initialRef.current.page);
   const isOffline = !navigator.onLine;
 
   const { start, end } = getMonthRange(year, month);
@@ -167,6 +194,10 @@ const TransactionsPage: React.FC = () => {
   const totalCount = query.data?.data?.total_count ?? 0;
   const totalPages = Math.ceil(totalCount / 20);
   const grouped = groupByDate(items);
+
+  const savePageState = React.useCallback(() => {
+    sessionStorage.setItem(TX_PAGE_STATE_KEY, JSON.stringify({ year, month, page }));
+  }, [year, month, page]);
 
   function prevMonth() {
     if (month === 1) { setYear(y => y - 1); setMonth(12); }
@@ -289,6 +320,7 @@ const TransactionsPage: React.FC = () => {
                         item={tx}
                         iconMap={iconMap}
                         categoryIconMap={categoryIconMap}
+                        onNavigate={savePageState}
                       />
                     ))}
                   </div>
