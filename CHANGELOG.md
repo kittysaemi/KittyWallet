@@ -1,3 +1,11 @@
+## [1.5.1](https://github.com/kittysaemi/KittyWallet/compare/v1.5.0...v1.5.1) (2026-06-14)
+
+
+### Bug Fixes
+
+* **ui:** 거래 수정 후 거래내역 페이지 위치 초기화 버그 수정 ([#272](https://github.com/kittysaemi/KittyWallet/issues/272)) ([c4c5771](https://github.com/kittysaemi/KittyWallet/commit/c4c57710baabf19f5bf655c0a801c39217c854c3))
+* 거래 수정 후 페이지/스크롤 위치 초기화 및 비활성 카드 404 오류 수정 ([2c276a5](https://github.com/kittysaemi/KittyWallet/commit/2c276a5e3f52d064431522f4bc59f32db03b271f))
+
 # [1.5.0](https://github.com/kittysaemi/KittyWallet/compare/v1.4.0...v1.5.0) (2026-06-14)
 
 
