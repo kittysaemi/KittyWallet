@@ -1,3 +1,10 @@
+## [1.3.1](https://github.com/kittysaemi/KittyWallet/compare/v1.3.0...v1.3.1) (2026-06-14)
+
+
+### Bug Fixes
+
+* **frontend:** iOS Chrome 하단 네비게이션바 고정 안 됨 수정 (100vh → 100dvh) ([51bd914](https://github.com/kittysaemi/KittyWallet/commit/51bd91473a1e75dc4cae9002bb94eb7f08ecee47)), closes [#251](https://github.com/kittysaemi/KittyWallet/issues/251)
+
 # [1.3.0](https://github.com/kittysaemi/KittyWallet/compare/v1.2.4...v1.3.0) (2026-06-13)
 
 
