@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/kittysaemi/KittyWallet/compare/v1.5.3...v1.6.0) (2026-06-16)
+
+
+### Features
+
+* **api:** 거래 목록 지갑 필터 검증 및 카드 기간 지출 합계 지원 ([#282](https://github.com/kittysaemi/KittyWallet/issues/282)) ([e8596c8](https://github.com/kittysaemi/KittyWallet/commit/e8596c88863cca3ac19c26a2dd02666a28fa6f2f))
+
 ## [1.5.3](https://github.com/kittysaemi/KittyWallet/compare/v1.5.2...v1.5.3) (2026-06-14)
 
 
