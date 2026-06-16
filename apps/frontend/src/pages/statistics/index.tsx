@@ -13,7 +13,7 @@ import {
 import { ChevronLeft, ChevronRight, RefreshCw, WifiOff } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { useTimezone } from "../../shared/hooks/useTimezone";
-import { getTodayInTimezone, toDateValue, getWeekRange, formatWeekLabel } from "../../shared/utils/date";
+import { getTodayInTimezone, getWeekRange, formatWeekLabel } from "../../shared/utils/date";
 import { statisticsApi } from "../../entities/statistics/api/statisticsApi";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import type {

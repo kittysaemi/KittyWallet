@@ -10,7 +10,7 @@ import { iconApi } from "../../entities/icon/api/iconApi";
 import type { IconItem } from "../../entities/icon/model/icon.types";
 import { TransactionReadOnlyRow } from "../../entities/transaction/ui/TransactionReadOnlyRow";
 import { useTimezone } from "../../shared/hooks/useTimezone";
-import { getTodayInTimezone, toDateValue, getWeekRange, formatWeekLabel } from "../../shared/utils/date";
+import { getTodayInTimezone, getWeekRange, formatWeekLabel } from "../../shared/utils/date";
 
 type PeriodType = "year" | "month" | "week";
 
