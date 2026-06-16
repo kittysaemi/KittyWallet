@@ -173,6 +173,35 @@ export class TransactionsRepository {
     });
   }
 
+  async sumCardExpense(
+    userId: bigint,
+    walletId: bigint,
+    startDate?: Date,
+    endDate?: Date
+  ): Promise<number> {
+    const dateFilter: Prisma.DateTimeFilter | undefined =
+      startDate || endDate
+        ? {
+            ...(startDate ? { gte: startDate } : {}),
+            ...(endDate ? { lte: endDate } : {})
+          }
+        : undefined;
+
+    const result = await this.prisma.transaction.aggregate({
+      where: {
+        userId,
+        walletType: "CARD",
+        walletId,
+        transactionType: "EXPENSE",
+        deletedYn: false,
+        ...(dateFilter ? { transactionDate: dateFilter } : {})
+      },
+      _sum: { amount: true }
+    });
+
+    return result._sum.amount?.toNumber() ?? 0;
+  }
+
   create(input: CreateTransactionInput): Promise<Transaction> {
     return this.prisma.transaction.create({
       data: {
