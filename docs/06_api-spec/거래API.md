@@ -511,6 +511,8 @@
 
 거래 내역 화면에서 기간, 키워드, 계좌, 카드, 카테고리 조건으로 거래 목록을 조회한다.
 
+지갑별 거래내역 화면(계좌별/카드별)에서도 이 API를 `wallet_type + wallet_id` 필터로 호출한다.
+
 ## Endpoint
 
 `GET /api/v1/transactions`
@@ -566,11 +568,26 @@ Authorization: Bearer {access_token}
     ],
     "page": 1,
     "limit": 20,
-    "total_count": 1
+    "total_count": 1,
+    "period_summary": {
+      "total_expense": 482000
+    }
   },
   "error": null
 }
 ```
+
+### period_summary 필드 정의
+
+`wallet_type` + `wallet_id`가 모두 전달된 경우에만 반환된다. wallet 필터 미전달 시 `null`이다.
+
+| 필드 | 타입 | 조건 | 설명 |
+|---|---|---|---|
+| period_summary | object \| null | `wallet_type=CARD` + `wallet_id` 전달 시만 포함 | 카드 기간 지출 합계 정보 |
+| period_summary.total_expense | number | — | 선택 기간 전체 기준 카드 지출 총 합계. 페이지 크기와 무관하게 전체 기간의 합계를 반환한다. |
+
+- `wallet_type=ACCOUNT` 또는 wallet 필터 미전달 시 `period_summary`는 `null`이다.
+- `total_expense`는 `deleted_yn=false` 거래만 집계한다.
 
 ---
 
