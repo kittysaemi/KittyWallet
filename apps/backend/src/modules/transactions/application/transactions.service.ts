@@ -333,9 +333,23 @@ export class TransactionsService {
     };
   }
 
-  async getTransactions(
-    command: GetTransactionsCommand
-  ): Promise<{ items: TransactionItem[]; page: number; limit: number; total_count: number }> {
+  async getTransactions(command: GetTransactionsCommand): Promise<{
+    items: TransactionItem[];
+    page: number;
+    limit: number;
+    total_count: number;
+    period_summary: { total_expense: number } | null;
+  }> {
+    const hasWalletType = command.walletType !== undefined;
+    const hasWalletId = command.walletId !== undefined;
+    if (hasWalletType !== hasWalletId) {
+      throw new AppException(
+        "TX_006",
+        "wallet_type과 wallet_id는 함께 전달해야 합니다.",
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
     const condition: FindTransactionsCondition = {
       userId: command.userId,
       startDate: command.startDate ? new Date(command.startDate) : undefined,
@@ -349,14 +363,25 @@ export class TransactionsService {
 
     const orderBy = this.buildOrderBy(command.sort);
 
-    const [transactions, total] = await Promise.all([
+    const isCardFilter = command.walletType === "CARD" && command.walletId !== undefined;
+
+    const [transactions, total, cardExpense] = await Promise.all([
       this.transactionsRepository.findMany(condition, command.page, command.limit, orderBy),
-      this.transactionsRepository.count(condition)
+      this.transactionsRepository.count(condition),
+      isCardFilter
+        ? this.transactionsRepository.sumCardExpense(
+            command.userId,
+            BigInt(command.walletId!),
+            condition.startDate,
+            condition.endDate
+          )
+        : Promise.resolve(null)
     ]);
 
     const items = await this.attachWalletNames(transactions);
+    const period_summary = isCardFilter ? { total_expense: cardExpense as number } : null;
 
-    return { items, page: command.page, limit: command.limit, total_count: total };
+    return { items, page: command.page, limit: command.limit, total_count: total, period_summary };
   }
 
   async getTransaction(transactionId: bigint, userId: bigint): Promise<TransactionItem> {

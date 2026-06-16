@@ -71,6 +71,11 @@ describe("TransactionsService", () => {
     findCard: jest.fn(),
     findCategory: jest.fn(),
     findById: jest.fn(),
+    findMany: jest.fn(),
+    findAccountsByIds: jest.fn(),
+    findCardsByIds: jest.fn(),
+    count: jest.fn(),
+    sumCardExpense: jest.fn(),
     create: jest.fn(),
     createWithAccountBalanceUpdate: jest.fn(),
     update: jest.fn(),
@@ -98,6 +103,92 @@ describe("TransactionsService", () => {
     amount: 15000,
     transactionDate: "2026-05-29"
   };
+
+  const baseListCommand = {
+    userId: BigInt(1),
+    page: 1,
+    limit: 20,
+    sort: "transaction_date_desc"
+  };
+
+  describe("getTransactions", () => {
+    it("rejects wallet_type without wallet_id (TX_006)", async () => {
+      await expect(
+        service.getTransactions({ ...baseListCommand, walletType: "CARD" })
+      ).rejects.toMatchObject({ code: "TX_006", statusCode: HttpStatus.BAD_REQUEST });
+    });
+
+    it("rejects wallet_id without wallet_type (TX_006)", async () => {
+      await expect(
+        service.getTransactions({ ...baseListCommand, walletId: 1 })
+      ).rejects.toMatchObject({ code: "TX_006", statusCode: HttpStatus.BAD_REQUEST });
+    });
+
+    it("returns period_summary with card total_expense for CARD filter", async () => {
+      transactionsRepository.findMany.mockResolvedValue([]);
+      transactionsRepository.count.mockResolvedValue(0);
+      transactionsRepository.sumCardExpense.mockResolvedValue(482000);
+
+      const result = await service.getTransactions({
+        ...baseListCommand,
+        walletType: "CARD",
+        walletId: 3
+      });
+
+      expect(result.period_summary).toEqual({ total_expense: 482000 });
+      expect(transactionsRepository.sumCardExpense).toHaveBeenCalledWith(
+        BigInt(1),
+        BigInt(3),
+        undefined,
+        undefined
+      );
+    });
+
+    it("returns period_summary null for ACCOUNT filter", async () => {
+      transactionsRepository.findMany.mockResolvedValue([]);
+      transactionsRepository.count.mockResolvedValue(0);
+
+      const result = await service.getTransactions({
+        ...baseListCommand,
+        walletType: "ACCOUNT",
+        walletId: 1
+      });
+
+      expect(result.period_summary).toBeNull();
+      expect(transactionsRepository.sumCardExpense).not.toHaveBeenCalled();
+    });
+
+    it("returns period_summary null when no wallet filter", async () => {
+      transactionsRepository.findMany.mockResolvedValue([]);
+      transactionsRepository.count.mockResolvedValue(0);
+
+      const result = await service.getTransactions(baseListCommand);
+
+      expect(result.period_summary).toBeNull();
+      expect(transactionsRepository.sumCardExpense).not.toHaveBeenCalled();
+    });
+
+    it("passes date range to sumCardExpense", async () => {
+      transactionsRepository.findMany.mockResolvedValue([]);
+      transactionsRepository.count.mockResolvedValue(0);
+      transactionsRepository.sumCardExpense.mockResolvedValue(0);
+
+      await service.getTransactions({
+        ...baseListCommand,
+        walletType: "CARD",
+        walletId: 3,
+        startDate: "2026-06-01",
+        endDate: "2026-06-30"
+      });
+
+      expect(transactionsRepository.sumCardExpense).toHaveBeenCalledWith(
+        BigInt(1),
+        BigInt(3),
+        new Date("2026-06-01"),
+        new Date("2026-06-30")
+      );
+    });
+  });
 
   it("rejects INCOME + CARD combination", async () => {
     await expect(
