@@ -15,6 +15,7 @@ import SignupPage from "../../pages/signup";
 import ResetPasswordPage from "../../pages/reset-password";
 import SettingsPage from "../../pages/settings";
 import AppSettingsPage from "../../pages/settings/app";
+import WalletTransactionsPage from "../../pages/wallet-transactions/WalletTransactionsPage";
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -159,6 +160,22 @@ export const AppRouter: React.FC = () => (
       element={
         <ProtectedRoute>
           <NavLayout><AppSettingsPage /></NavLayout>
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/accounts/:walletId/transactions"
+      element={
+        <ProtectedRoute>
+          <WalletTransactionsPage walletType="ACCOUNT" />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/cards/:walletId/transactions"
+      element={
+        <ProtectedRoute>
+          <WalletTransactionsPage walletType="CARD" />
         </ProtectedRoute>
       }
     />

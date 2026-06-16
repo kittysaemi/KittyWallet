@@ -10,13 +10,12 @@ import {
 
 import { Link, useNavigate } from "react-router-dom";
 import { dashboardApi } from "../../entities/dashboard/api/dashboardApi";
-import type { DashboardTransaction } from "../../entities/dashboard/model/dashboard.types";
 import { useAuthStore } from "../../entities/auth/store/authStore";
 import { authApi } from "../../entities/auth/api/authApi";
 import { categoryApi } from "../../entities/category/api/categoryApi";
 import { iconApi } from "../../entities/icon/api/iconApi";
 import type { IconItem } from "../../entities/icon/model/icon.types";
-import { IconRenderer } from "../../shared/ui/IconRenderer";
+import { TransactionReadOnlyRow } from "../../entities/transaction/ui/TransactionReadOnlyRow";
 import PwaInstallBanner from "../../shared/ui/PwaInstallBanner";
 
 const cardClass =
@@ -24,11 +23,6 @@ const cardClass =
 
 function fmt(n: number): string {
   return n.toLocaleString("ko-KR");
-}
-
-function formatDate(dateStr: string): string {
-  const d = new Date(`${dateStr}T00:00:00`);
-  return `${d.getMonth() + 1}월 ${d.getDate()}일 (${["일", "월", "화", "수", "목", "금", "토"][d.getDay()]})`;
 }
 
 // ─── Skeleton ────────────────────────────────────────────────
@@ -41,59 +35,6 @@ const SkeletonCard: React.FC<{ rows?: number; tall?: boolean }> = ({ rows = 2, t
   </div>
 );
 
-// ─── 최근 거래 항목 ──────────────────────────────────────────
-interface TxRowProps {
-  tx: DashboardTransaction;
-  iconMap: Map<number, IconItem>;
-  categoryIconMap: Map<number, number>;
-}
-const TxRow: React.FC<TxRowProps> = ({ tx, iconMap, categoryIconMap }) => {
-  const navigate = useNavigate();
-  const isIncome = tx.transaction_type === "INCOME";
-  const iconId = categoryIconMap.get(tx.category_id);
-  const icon = iconId ? iconMap.get(iconId) : undefined;
-  return (
-    <div
-      className="flex cursor-pointer items-center gap-3 px-1 py-3 rounded-xl transition hover:bg-[var(--color-bg-secondary)]"
-      onClick={() => navigate(`/transactions/${tx.transaction_id}`)}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => e.key === "Enter" && navigate(`/transactions/${tx.transaction_id}`)}
-    >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--color-bg-secondary)]">
-        {icon ? (
-          <IconRenderer providerType={icon.provider_type} providerKey={icon.provider_key} size={18} className="text-[var(--color-text-secondary)]" />
-        ) : (
-          <span className="text-sm font-semibold text-[var(--color-text-secondary)]">{tx.category_name.slice(0, 1)}</span>
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="flex min-w-0 items-center gap-1 text-sm font-medium text-[var(--color-text-primary)]">
-          <span className="truncate">{tx.category_name}</span>
-          {tx.memo && (
-            <>
-              <span className="shrink-0 text-[var(--color-text-caption)]">·</span>
-              <span className="truncate text-[var(--color-text-secondary)]">{tx.memo}</span>
-            </>
-          )}
-        </p>
-        <p className="flex items-center gap-1 truncate text-xs text-[var(--color-text-secondary)]">
-          <span className="shrink-0">{formatDate(tx.transaction_date)}</span>
-          <span className="shrink-0 text-[var(--color-text-caption)]">·</span>
-          <span className="truncate">{tx.wallet_name}</span>
-          {tx.wallet_deleted && (
-            <span className="shrink-0 inline-block rounded px-1 py-0.5 text-[10px] font-medium leading-none bg-[var(--color-bg-secondary)] text-[var(--color-text-caption)]">
-              삭제된 지갑
-            </span>
-          )}
-        </p>
-      </div>
-      <p className={`shrink-0 text-sm font-semibold ${isIncome ? "text-blue-500" : "text-red-500"}`}>
-        {isIncome ? "+" : "-"}{fmt(tx.amount)}원
-      </p>
-    </div>
-  );
-};
 
 // ─── 요약 섹션 카드 ──────────────────────────────────────────
 interface SumCardProps {
@@ -304,7 +245,7 @@ const DashboardPage: React.FC = () => {
             ) : (
               <div className="divide-y divide-[var(--color-border-secondary)]">
                 {data.recent_transactions.map((tx) => (
-                  <TxRow key={tx.transaction_id} tx={tx} iconMap={iconMap} categoryIconMap={categoryIconMap} />
+                  <TransactionReadOnlyRow key={tx.transaction_id} tx={tx} iconMap={iconMap} categoryIconMap={categoryIconMap} />
                 ))}
               </div>
             )}
