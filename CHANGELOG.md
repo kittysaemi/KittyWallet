@@ -1,3 +1,15 @@
+# [1.7.0](https://github.com/kittysaemi/KittyWallet/compare/v1.6.0...v1.7.0) (2026-06-17)
+
+
+### Bug Fixes
+
+* **frontend:** toDateValue 미사용 import 제거로 lint 오류 수정 ([e00159d](https://github.com/kittysaemi/KittyWallet/commit/e00159d4adc4512caeb74458391aad8e0056be20))
+
+
+### Features
+
+* **frontend:** 지갑별 거래내역 화면 및 공용 컴포넌트 구현 ([#283](https://github.com/kittysaemi/KittyWallet/issues/283) [#284](https://github.com/kittysaemi/KittyWallet/issues/284) [#285](https://github.com/kittysaemi/KittyWallet/issues/285)) ([8638e24](https://github.com/kittysaemi/KittyWallet/commit/8638e242316043ce86f78105b7498196006b8649))
+
 # [1.6.0](https://github.com/kittysaemi/KittyWallet/compare/v1.5.3...v1.6.0) (2026-06-16)
 
 
