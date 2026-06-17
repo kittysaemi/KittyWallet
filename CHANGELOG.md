@@ -1,3 +1,10 @@
+## [1.7.1](https://github.com/kittysaemi/KittyWallet/compare/v1.7.0...v1.7.1) (2026-06-17)
+
+
+### Bug Fixes
+
+* **test:** 테스트 픽스처 타입 오류 수정 — icon_id null→number, use_yn 제거, TransactionItem 명시 ([35731fa](https://github.com/kittysaemi/KittyWallet/commit/35731fa0cacd6c95c944bc952114e6142e7837f9))
+
 # [1.7.0](https://github.com/kittysaemi/KittyWallet/compare/v1.6.0...v1.7.0) (2026-06-17)
 
 
