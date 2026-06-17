@@ -9,6 +9,7 @@ import { cardApi } from "../../entities/card/api/cardApi";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import { categoryApi } from "../../entities/category/api/categoryApi";
 import { iconApi } from "../../entities/icon/api/iconApi";
+import type { TransactionItem } from "../../entities/transaction/model/transaction.types";
 
 vi.mock("../../entities/account/api/accountApi", () => ({
   accountApi: { getAccounts: vi.fn() }
@@ -42,12 +43,11 @@ const ACCOUNTS_DATA = {
       {
         account_id: 1,
         account_name: "생활통장",
-        icon_id: null,
+        icon_id: 1,
         initial_balance: 0,
         current_balance: 320000,
         allow_negative_balance: false,
-        negative_balance_limit: null,
-        use_yn: true,
+        negative_balance_limit: 0,
         created_at: "2026-01-01T00:00:00Z",
         updated_at: "2026-01-01T00:00:00Z"
       }
@@ -63,7 +63,7 @@ const CARDS_DATA = {
       {
         card_id: 2,
         card_name: "신한카드",
-        icon_id: null,
+        icon_id: 1,
         use_yn: true,
         created_at: "2026-01-01T00:00:00Z",
         updated_at: "2026-01-01T00:00:00Z"
@@ -73,7 +73,7 @@ const CARDS_DATA = {
   error: null
 };
 
-const makeTxPage = (items = [] as object[], total_count = 0) => ({
+const makeTxPage = (items: TransactionItem[] = [], total_count = 0) => ({
   success: true,
   data: { items, total_count, page: 1, limit: 20, period_summary: null },
   error: null
@@ -91,7 +91,7 @@ const makeTxPageWithSummary = (total_expense: number) => ({
   error: null
 });
 
-const makeTx = (id: number) => ({
+const makeTx = (id: number): TransactionItem => ({
   transaction_id: id,
   wallet_type: "ACCOUNT",
   wallet_id: 1,
