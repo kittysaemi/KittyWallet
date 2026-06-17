@@ -21,6 +21,7 @@ export interface TransactionListData {
   page: number;
   limit: number;
   total_count: number;
+  period_summary?: { total_expense: number } | null;
 }
 
 export interface CreateTransactionRequest {

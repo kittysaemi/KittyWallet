@@ -13,7 +13,7 @@ import {
 import { ChevronLeft, ChevronRight, RefreshCw, WifiOff } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { useTimezone } from "../../shared/hooks/useTimezone";
-import { getTodayInTimezone } from "../../shared/utils/date";
+import { getTodayInTimezone, getWeekRange, formatWeekLabel } from "../../shared/utils/date";
 import { statisticsApi } from "../../entities/statistics/api/statisticsApi";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import type {
@@ -53,22 +53,8 @@ interface ChartItem {
 const cardClass =
   "rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] shadow-[0_4px_16px_var(--color-card-shadow)]";
 
-function toDateValue(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
-    date.getDate()
-  ).padStart(2, "0")}`;
-}
-
 function formatMonthValue(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-}
-
-function getWeekRange(date: Date): { start: string; end: string } {
-  const start = new Date(date);
-  start.setDate(date.getDate() - date.getDay());
-  const end = new Date(start);
-  end.setDate(start.getDate() + 6);
-  return { start: toDateValue(start), end: toDateValue(end) };
 }
 
 function formatAmount(amount: number): string {
@@ -82,12 +68,6 @@ function formatSignedAmount(amount: number, type: "INCOME" | "EXPENSE"): string 
 
 function formatMonthLabel(date: Date): string {
   return `${date.getFullYear()}년 ${date.getMonth() + 1}월`;
-}
-
-function formatWeekLabel(range: { start: string; end: string }): string {
-  const s = new Date(`${range.start}T00:00:00`);
-  const e = new Date(`${range.end}T00:00:00`);
-  return `${s.getMonth() + 1}월 ${s.getDate()}일 - ${e.getMonth() + 1}월 ${e.getDate()}일`;
 }
 
 function toChartItems(items: MonthlyDailyItem[]): ChartItem[] {

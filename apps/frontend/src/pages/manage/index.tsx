@@ -16,7 +16,7 @@ import { IconSelect } from "../../features/icons/IconSelect";
 import { StatisticsExcludeSheet } from "../../features/categories/StatisticsExcludeSheet";
 import { Button } from "../../shared/ui/Button";
 import { IconRenderer } from "../../shared/ui/IconRenderer";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   invalidateAccountCaches,
   invalidateCardCaches,
@@ -119,6 +119,7 @@ const ArchiveDialog: React.FC<{
 // ─── Accounts Tab ─────────────────────────────────────────
 const AccountsTab: React.FC = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const isOffline = !navigator.onLine;
   const [isCreating, setIsCreating] = React.useState(false);
   const [newName, setNewName] = React.useState("");
@@ -452,13 +453,18 @@ const AccountsTab: React.FC = () => {
               return (
                 <div
                   key={account.account_id}
-                  className={`${cardClass} relative flex items-center gap-4 p-4`}
+                  className={`${cardClass} relative flex cursor-pointer items-center gap-4 p-4 transition hover:bg-[var(--color-bg-secondary)]`}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => navigate(`/accounts/${account.account_id}/transactions`)}
+                  onKeyDown={(e) => e.key === "Enter" && navigate(`/accounts/${account.account_id}/transactions`)}
+                  aria-label={`${account.account_name} 거래 내역으로 이동`}
                 >
                   <button
                     type="button"
                     aria-label={`${account.account_name} 아이콘 변경`}
                     disabled={isPending}
-                    onClick={() => setPickerTarget({ type: "edit", item: account })}
+                    onClick={(e) => { e.stopPropagation(); setPickerTarget({ type: "edit", item: account }); }}
                     className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] disabled:cursor-not-allowed"
                   >
                     {icon ? (
@@ -480,7 +486,9 @@ const AccountsTab: React.FC = () => {
                         autoFocus
                         onChange={(e) => setEditingName(e.target.value)}
                         onBlur={() => saveName(account)}
+                        onClick={(e) => e.stopPropagation()}
                         onKeyDown={(e) => {
+                          e.stopPropagation();
                           if (e.key === "Enter") saveName(account);
                           if (e.key === "Escape") {
                             setEditingId(null);
@@ -494,7 +502,8 @@ const AccountsTab: React.FC = () => {
                         type="button"
                         aria-label={`${account.account_name} 이름 변경`}
                         disabled={isPending}
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           if (isPending) return;
                           setEditingId(account.account_id);
                           setEditingName(account.account_name);
@@ -524,7 +533,7 @@ const AccountsTab: React.FC = () => {
                     type="button"
                     aria-label={`${account.account_name} 삭제`}
                     disabled={isPending}
-                    onClick={() => setArchiveTarget(account)}
+                    onClick={(e) => { e.stopPropagation(); setArchiveTarget(account); }}
                     className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full text-[var(--color-text-caption)] transition hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-danger)] disabled:cursor-not-allowed"
                   >
                     <X size={16} aria-hidden="true" />
@@ -564,6 +573,7 @@ const AccountsTab: React.FC = () => {
 // ─── Cards Tab ────────────────────────────────────────────
 const CardsTab: React.FC = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const isOffline = !navigator.onLine;
   const [isCreating, setIsCreating] = React.useState(false);
   const [newName, setNewName] = React.useState("");
@@ -817,13 +827,18 @@ const CardsTab: React.FC = () => {
               return (
                 <div
                   key={card.card_id}
-                  className={`${cardClass} relative flex items-center gap-4 p-4`}
+                  className={`${cardClass} relative flex cursor-pointer items-center gap-4 p-4 transition hover:bg-[var(--color-bg-secondary)]`}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => navigate(`/cards/${card.card_id}/transactions`)}
+                  onKeyDown={(e) => e.key === "Enter" && navigate(`/cards/${card.card_id}/transactions`)}
+                  aria-label={`${card.card_name} 거래 내역으로 이동`}
                 >
                   <button
                     type="button"
                     aria-label={`${card.card_name} 아이콘 변경`}
                     disabled={isPending}
-                    onClick={() => setPickerTarget({ type: "edit", item: card })}
+                    onClick={(e) => { e.stopPropagation(); setPickerTarget({ type: "edit", item: card }); }}
                     className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] disabled:cursor-not-allowed"
                   >
                     {icon ? (
@@ -845,7 +860,9 @@ const CardsTab: React.FC = () => {
                         autoFocus
                         onChange={(e) => setEditingName(e.target.value)}
                         onBlur={() => saveName(card)}
+                        onClick={(e) => e.stopPropagation()}
                         onKeyDown={(e) => {
+                          e.stopPropagation();
                           if (e.key === "Enter") saveName(card);
                           if (e.key === "Escape") {
                             setEditingId(null);
@@ -859,7 +876,8 @@ const CardsTab: React.FC = () => {
                         type="button"
                         aria-label={`${card.card_name} 이름 변경`}
                         disabled={isPending}
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           if (isPending) return;
                           setEditingId(card.card_id);
                           setEditingName(card.card_name);
@@ -879,7 +897,7 @@ const CardsTab: React.FC = () => {
                     type="button"
                     aria-label={`${card.card_name} 삭제`}
                     disabled={isPending}
-                    onClick={() => setArchiveTarget(card)}
+                    onClick={(e) => { e.stopPropagation(); setArchiveTarget(card); }}
                     className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full text-[var(--color-text-caption)] transition hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-danger)] disabled:cursor-not-allowed"
                   >
                     <X size={16} aria-hidden="true" />
