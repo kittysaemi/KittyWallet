@@ -1375,7 +1375,10 @@ const StatisticsPage: React.FC = () => {
         const isFutureMonth =
           next.getFullYear() > today.getFullYear() ||
           (next.getFullYear() === today.getFullYear() && next.getMonth() > today.getMonth());
-        return isFutureMonth ? cur : next;
+        if (isFutureMonth) return cur;
+        // 같은 달이더라도 날짜(일)가 오늘을 초과하면 today로 고정
+        // (주별 모드 전환 시 미래 주가 되는 것을 방지)
+        return next > today ? new Date(today) : next;
       }
     });
   }
