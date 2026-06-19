@@ -1396,6 +1396,7 @@ const StatisticsPage: React.FC = () => {
   }
 
   function handleViewModeChange(mode: ViewMode) {
+    setBaseDate(new Date(today));
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.set("mode", mode);
