@@ -20,8 +20,17 @@ export function getWeekRange(date: Date): { start: string; end: string } {
   return { start: toDateValue(start), end: toDateValue(end) };
 }
 
-export function formatWeekLabel(range: { start: string; end: string }): string {
+export function formatWeekLabel(range: { start: string; end: string }, currentYear?: number): string {
   const s = new Date(`${range.start}T00:00:00`);
   const e = new Date(`${range.end}T00:00:00`);
-  return `${s.getMonth() + 1}월 ${s.getDate()}일 - ${e.getMonth() + 1}월 ${e.getDate()}일`;
+  const sy = s.getFullYear();
+  const ey = e.getFullYear();
+  const thisYear = currentYear ?? new Date().getFullYear();
+  const sm = `${s.getMonth() + 1}월 ${s.getDate()}일`;
+  const em = `${e.getMonth() + 1}월 ${e.getDate()}일`;
+  if (sy !== thisYear || ey !== thisYear) {
+    if (sy === ey) return `${sy}년 ${sm} - ${em}`;
+    return `${sy}년 ${sm} - ${ey}년 ${em}`;
+  }
+  return `${sm} - ${em}`;
 }

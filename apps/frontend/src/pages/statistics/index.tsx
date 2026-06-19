@@ -1358,7 +1358,7 @@ const StatisticsPage: React.FC = () => {
   /* ── 네비게이터 ── */
   // spending·top5 탭에서 주별 모드일 때만 주간 네비게이터 표시
   const isMonthNav = !(viewMode === "WEEK" && (activeTab === "spending" || activeTab === "top5"));
-  const periodLabel = isMonthNav ? formatMonthLabel(baseDate) : formatWeekLabel(weekRange);
+  const periodLabel = isMonthNav ? formatMonthLabel(baseDate) : formatWeekLabel(weekRange, today.getFullYear());
 
   const isCurrentPeriod = isMonthNav
     ? baseDate.getFullYear() === today.getFullYear() && baseDate.getMonth() === today.getMonth()
