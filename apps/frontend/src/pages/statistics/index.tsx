@@ -1369,10 +1369,14 @@ const StatisticsPage: React.FC = () => {
       const next = new Date(cur);
       if (!isMonthNav) {
         next.setDate(cur.getDate() + dir * 7);
+        return next > today ? cur : next;
       } else {
         next.setMonth(cur.getMonth() + dir);
+        const isFutureMonth =
+          next.getFullYear() > today.getFullYear() ||
+          (next.getFullYear() === today.getFullYear() && next.getMonth() > today.getMonth());
+        return isFutureMonth ? cur : next;
       }
-      return next > today ? cur : next;
     });
   }
 
