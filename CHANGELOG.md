@@ -1,3 +1,22 @@
+# [1.8.0](https://github.com/kittysaemi/KittyWallet/compare/v1.7.1...v1.8.0) (2026-06-19)
+
+
+### Bug Fixes
+
+* **frontend:** 소비통계 Top5 주별→월별 전환 시 날짜 이동 불가 버그 수정 ([#172](https://github.com/kittysaemi/KittyWallet/issues/172)) ([08f85e2](https://github.com/kittysaemi/KittyWallet/commit/08f85e2087796d51640d6c641bb6164c03117a26))
+* week label start date consistently shows il suffix ([34f3140](https://github.com/kittysaemi/KittyWallet/commit/34f3140e11dffc1d031dc0e5c091cb6d7b9143a6))
+* 월별 모드에서 미래 날짜(일)로 baseDate 설정되는 버그 수정 ([779a76f](https://github.com/kittysaemi/KittyWallet/commit/779a76f053d98dc3c55323869a1dd261447d2903))
+
+
+### Features
+
+* apply compact week label with year prefix to wallet transactions page ([35350e3](https://github.com/kittysaemi/KittyWallet/commit/35350e359af365ac67e20f755bd1c66116ddf4bf))
+* week label compact slash format with short year prefix ([9202e30](https://github.com/kittysaemi/KittyWallet/commit/9202e308dd321b03d47f6c4362526e85bfd5bf79))
+* week label omits redundant month for same-month weeks ([445b613](https://github.com/kittysaemi/KittyWallet/commit/445b6134e3aa978a11c18487bb2beb6b1fec7353))
+* week label shows year when not current year ([80301d0](https://github.com/kittysaemi/KittyWallet/commit/80301d0baed59c464c2613f28bc846316eec6fb3))
+* week navigator shows year in small text above when not current year ([4219d91](https://github.com/kittysaemi/KittyWallet/commit/4219d9146a3fec3719c427e801cc84dbb6e3a2ea))
+* 주별/월별 모드 전환 시 오늘 날짜로 초기화 ([5e79623](https://github.com/kittysaemi/KittyWallet/commit/5e79623c602473d9c9f8b17b757efafdd068046f))
+
 ## [1.7.1](https://github.com/kittysaemi/KittyWallet/compare/v1.7.0...v1.7.1) (2026-06-17)
 
 
