@@ -20,16 +20,15 @@ export function getWeekRange(date: Date): { start: string; end: string } {
   return { start: toDateValue(start), end: toDateValue(end) };
 }
 
-export function formatWeekLabel(range: { start: string; end: string }): string {
+export function formatWeekLabel(range: { start: string; end: string }, currentYear?: number): string {
   const s = new Date(`${range.start}T00:00:00`);
   const e = new Date(`${range.end}T00:00:00`);
-  return `${s.getMonth() + 1}월 ${s.getDate()}일 - ${e.getMonth() + 1}월 ${e.getDate()}일`;
-}
-
-export function getWeekYearLabel(range: { start: string; end: string }, currentYear: number): string | null {
-  const sy = parseInt(range.start.slice(0, 4));
-  const ey = parseInt(range.end.slice(0, 4));
-  if (sy === currentYear && ey === currentYear) return null;
-  if (sy === ey) return `${sy}년`;
-  return `${sy} / ${ey}년`;
+  const sy = s.getFullYear();
+  const ey = e.getFullYear();
+  const thisYear = currentYear ?? new Date().getFullYear();
+  const sm = `${s.getMonth() + 1}/${s.getDate()}`;
+  const em = `${e.getMonth() + 1}/${e.getDate()}`;
+  if (sy === thisYear && ey === thisYear) return `${sm} - ${em}`;
+  if (sy === ey) return `'${String(sy).slice(2)} ${sm} - ${em}`;
+  return `'${String(sy).slice(2)} ${sm} - '${String(ey).slice(2)} ${em}`;
 }
