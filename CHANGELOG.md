@@ -1,3 +1,10 @@
+# [1.9.0](https://github.com/kittysaemi/KittyWallet/compare/v1.8.0...v1.9.0) (2026-06-19)
+
+
+### Features
+
+* **tools:** add icon compatibility core ([40ad8fd](https://github.com/kittysaemi/KittyWallet/commit/40ad8fd1798bb964173b057a7e87606df99be92c))
+
 # [1.8.0](https://github.com/kittysaemi/KittyWallet/compare/v1.7.1...v1.8.0) (2026-06-19)
 
 
