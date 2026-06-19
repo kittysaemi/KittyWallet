@@ -1358,7 +1358,7 @@ const StatisticsPage: React.FC = () => {
   /* ── 네비게이터 ── */
   // spending·top5 탭에서 주별 모드일 때만 주간 네비게이터 표시
   const isMonthNav = !(viewMode === "WEEK" && (activeTab === "spending" || activeTab === "top5"));
-  const periodLabel = isMonthNav ? formatMonthLabel(baseDate) : formatWeekLabel(weekRange);
+  const periodLabel = isMonthNav ? formatMonthLabel(baseDate) : formatWeekLabel(weekRange, today.getFullYear());
 
   const isCurrentPeriod = isMonthNav
     ? baseDate.getFullYear() === today.getFullYear() && baseDate.getMonth() === today.getMonth()
@@ -1369,10 +1369,17 @@ const StatisticsPage: React.FC = () => {
       const next = new Date(cur);
       if (!isMonthNav) {
         next.setDate(cur.getDate() + dir * 7);
+        return next > today ? cur : next;
       } else {
         next.setMonth(cur.getMonth() + dir);
+        const isFutureMonth =
+          next.getFullYear() > today.getFullYear() ||
+          (next.getFullYear() === today.getFullYear() && next.getMonth() > today.getMonth());
+        if (isFutureMonth) return cur;
+        // 같은 달이더라도 날짜(일)가 오늘을 초과하면 today로 고정
+        // (주별 모드 전환 시 미래 주가 되는 것을 방지)
+        return next > today ? new Date(today) : next;
       }
-      return next > today ? cur : next;
     });
   }
 
@@ -1389,6 +1396,7 @@ const StatisticsPage: React.FC = () => {
   }
 
   function handleViewModeChange(mode: ViewMode) {
+    setBaseDate(new Date(today));
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.set("mode", mode);
