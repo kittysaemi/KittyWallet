@@ -13,7 +13,7 @@ import {
 import { ChevronLeft, ChevronRight, RefreshCw, WifiOff } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { useTimezone } from "../../shared/hooks/useTimezone";
-import { getTodayInTimezone, getWeekRange, formatWeekLabel } from "../../shared/utils/date";
+import { getTodayInTimezone, getWeekRange, formatWeekLabel, getWeekYearLabel } from "../../shared/utils/date";
 import { statisticsApi } from "../../entities/statistics/api/statisticsApi";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import type {
@@ -1358,7 +1358,8 @@ const StatisticsPage: React.FC = () => {
   /* ── 네비게이터 ── */
   // spending·top5 탭에서 주별 모드일 때만 주간 네비게이터 표시
   const isMonthNav = !(viewMode === "WEEK" && (activeTab === "spending" || activeTab === "top5"));
-  const periodLabel = isMonthNav ? formatMonthLabel(baseDate) : formatWeekLabel(weekRange, today.getFullYear());
+  const periodLabel = isMonthNav ? formatMonthLabel(baseDate) : formatWeekLabel(weekRange);
+  const weekYearLabel = !isMonthNav ? getWeekYearLabel(weekRange, today.getFullYear()) : null;
 
   const isCurrentPeriod = isMonthNav
     ? baseDate.getFullYear() === today.getFullYear() && baseDate.getMonth() === today.getMonth()
@@ -1510,9 +1511,14 @@ const StatisticsPage: React.FC = () => {
           >
             <ChevronLeft size={20} />
           </button>
-          <span className="text-base font-semibold text-[var(--color-text-primary)]">
-            {periodLabel}
-          </span>
+          <div className="flex flex-col items-center">
+            {weekYearLabel && (
+              <span className="text-xs text-[var(--color-text-secondary)]">{weekYearLabel}</span>
+            )}
+            <span className="text-base font-semibold text-[var(--color-text-primary)]">
+              {periodLabel}
+            </span>
+          </div>
           <button
             type="button"
             onClick={() => movePeriod(1)}
