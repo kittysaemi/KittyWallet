@@ -33,12 +33,12 @@ export function formatWeekLabel(range: { start: string; end: string }, currentYe
 
   if (sy === ey) {
     if (sm === em) {
-      // 같은 달: "6월 15 - 21일" or "'25년 3월 2 - 8일"
-      return `${yPrefix(sy)}${sm}월 ${s.getDate()} - ${e.getDate()}일`;
+      // 같은 달: "6월 15일 - 21일" or "'25년 3월 2일 - 8일"
+      return `${yPrefix(sy)}${sm}월 ${s.getDate()}일 - ${e.getDate()}일`;
     }
-    // 같은 연도, 다른 달: "5월 30 - 6월 5일" or "'25년 5월 30 - 6월 5일"
-    return `${yPrefix(sy)}${sm}월 ${s.getDate()} - ${em}월 ${e.getDate()}일`;
+    // 같은 연도, 다른 달: "5월 30일 - 6월 5일" or "'25년 5월 30일 - 6월 5일"
+    return `${yPrefix(sy)}${sm}월 ${s.getDate()}일 - ${em}월 ${e.getDate()}일`;
   }
-  // 연 경계: "'25년 12월 28 - '26년 1월 3일"
-  return `${yPrefix(sy)}${sm}월 ${s.getDate()} - ${yPrefix(ey)}${em}월 ${e.getDate()}일`;
+  // 연 경계: "'25년 12월 28일 - '26년 1월 3일"
+  return `${yPrefix(sy)}${sm}월 ${s.getDate()}일 - ${yPrefix(ey)}${em}월 ${e.getDate()}일`;
 }
