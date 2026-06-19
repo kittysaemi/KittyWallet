@@ -65,7 +65,7 @@ const WalletTransactionsPage: React.FC<WalletTransactionsPageProps> = ({ walletT
   function getPeriodLabel(): string {
     if (periodType === "year") return `${baseDate.getFullYear()}년`;
     if (periodType === "month") return `${baseDate.getFullYear()}년 ${baseDate.getMonth() + 1}월`;
-    return formatWeekLabel(weekRange);
+    return formatWeekLabel(weekRange, today.getFullYear());
   }
 
   const { start, end } = getDateRange();
