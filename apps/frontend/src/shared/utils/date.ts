@@ -25,10 +25,20 @@ export function formatWeekLabel(range: { start: string; end: string }, currentYe
   const e = new Date(`${range.end}T00:00:00`);
   const sy = s.getFullYear();
   const ey = e.getFullYear();
+  const sm = s.getMonth() + 1;
+  const em = e.getMonth() + 1;
   const thisYear = currentYear ?? new Date().getFullYear();
-  const sm = `${s.getMonth() + 1}/${s.getDate()}`;
-  const em = `${e.getMonth() + 1}/${e.getDate()}`;
-  if (sy === thisYear && ey === thisYear) return `${sm} - ${em}`;
-  if (sy === ey) return `'${String(sy).slice(2)} ${sm} - ${em}`;
-  return `'${String(sy).slice(2)} ${sm} - '${String(ey).slice(2)} ${em}`;
+
+  const yPrefix = (y: number) => y !== thisYear ? `'${String(y).slice(2)}년 ` : "";
+
+  if (sy === ey) {
+    if (sm === em) {
+      // 같은 달: "6월 15 - 21일" or "'25년 3월 2 - 8일"
+      return `${yPrefix(sy)}${sm}월 ${s.getDate()} - ${e.getDate()}일`;
+    }
+    // 같은 연도, 다른 달: "5월 30 - 6월 5일" or "'25년 5월 30 - 6월 5일"
+    return `${yPrefix(sy)}${sm}월 ${s.getDate()} - ${em}월 ${e.getDate()}일`;
+  }
+  // 연 경계: "'25년 12월 28 - '26년 1월 3일"
+  return `${yPrefix(sy)}${sm}월 ${s.getDate()} - ${yPrefix(ey)}${em}월 ${e.getDate()}일`;
 }
