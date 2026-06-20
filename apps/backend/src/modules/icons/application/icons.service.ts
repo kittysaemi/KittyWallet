@@ -13,6 +13,7 @@ export interface IconItem {
   icon_code: string;
   provider_type: string;
   provider_key: string;
+  snapshot: { snapshot_hash: string; snapshot_format: string; snapshot_payload: string } | null;
   show: boolean;
   is_default: boolean;
   created_at: string;
@@ -140,6 +141,9 @@ export class IconsService {
       icon_code: icon.iconDictionary.iconCode,
       provider_type: icon.iconDictionary.providerType,
       provider_key: icon.iconDictionary.providerKey,
+      snapshot: icon.iconDictionary.snapshot
+        ? { snapshot_hash: icon.iconDictionary.snapshot.snapshotHash, snapshot_format: icon.iconDictionary.snapshot.snapshotFormat, snapshot_payload: icon.iconDictionary.snapshot.snapshotPayload }
+        : null,
       show: icon.show,
       is_default: icon.isDefault,
       created_at: icon.createdAt.toISOString(),

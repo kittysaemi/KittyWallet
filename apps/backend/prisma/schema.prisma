@@ -52,15 +52,32 @@ model IconDictionary {
   iconCode         String   @unique @map("icon_code")
   providerType     String   @map("provider_type")
   providerKey      String   @map("provider_key")
+  providerVersion  String?  @map("provider_version")
+  snapshotHash     String?  @map("snapshot_hash")
   searchKeywords   String[] @default([]) @map("search_keywords")
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
   icons Icon[]
+  snapshot IconAssetSnapshot? @relation(fields: [snapshotHash], references: [snapshotHash])
 
   @@unique([providerType, providerKey], map: "ICON_DICTIONARY_provider_type_provider_key_key")
   @@index([providerType])
   @@map("ICON_DICTIONARY")
+}
+
+model IconAssetSnapshot {
+  snapshotHash          String   @id @map("snapshot_hash")
+  providerType          String   @map("provider_type")
+  snapshotFormat        String   @map("snapshot_format")
+  snapshotPayload       String   @map("snapshot_payload")
+  sourceProviderKey     String   @map("source_provider_key")
+  sourceProviderVersion String   @map("source_provider_version")
+  createdAt             DateTime @default(now()) @map("created_at")
+  dictionaries          IconDictionary[]
+
+  @@index([providerType])
+  @@map("ICON_ASSET_SNAPSHOT")
 }
 
 model RefreshToken {

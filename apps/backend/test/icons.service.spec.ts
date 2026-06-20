@@ -11,6 +11,8 @@ describe("IconsService", () => {
     iconCode: "icon-wallet",
     providerType: "lucide",
     providerKey: "wallet",
+    providerVersion: null,
+    snapshotHash: null,
     searchKeywords: ["wallet"],
     createdAt: now,
     updatedAt: now
@@ -49,7 +51,7 @@ describe("IconsService", () => {
         isDefault: true,
         createdAt: now,
         updatedAt: now,
-        iconDictionary: dictionary
+        iconDictionary: { ...dictionary, snapshot: null }
       }
     ]);
 
@@ -60,12 +62,21 @@ describe("IconsService", () => {
           icon_code: "icon-wallet",
           provider_type: "lucide",
           provider_key: "wallet",
+          snapshot: null,
           show: true,
           is_default: true,
           created_at: "2026-01-01T00:00:00.000Z",
           updated_at: "2026-01-01T00:00:00.000Z"
         }
       ]
+    });
+  });
+
+  it("returns a stored snapshot as fallback metadata", async () => {
+    iconsRepository.findManyForUser.mockResolvedValue([{ iconId: BigInt(1), userId: null, iconDictionaryId: dictionary.iconDictionaryId, show: true, isDefault: true, createdAt: now, updatedAt: now, iconDictionary: { ...dictionary, snapshot: { snapshotHash: "hash-1", providerType: "lucide", snapshotFormat: "svg", snapshotPayload: "<svg />", sourceProviderKey: "wallet", sourceProviderVersion: "1.17.0", createdAt: now } } }]);
+
+    await expect(service.getIcons(BigInt(1), true)).resolves.toMatchObject({
+      items: [{ snapshot: { snapshot_hash: "hash-1", snapshot_format: "svg", snapshot_payload: "<svg />" } }]
     });
   });
 
