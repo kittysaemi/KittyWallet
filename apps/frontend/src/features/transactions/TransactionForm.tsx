@@ -55,7 +55,7 @@ const API_ERRORS: Record<string, string> = {
 
 // 아이콘 포함 드롭다운 컴포넌트
 interface DropdownOption {
-  id: number;
+  id: number | string;
   label: string;
   sublabel?: string;
   iconId: number;
@@ -65,7 +65,7 @@ interface DropdownOption {
 
 interface IconDropdownProps {
   options: DropdownOption[];
-  value?: number;
+  value?: number | string;
   placeholder: string;
   onChange: (option: DropdownOption) => void;
   error?: string;
@@ -226,6 +226,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const [walletType, setWalletType] = React.useState<"ACCOUNT" | "CARD">(
     initialData?.wallet_type ?? "ACCOUNT"
   );
+  const [walletKey, setWalletKey] = React.useState<string>(() => {
+    if (!initialData) return "";
+    return `${initialData.wallet_type}-${initialData.wallet_id}`;
+  });
   const [categoryId, setCategoryId] = React.useState<number>(initialData?.category_id ?? 0);
   const [amountStr, setAmountStr] = React.useState<string>(
     initialData ? initialData.amount.toLocaleString("ko-KR") : ""
@@ -268,21 +272,19 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
   const walletOptions: DropdownOption[] = React.useMemo(() => {
     const accounts = (accountsQuery.data?.data?.items ?? []).map((a) => ({
-      id: a.account_id,
+      id: `ACCOUNT-${a.account_id}`,
       label: a.account_name,
       sublabel: undefined,
       iconId: a.icon_id,
       group: "계좌",
       disabled: false,
-      _type: "ACCOUNT" as const
     }));
     const cards = (cardsQuery.data?.data?.items ?? []).map((c) => ({
-      id: c.card_id,
+      id: `CARD-${c.card_id}`,
       label: c.card_name,
       iconId: c.icon_id,
       group: "카드",
       disabled: txType === "INCOME",
-      _type: "CARD" as const
     }));
     return [...accounts, ...cards];
   }, [accountsQuery.data, cardsQuery.data, txType]);
@@ -355,6 +357,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     setTxType(type);
     if (type === "INCOME" && walletType === "CARD") {
       setWalletId(0);
+      setWalletKey("");
       setWalletType("ACCOUNT");
       setInstallmentMonthsStr("");
     }
@@ -362,11 +365,14 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   }
 
   function handleWalletSelect(option: DropdownOption) {
-    const newWalletType = option.group === "계좌" ? "ACCOUNT" : "CARD";
+    const key = String(option.id);
+    const newWalletType = key.startsWith("ACCOUNT") ? "ACCOUNT" : "CARD";
+    const numericId = parseInt(key.split("-")[1], 10);
     if (walletType === "CARD" && newWalletType === "ACCOUNT") {
       setInstallmentMonthsStr("");
     }
-    setWalletId(option.id);
+    setWalletKey(key);
+    setWalletId(numericId);
     setWalletType(newWalletType);
     setErrors((e) => ({ ...e, wallet_id: "", wallet_type: "" }));
   }
@@ -560,7 +566,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               className="w-full appearance-none min-h-11 rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 py-2 pr-9 text-sm text-[var(--color-text-primary)] transition focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-soft)] disabled:opacity-50"
             >
               <option value="">일시불</option>
-              {Array.from({ length: 48 }, (_, i) => i + 1).map((n) => (
+              {Array.from({ length: 11 }, (_, i) => i + 2).map((n) => (
                 <option key={n} value={String(n)}>
                   {n}개월
                 </option>
@@ -602,7 +608,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         )}
         <IconDropdown
           options={walletOptions}
-          value={walletId || undefined}
+          value={walletKey || undefined}
           placeholder={isLoading ? "불러오는 중..." : "지갑 선택"}
           onChange={handleWalletSelect}
           error={errors.wallet_id || errors.wallet_type}
