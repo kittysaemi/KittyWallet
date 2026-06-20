@@ -63,6 +63,30 @@ export type IconCompatibilityReport = {
   items: IconCompatibilityResult[];
 };
 
+export type IconKeyMigration = {
+  iconCode: string;
+  providerType: string;
+  providerKey: string;
+  nextProviderKey: string;
+  reason: IconRenameReason;
+};
+
+export type IconSnapshotPlan = {
+  iconCode: string;
+  providerType: string;
+  providerKey: string;
+  reason: IconSnapshotRequiredReason;
+};
+
+export type IconMigrationPlan = {
+  providerType: string;
+  fromVersion?: string;
+  toVersion: string;
+  keyMigrations: IconKeyMigration[];
+  snapshotPlans: IconSnapshotPlan[];
+  manualReview: Extract<IconCompatibilityResult, { type: "manual-review" }>[];
+};
+
 export interface IconProviderCompatibilityAdapter {
   readonly providerType: string;
   getAvailableKeys(args: { version: string }): Promise<Set<string>>;
@@ -133,6 +157,48 @@ export function summarizeIconCompatibility(
       manualReview: 0
     }
   );
+}
+
+export function createIconMigrationPlan(report: IconCompatibilityReport): IconMigrationPlan {
+  const keyMigrations: IconKeyMigration[] = [];
+  const snapshotPlans: IconSnapshotPlan[] = [];
+  const manualReview: Extract<IconCompatibilityResult, { type: "manual-review" }>[] = [];
+
+  for (const item of report.items) {
+    if (item.type === "renamed") {
+      keyMigrations.push({
+        iconCode: item.icon.iconCode,
+        providerType: item.icon.providerType,
+        providerKey: item.icon.providerKey,
+        nextProviderKey: item.nextProviderKey,
+        reason: item.reason
+      });
+      continue;
+    }
+
+    if (item.type === "snapshot-required") {
+      snapshotPlans.push({
+        iconCode: item.icon.iconCode,
+        providerType: item.icon.providerType,
+        providerKey: item.icon.providerKey,
+        reason: item.reason
+      });
+      continue;
+    }
+
+    if (item.type === "manual-review") {
+      manualReview.push(item);
+    }
+  }
+
+  return {
+    providerType: report.providerType,
+    fromVersion: report.fromVersion,
+    toVersion: report.toVersion,
+    keyMigrations,
+    snapshotPlans,
+    manualReview
+  };
 }
 
 async function classifyIcon(
