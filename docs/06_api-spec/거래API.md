@@ -660,8 +660,14 @@ Authorization: Bearer {access_token}
     "installment_info": {
       "original_amount": 120000,
       "current_total_amount": 120000,
+      "remaining_amount": 80000,
       "installment_months": 3,
-      "purchase_date": "2026-06-20"
+      "purchase_date": "2026-06-20",
+      "installment_items": [
+        { "transaction_id": 101, "installment_seq": 1, "amount": 40000, "transaction_date": "2026-06-20" },
+        { "transaction_id": 102, "installment_seq": 2, "amount": 40000, "transaction_date": "2026-07-20" },
+        { "transaction_id": 103, "installment_seq": 3, "amount": 40000, "transaction_date": "2026-08-20" }
+      ]
     }
   },
   "error": null
@@ -669,6 +675,8 @@ Authorization: Bearer {access_token}
 ```
 
 - `installment_info.current_total_amount`: DB 저장값이 아닌 회차별 amount 합계로 계산
+- `installment_info.remaining_amount`: 아직 도래하지 않은 회차(transactionDate > 오늘) amount 합계로 계산
+- `installment_info.installment_items`: 동일 installment_id의 모든 회차 거래 목록 (seq 오름차순)
 
 ## GET /api/v1/transactions (목록 - 할부 회차 표시)
 
