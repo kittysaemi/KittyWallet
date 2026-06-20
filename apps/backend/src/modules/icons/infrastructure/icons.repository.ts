@@ -1,8 +1,8 @@
 import { Injectable } from "@nestjs/common";
-import { Icon, IconDictionary, Prisma } from "@prisma/client";
+import { Icon, IconAssetSnapshot, IconDictionary, Prisma } from "@prisma/client";
 import { PrismaService } from "../../../database/prisma.service";
 
-export type IconWithDictionary = Icon & { iconDictionary: IconDictionary };
+export type IconWithDictionary = Icon & { iconDictionary: IconDictionary & { snapshot: IconAssetSnapshot | null } };
 
 @Injectable()
 export class IconsRepository {
@@ -14,7 +14,7 @@ export class IconsRepository {
         OR: [{ isDefault: true }, { userId }],
         ...(show === undefined ? {} : { show })
       },
-      include: { iconDictionary: true },
+      include: { iconDictionary: { include: { snapshot: true } }, },
       orderBy: [{ isDefault: "desc" }, { iconId: "asc" }]
     });
   }
@@ -35,7 +35,7 @@ export class IconsRepository {
         userId,
         isDefault: false
       },
-      include: { iconDictionary: true }
+      include: { iconDictionary: { include: { snapshot: true } } }
     });
   }
 
@@ -97,6 +97,21 @@ export class IconsRepository {
         searchKeywords: data.searchKeywords
       },
       create: data
+    });
+  }
+
+  upsertSnapshot(data: Prisma.IconAssetSnapshotCreateInput): Promise<IconAssetSnapshot> {
+    return this.prisma.iconAssetSnapshot.upsert({
+      where: { snapshotHash: data.snapshotHash },
+      update: {},
+      create: data
+    });
+  }
+
+  attachSnapshot(iconDictionaryId: bigint, snapshotHash: string, providerVersion: string): Promise<IconDictionary> {
+    return this.prisma.iconDictionary.update({
+      where: { iconDictionaryId },
+      data: { snapshotHash, providerVersion }
     });
   }
 }

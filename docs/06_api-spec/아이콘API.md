@@ -72,6 +72,7 @@ MVP 기본 아이콘은 현재 provider의 key를 기준으로 사전 매핑과 
         "icon_code": "icon-wallet",
         "provider_type": "lucide",
         "provider_key": "wallet",
+        "snapshot": null,
         "show": true,
         "is_default": true,
         "created_at": "2026-05-30T01:00:00Z",
@@ -82,6 +83,8 @@ MVP 기본 아이콘은 현재 provider의 key를 기준으로 사전 매핑과 
   "error": null
 }
 ```
+
+`snapshot`은 provider key lookup 실패 시에만 사용할 fallback 정보다. 존재하는 경우 `snapshot_hash`, `snapshot_format`, `snapshot_payload`을 포함하며, 정상 provider 렌더링보다 우선하지 않는다.
 
 # 아이콘 검색 옵션 API
 
