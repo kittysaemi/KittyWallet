@@ -19,6 +19,20 @@ export class IconsRepository {
     });
   }
 
+  findCleanupCandidates(userId: bigint): Promise<IconWithDictionary[]> {
+    return this.prisma.icon.findMany({
+      where: {
+        userId,
+        isDefault: false,
+        accounts: { none: {} },
+        cards: { none: {} },
+        categories: { none: {} }
+      },
+      include: { iconDictionary: { include: { snapshot: true } } },
+      orderBy: { iconId: "asc" }
+    });
+  }
+
   findAvailableIconByDictionaryId(userId: bigint, iconDictionaryId: bigint): Promise<Icon | null> {
     return this.prisma.icon.findFirst({
       where: {

@@ -26,6 +26,17 @@ export interface IconOptionItem {
   provider_key: string;
 }
 
+export interface IconCleanupCandidateItem {
+  icon_id: number;
+  icon_code: string;
+  provider_type: string;
+  provider_key: string;
+  preview: null;
+  is_provider_available: boolean;
+  can_register_again: boolean;
+  created_at: string;
+}
+
 interface CreateIconCommand {
   userId: bigint;
   iconCode: string;
@@ -49,6 +60,11 @@ export class IconsService {
   async getIcons(userId: bigint, show?: boolean): Promise<{ items: IconItem[] }> {
     const icons = await this.iconsRepository.findManyForUser(userId, show);
     return { items: icons.map((icon) => this.toItem(icon)) };
+  }
+
+  async getCleanupCandidates(userId: bigint): Promise<{ items: IconCleanupCandidateItem[] }> {
+    const icons = await this.iconsRepository.findCleanupCandidates(userId);
+    return { items: icons.map((icon) => this.toCleanupCandidateItem(icon)) };
   }
 
   async searchIconOptions(keyword: string): Promise<{ items: IconOptionItem[] }> {
@@ -148,6 +164,23 @@ export class IconsService {
       is_default: icon.isDefault,
       created_at: icon.createdAt.toISOString(),
       updated_at: icon.updatedAt.toISOString()
+    };
+  }
+
+  private toCleanupCandidateItem(icon: IconWithDictionary): IconCleanupCandidateItem {
+    const isProviderAvailable =
+      icon.iconDictionary.providerType === this.iconProviderAdapter.providerType &&
+      this.iconProviderAdapter.validate(icon.iconDictionary.providerKey);
+
+    return {
+      icon_id: Number(icon.iconId),
+      icon_code: icon.iconDictionary.iconCode,
+      provider_type: icon.iconDictionary.providerType,
+      provider_key: icon.iconDictionary.providerKey,
+      preview: null,
+      is_provider_available: isProviderAvailable,
+      can_register_again: isProviderAvailable,
+      created_at: icon.createdAt.toISOString()
     };
   }
 

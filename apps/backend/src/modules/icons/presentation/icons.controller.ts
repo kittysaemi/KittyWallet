@@ -20,6 +20,11 @@ export class IconOptionsController {
 export class IconsController {
   constructor(private readonly iconsService: IconsService) {}
 
+  @Get("cleanup-candidates")
+  getCleanupCandidates(@CurrentUser() user: JwtPayload) {
+    return this.iconsService.getCleanupCandidates(BigInt(user.sub));
+  }
+
   @Get()
   getIcons(@CurrentUser() user: JwtPayload, @Query() query: IconListQueryDto) {
     return this.iconsService.getIcons(
