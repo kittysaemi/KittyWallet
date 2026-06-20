@@ -19,6 +19,7 @@ describe("IconsService", () => {
   };
   const iconsRepository = {
     findManyForUser: jest.fn(),
+    findCleanupCandidates: jest.fn(),
     findAvailableIconByDictionaryId: jest.fn(),
     findEditableIcon: jest.fn(),
     createUserIcon: jest.fn(),
@@ -78,6 +79,79 @@ describe("IconsService", () => {
     await expect(service.getIcons(BigInt(1), true)).resolves.toMatchObject({
       items: [{ snapshot: { snapshot_hash: "hash-1", snapshot_format: "svg", snapshot_payload: "<svg />" } }]
     });
+  });
+
+  it("returns only repository-filtered cleanup candidates with provider availability", async () => {
+    iconsRepository.findCleanupCandidates.mockResolvedValue([
+      {
+        iconId: BigInt(12),
+        userId: BigInt(1),
+        iconDictionaryId: dictionary.iconDictionaryId,
+        show: true,
+        isDefault: false,
+        createdAt: now,
+        updatedAt: now,
+        iconDictionary: { ...dictionary, snapshot: null }
+      },
+      {
+        iconId: BigInt(13),
+        userId: BigInt(1),
+        iconDictionaryId: BigInt(11),
+        show: true,
+        isDefault: false,
+        createdAt: now,
+        updatedAt: now,
+        iconDictionary: { ...dictionary, iconDictionaryId: BigInt(11), iconCode: "icon-removed", providerKey: "removed", snapshot: null }
+      }
+    ]);
+    iconProviderAdapter.validate.mockImplementation((providerKey) => providerKey === "wallet");
+
+    await expect(service.getCleanupCandidates(BigInt(1))).resolves.toEqual({
+      items: [
+        {
+          icon_id: 12,
+          icon_code: "icon-wallet",
+          provider_type: "lucide",
+          provider_key: "wallet",
+          preview: null,
+          is_provider_available: true,
+          can_register_again: true,
+          created_at: "2026-01-01T00:00:00.000Z"
+        },
+        {
+          icon_id: 13,
+          icon_code: "icon-removed",
+          provider_type: "lucide",
+          provider_key: "removed",
+          preview: null,
+          is_provider_available: false,
+          can_register_again: false,
+          created_at: "2026-01-01T00:00:00.000Z"
+        }
+      ]
+    });
+
+    expect(iconsRepository.findCleanupCandidates).toHaveBeenCalledWith(BigInt(1));
+  });
+
+  it("marks an icon from an unsupported provider as unavailable without validating it", async () => {
+    iconsRepository.findCleanupCandidates.mockResolvedValue([
+      {
+        iconId: BigInt(14),
+        userId: BigInt(1),
+        iconDictionaryId: BigInt(12),
+        show: true,
+        isDefault: false,
+        createdAt: now,
+        updatedAt: now,
+        iconDictionary: { ...dictionary, iconDictionaryId: BigInt(12), providerType: "other", snapshot: null }
+      }
+    ]);
+
+    await expect(service.getCleanupCandidates(BigInt(1))).resolves.toMatchObject({
+      items: [{ is_provider_available: false, can_register_again: false }]
+    });
+    expect(iconProviderAdapter.validate).not.toHaveBeenCalled();
   });
 
   it("rejects duplicate available icons", async () => {
