@@ -1,3 +1,10 @@
+# [1.15.0](https://github.com/kittysaemi/KittyWallet/compare/v1.14.0...v1.15.0) (2026-06-20)
+
+
+### Features
+
+* **#310:** 카드할부 데이터 모델 및 거래 API 계약 추가 ([8a19872](https://github.com/kittysaemi/KittyWallet/commit/8a19872c607d8a277df4dfef7ba711bbd6c80c4e)), closes [#310](https://github.com/kittysaemi/KittyWallet/issues/310)
+
 # [1.14.0](https://github.com/kittysaemi/KittyWallet/compare/v1.13.0...v1.14.0) (2026-06-20)
 
 
