@@ -32,16 +32,21 @@ import { IconRenderer } from "../../shared/ui/IconRenderer";
 
 Chart.register(CategoryScale, LinearScale, LineController, LineElement, PointElement, Filler, Tooltip);
 
-type StatTab = "spending" | "summary" | "top5" | "heatmap" | "sankey" | "income-sankey";
+type StatTab = "spending" | "flow" | "summary" | "top5" | "heatmap" | "category-expense";
 type ViewMode = "MONTH" | "WEEK";
+type FlowMode = "expense" | "income";
 
-const TABS: { id: StatTab; label: string }[] = [
-  { id: "spending", label: "소비 통계" },
-  { id: "summary", label: "월간 요약" },
-  { id: "top5", label: "Top 5" },
-  { id: "heatmap", label: "달력 히트맵" },
-  { id: "sankey", label: "지출 흐름" },
-  { id: "income-sankey", label: "수입 흐름" }
+const TAB_ROWS: Array<Array<{ id: StatTab; label: string }>> = [
+  [
+    { id: "spending", label: "소비통계" },
+    { id: "flow", label: "소비흐름" },
+    { id: "summary", label: "월간요약" },
+    { id: "top5", label: "Top5" }
+  ],
+  [
+    { id: "heatmap", label: "달력히트맵" },
+    { id: "category-expense", label: "카테고리통계" }
+  ]
 ];
 
 interface ChartItem {
@@ -1168,6 +1173,63 @@ const IncomeSankeyContent: React.FC<{
   );
 };
 
+// 소비흐름 탭 - 지출/수입 Sankey 전환
+const FlowContent: React.FC<{
+  flowMode: FlowMode;
+  onFlowModeChange: (mode: FlowMode) => void;
+  sankeyData: SankeyStatisticsData | null;
+  sankeyIsLoading: boolean;
+  sankeyIsError: boolean;
+  incomeData: SankeyIncomeStatisticsData | null;
+  incomeIsLoading: boolean;
+  incomeIsError: boolean;
+  onRetry: () => void;
+}> = ({
+  flowMode,
+  onFlowModeChange,
+  sankeyData,
+  sankeyIsLoading,
+  sankeyIsError,
+  incomeData,
+  incomeIsLoading,
+  incomeIsError,
+  onRetry
+}) => (
+  <div className="flex flex-col gap-4">
+    <div className="grid grid-cols-2 rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] p-1">
+      {(["expense", "income"] as FlowMode[]).map((mode) => (
+        <button
+          key={mode}
+          type="button"
+          onClick={() => onFlowModeChange(mode)}
+          className={`min-h-10 rounded-xl text-sm font-semibold transition ${
+            flowMode === mode
+              ? "bg-[var(--color-primary)] text-[var(--color-text-primary)]"
+              : "text-[var(--color-text-secondary)]"
+          }`}
+        >
+          {mode === "expense" ? "지출" : "수입"}
+        </button>
+      ))}
+    </div>
+    {flowMode === "expense" ? (
+      <SankeyContent
+        data={sankeyData}
+        isLoading={sankeyIsLoading}
+        isError={sankeyIsError}
+        onRetry={onRetry}
+      />
+    ) : (
+      <IncomeSankeyContent
+        data={incomeData}
+        isLoading={incomeIsLoading}
+        isError={incomeIsError}
+        onRetry={onRetry}
+      />
+    )}
+  </div>
+);
+
 /* ── 메인 페이지 ───────────────────────────────────────── */
 
 const StatisticsPage: React.FC = () => {
@@ -1184,13 +1246,18 @@ const StatisticsPage: React.FC = () => {
   });
   const isOffline = !navigator.onLine;
 
-  // 탭 상태
+  // 탭 상태 (기존 sankey/income-sankey URL 호환 처리)
   const rawTab = searchParams.get("tab") ?? "spending";
-  const activeTab: StatTab = (["spending", "summary", "top5", "heatmap", "sankey", "income-sankey"] as const).includes(
-    rawTab as StatTab
-  )
-    ? (rawTab as StatTab)
+  const resolvedRawTab = rawTab === "sankey" || rawTab === "income-sankey" ? "flow" : rawTab;
+  const activeTab: StatTab = (
+    ["spending", "flow", "summary", "top5", "heatmap", "category-expense"] as const
+  ).includes(resolvedRawTab as StatTab)
+    ? (resolvedRawTab as StatTab)
     : "spending";
+
+  // 소비흐름 탭 내부 지출/수입 모드 (기존 income-sankey URL → income 모드)
+  const rawFlow = searchParams.get("flow") ?? (rawTab === "income-sankey" ? "income" : "expense");
+  const flowMode: FlowMode = rawFlow === "income" ? "income" : "expense";
 
   // 소비통계 탭 월/주 모드
   const rawMode = searchParams.get("mode") ?? "MONTH";
@@ -1279,7 +1346,7 @@ const StatisticsPage: React.FC = () => {
     queryFn: () => statisticsApi.getSankeyStatistics({ month: monthValue }),
     staleTime: 30 * 1000,
     retry: isOffline ? false : 2,
-    enabled: activeTab === "sankey"
+    enabled: activeTab === "flow" && flowMode === "expense"
   });
 
   const sankeyIncomeQuery = useQuery({
@@ -1287,7 +1354,7 @@ const StatisticsPage: React.FC = () => {
     queryFn: () => statisticsApi.getSankeyIncomeStatistics({ month: monthValue }),
     staleTime: 30 * 1000,
     retry: isOffline ? false : 2,
-    enabled: activeTab === "income-sankey"
+    enabled: activeTab === "flow" && flowMode === "income"
   });
 
   const categoryTopIncomeMonthQuery = useQuery({
@@ -1356,6 +1423,8 @@ const StatisticsPage: React.FC = () => {
   const spendingIsEmpty = !spendingIsLoading && !spendingIsError && !hasChartData;
 
   /* ── 네비게이터 ── */
+  // category-expense는 자체 기간 컨트롤 사용, 공통 네비게이터 미표시
+  const showCommonNavigator = activeTab !== "category-expense";
   // spending·top5 탭에서 주별 모드일 때만 주간 네비게이터 표시
   const isMonthNav = !(viewMode === "WEEK" && (activeTab === "spending" || activeTab === "top5"));
   const periodLabel = isMonthNav ? formatMonthLabel(baseDate) : formatWeekLabel(weekRange, today.getFullYear());
@@ -1389,6 +1458,19 @@ const StatisticsPage: React.FC = () => {
       (prev) => {
         const next = new URLSearchParams(prev);
         next.set("tab", tab);
+        if (tab === "flow") next.set("flow", "expense");
+        else next.delete("flow");
+        return next;
+      },
+      { replace: true }
+    );
+  }
+
+  function handleFlowModeChange(mode: FlowMode) {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("flow", mode);
         return next;
       },
       { replace: true }
@@ -1411,6 +1493,10 @@ const StatisticsPage: React.FC = () => {
         if (viewMode === "MONTH") void monthlyQuery.refetch();
         else void periodQuery.refetch();
         break;
+      case "flow":
+        if (flowMode === "expense") void sankeyQuery.refetch();
+        else void sankeyIncomeQuery.refetch();
+        break;
       case "summary":
         void summaryQuery.refetch();
         break;
@@ -1426,11 +1512,7 @@ const StatisticsPage: React.FC = () => {
       case "heatmap":
         void calendarQuery.refetch();
         break;
-      case "sankey":
-        void sankeyQuery.refetch();
-        break;
-      case "income-sankey":
-        void sankeyIncomeQuery.refetch();
+      case "category-expense":
         break;
     }
   }
@@ -1459,25 +1541,27 @@ const StatisticsPage: React.FC = () => {
           </div>
         )}
 
-        {/* 통계 유형 탭 (가로 스크롤 pill) */}
-        <div className="mb-3">
-          <div className="flex flex-wrap gap-2">
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => handleTabChange(tab.id)}
-                className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition ${
-                  activeTab === tab.id
-                    ? "bg-[var(--color-primary)] text-[var(--color-text-primary)]"
-                    : "bg-[var(--color-bg-card)] text-[var(--color-text-secondary)] border border-[var(--color-border-primary)]"
-                }`}
-                aria-pressed={activeTab === tab.id}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+        {/* 통계 유형 탭 (2줄 구조) */}
+        <div className="mb-3 flex flex-col gap-2">
+          {TAB_ROWS.map((row, rowIdx) => (
+            <div key={rowIdx} className="flex gap-2">
+              {row.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => handleTabChange(tab.id)}
+                  className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition ${
+                    activeTab === tab.id
+                      ? "bg-[var(--color-primary)] text-[var(--color-text-primary)]"
+                      : "bg-[var(--color-bg-card)] text-[var(--color-text-secondary)] border border-[var(--color-border-primary)]"
+                  }`}
+                  aria-pressed={activeTab === tab.id}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          ))}
         </div>
 
         {/* 소비통계·Top5 탭: 월별/주별 토글 */}
@@ -1500,29 +1584,31 @@ const StatisticsPage: React.FC = () => {
           </div>
         )}
 
-        {/* 기간 네비게이터 */}
-        <div className="mb-4 flex items-center justify-between rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] px-4 py-3 shadow-[0_4px_16px_var(--color-card-shadow)]">
-          <button
-            type="button"
-            onClick={() => movePeriod(-1)}
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-secondary)]"
-            aria-label="이전 기간"
-          >
-            <ChevronLeft size={20} />
-          </button>
-          <span className="text-base font-semibold text-[var(--color-text-primary)]">
-            {periodLabel}
-          </span>
-          <button
-            type="button"
-            onClick={() => movePeriod(1)}
-            disabled={isCurrentPeriod}
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-secondary)] disabled:opacity-30"
-            aria-label="다음 기간"
-          >
-            <ChevronRight size={20} />
-          </button>
-        </div>
+        {/* 공통 기간 네비게이터 (category-expense 탭에서는 숨김) */}
+        {showCommonNavigator && (
+          <div className="mb-4 flex items-center justify-between rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] px-4 py-3 shadow-[0_4px_16px_var(--color-card-shadow)]">
+            <button
+              type="button"
+              onClick={() => movePeriod(-1)}
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-secondary)]"
+              aria-label="이전 기간"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <span className="text-base font-semibold text-[var(--color-text-primary)]">
+              {periodLabel}
+            </span>
+            <button
+              type="button"
+              onClick={() => movePeriod(1)}
+              disabled={isCurrentPeriod}
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-secondary)] disabled:opacity-30"
+              aria-label="다음 기간"
+            >
+              <ChevronRight size={20} />
+            </button>
+          </div>
+        )}
 
         {/* 탭 콘텐츠 */}
         {activeTab === "spending" && (
@@ -1540,6 +1626,20 @@ const StatisticsPage: React.FC = () => {
             isLoading={spendingIsLoading}
             isError={spendingIsError}
             isEmpty={spendingIsEmpty}
+            onRetry={refresh}
+          />
+        )}
+
+        {activeTab === "flow" && (
+          <FlowContent
+            flowMode={flowMode}
+            onFlowModeChange={handleFlowModeChange}
+            sankeyData={sankeyQuery.data?.data ?? null}
+            sankeyIsLoading={sankeyQuery.isLoading}
+            sankeyIsError={sankeyQuery.isError}
+            incomeData={sankeyIncomeQuery.data?.data ?? null}
+            incomeIsLoading={sankeyIncomeQuery.isLoading}
+            incomeIsError={sankeyIncomeQuery.isError}
             onRetry={refresh}
           />
         )}
@@ -1593,22 +1693,11 @@ const StatisticsPage: React.FC = () => {
           />
         )}
 
-        {activeTab === "sankey" && (
-          <SankeyContent
-            data={sankeyQuery.data?.data ?? null}
-            isLoading={sankeyQuery.isLoading}
-            isError={sankeyQuery.isError}
-            onRetry={refresh}
-          />
-        )}
-
-        {activeTab === "income-sankey" && (
-          <IncomeSankeyContent
-            data={sankeyIncomeQuery.data?.data ?? null}
-            isLoading={sankeyIncomeQuery.isLoading}
-            isError={sankeyIncomeQuery.isError}
-            onRetry={refresh}
-          />
+        {activeTab === "category-expense" && (
+          <div className={`${cardClass} flex flex-col items-center gap-2 px-6 py-12 text-center`}>
+            <p className="text-base font-medium text-[var(--color-text-primary)]">카테고리 통계</p>
+            <p className="text-sm text-[var(--color-text-secondary)]">준비 중입니다.</p>
+          </div>
         )}
       </div>
     </div>
