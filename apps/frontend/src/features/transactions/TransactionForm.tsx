@@ -680,7 +680,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           value={categoryId || undefined}
           placeholder={categoriesQuery.isLoading ? "불러오는 중..." : "카테고리 선택"}
           onChange={(opt) => {
-            setCategoryId(opt.id);
+            setCategoryId(Number(opt.id));
             setErrors((e) => ({ ...e, category_id: "" }));
           }}
           error={errors.category_id}
