@@ -1,3 +1,22 @@
+# [1.12.0](https://github.com/kittysaemi/KittyWallet/compare/v1.11.0...v1.12.0) (2026-06-20)
+
+
+### Bug Fixes
+
+* **statistics:** 탭 라벨 공백 제거 통일 및 테스트 업데이트 ([#299](https://github.com/kittysaemi/KittyWallet/issues/299) [#302](https://github.com/kittysaemi/KittyWallet/issues/302)) ([5bfcbfb](https://github.com/kittysaemi/KittyWallet/commit/5bfcbfb50bca3deffa1c9ad79c0c58026dc45115))
+
+
+### Features
+
+* **statistics:** 통계 탭 2줄 구조·소비흐름 탭·네비게이터 정책 적용 ([#299](https://github.com/kittysaemi/KittyWallet/issues/299) [#300](https://github.com/kittysaemi/KittyWallet/issues/300) [#301](https://github.com/kittysaemi/KittyWallet/issues/301)) ([5a98be8](https://github.com/kittysaemi/KittyWallet/commit/5a98be859bcb5ae58466a6faba977ef72aed1ca7))
+
+# [1.11.0](https://github.com/kittysaemi/KittyWallet/compare/v1.10.0...v1.11.0) (2026-06-20)
+
+
+### Features
+
+* **tools:** add icon migration plan ([c147aad](https://github.com/kittysaemi/KittyWallet/commit/c147aadc4c2f26c64a80fc34937f7343a7fa0f5c))
+
 # [1.10.0](https://github.com/kittysaemi/KittyWallet/compare/v1.9.0...v1.10.0) (2026-06-20)
 
 
