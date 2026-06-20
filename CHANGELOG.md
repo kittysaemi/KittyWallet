@@ -1,3 +1,15 @@
+# [1.16.0](https://github.com/kittysaemi/KittyWallet/compare/v1.15.0...v1.16.0) (2026-06-20)
+
+
+### Bug Fixes
+
+* **#311:** 테스트 파일 미사용 import 린트 에러 수정 ([7d91c62](https://github.com/kittysaemi/KittyWallet/commit/7d91c62ecc6ad5dc504f6a79a290a5dd97aa7b44)), closes [#311](https://github.com/kittysaemi/KittyWallet/issues/311)
+
+
+### Features
+
+* **#311:** 카드할부 백엔드 로직 구현 및 단위 테스트 추가 ([2d28a27](https://github.com/kittysaemi/KittyWallet/commit/2d28a27e0b1ba45b217dbde53c5f2831891caafb)), closes [#311](https://github.com/kittysaemi/KittyWallet/issues/311)
+
 # [1.15.0](https://github.com/kittysaemi/KittyWallet/compare/v1.14.0...v1.15.0) (2026-06-20)
 
 
