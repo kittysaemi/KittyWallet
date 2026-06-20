@@ -2,7 +2,9 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const {
+  createIconMigrationPlan,
   createIconCompatibilityReport,
+  LucideCompatibilityAdapter,
   summarizeIconCompatibility
 } = require("../dist/index.js");
 
@@ -101,4 +103,80 @@ test("summarizes report items without relying on provider-specific data", () => 
       manualReview: 1
     }
   );
+});
+
+test("creates a reviewable migration plan without applying manual-review items", () => {
+  const plan = createIconMigrationPlan({
+    providerType: "lucide",
+    fromVersion: "1.0.0",
+    toVersion: "2.0.0",
+    summary: { unchanged: 1, renamed: 1, snapshotRequired: 1, manualReview: 1 },
+    items: [
+      { type: "unchanged", icon: { iconCode: "icon-wallet", providerType: "lucide", providerKey: "wallet" } },
+      { type: "renamed", icon: { iconCode: "icon-edit-2", providerType: "lucide", providerKey: "edit-2" }, nextProviderKey: "pen", reason: "alias" },
+      { type: "snapshot-required", icon: { iconCode: "icon-github", providerType: "lucide", providerKey: "github" }, reason: "brand-removed" },
+      { type: "manual-review", icon: { iconCode: "icon-unknown", providerType: "lucide", providerKey: "unknown" }, reason: "snapshot-unavailable" }
+    ]
+  });
+
+  assert.deepEqual(plan.keyMigrations, [{ iconCode: "icon-edit-2", providerType: "lucide", providerKey: "edit-2", nextProviderKey: "pen", reason: "alias" }]);
+  assert.deepEqual(plan.snapshotPlans, [{ iconCode: "icon-github", providerType: "lucide", providerKey: "github", reason: "brand-removed" }]);
+  assert.equal(plan.manualReview.length, 1);
+  assert.equal(plan.manualReview[0].icon.iconCode, "icon-unknown");
+});
+
+test("reads Lucide keys and creates an SVG snapshot from the configured source version", async () => {
+  const adapter = new LucideCompatibilityAdapter({
+    sources: [
+      {
+        version: "1.0.0",
+        icons: {
+          Wallet: "<svg><path d=\"M1 1\" /></svg>",
+          Pen: "<svg><path d=\"M2 2\" /></svg>"
+        }
+      }
+    ]
+  });
+
+  const keys = await adapter.getAvailableKeys({ version: "1.0.0" });
+  const snapshot = await adapter.createSnapshot({ providerKey: "wallet", fromVersion: "1.0.0" });
+
+  assert.deepEqual([...keys].sort(), ["pen", "wallet"]);
+  assert.deepEqual(snapshot, {
+    snapshotHash: "fnv1a-4c08bfde",
+    providerType: "lucide",
+    snapshotFormat: "svg",
+    snapshotPayload: "<svg><path d=\"M1 1\" /></svg>",
+    sourceProviderKey: "wallet",
+    sourceProviderVersion: "1.0.0"
+  });
+});
+
+test("uses explicit Lucide aliases and keeps brand removals out of automatic replacements", async () => {
+  const adapter = new LucideCompatibilityAdapter({
+    sources: [
+      { version: "1.0.0", icons: { Edit2: "<svg />", Github: "<svg />" } },
+      { version: "2.0.0", icons: { Pen: "<svg />" } }
+    ],
+    brandRemovedKeys: ["github"]
+  });
+
+  const availableKeys = await adapter.getAvailableKeys({ version: "2.0.0" });
+  const report = await createIconCompatibilityReport({
+    providerType: "lucide",
+    fromVersion: "1.0.0",
+    toVersion: "2.0.0",
+    icons: [
+      { iconCode: "icon-edit-2", providerType: "lucide", providerKey: "edit-2" },
+      { iconCode: "icon-github", providerType: "lucide", providerKey: "github" }
+    ],
+    availableKeys,
+    resolveAlias: (icon) => adapter.resolveAlias({ providerKey: icon.providerKey, fromVersion: "1.0.0", toVersion: "2.0.0" }),
+    canCreateSnapshot: async (icon) => Boolean(await adapter.createSnapshot({ providerKey: icon.providerKey, fromVersion: "1.0.0" })),
+    getMissingReason: (icon) => adapter.getMissingReason(icon.providerKey)
+  });
+
+  assert.deepEqual(report.items.map((item) => item.type), ["renamed", "snapshot-required"]);
+  assert.equal(report.items[0].nextProviderKey, "pen");
+  assert.equal(report.items[1].reason, "brand-removed");
 });
