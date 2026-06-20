@@ -1,3 +1,10 @@
+# [1.17.0](https://github.com/kittysaemi/KittyWallet/compare/v1.16.0...v1.17.0) (2026-06-20)
+
+
+### Features
+
+* add icon cleanup candidates ([b01e4bc](https://github.com/kittysaemi/KittyWallet/commit/b01e4bce0706558cd418a41148be87780fcf23f3))
+
 # [1.16.0](https://github.com/kittysaemi/KittyWallet/compare/v1.15.0...v1.16.0) (2026-06-20)
 
 
