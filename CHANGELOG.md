@@ -1,3 +1,10 @@
+# [1.10.0](https://github.com/kittysaemi/KittyWallet/compare/v1.9.0...v1.10.0) (2026-06-20)
+
+
+### Features
+
+* **tools:** add Lucide compatibility adapter ([70811af](https://github.com/kittysaemi/KittyWallet/commit/70811afda2150f2210e141650c399db91a7ad45e))
+
 # [1.9.0](https://github.com/kittysaemi/KittyWallet/compare/v1.8.0...v1.9.0) (2026-06-19)
 
 
