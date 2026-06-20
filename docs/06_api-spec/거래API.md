@@ -597,3 +597,90 @@ Authorization: Bearer {access_token}
 |---|---|---|
 | 400 | TX_006 | 잘못된 조회 조건 |
 | 401 | AUTH_002 | 인증 실패 또는 토큰 만료 |
+
+---
+
+# 카드할부 API
+
+## POST /api/v1/transactions (할부 생성)
+
+카드 지출 거래 등록 시 할부 payload를 포함하면 부모 할부와 월별 거래를 생성한다.
+
+**Request Body (할부 포함 시 추가 필드):**
+
+```json
+{
+  "transaction_type": "EXPENSE",
+  "wallet_type": "CARD",
+  "wallet_id": 1,
+  "category_id": 2,
+  "amount": 120000,
+  "transaction_date": "2026-06-20",
+  "memo": "냉장고 구매",
+  "installment": {
+    "installment_months": 3
+  }
+}
+```
+
+- `installment` 필드가 없으면 일반 거래로 처리
+- `installment.installment_months`: 할부 개월 수 (2 이상)
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "installment_id": 1,
+    "transactions": [
+      { "transaction_id": 101, "installment_seq": 1, "amount": 40000, "transaction_date": "2026-06-20" },
+      { "transaction_id": 102, "installment_seq": 2, "amount": 40000, "transaction_date": "2026-07-20" },
+      { "transaction_id": 103, "installment_seq": 3, "amount": 40000, "transaction_date": "2026-08-20" }
+    ]
+  },
+  "error": null
+}
+```
+
+## GET /api/v1/transactions/{id} (할부 회차 상세)
+
+할부 회차 거래인 경우 읽기 전용 할부 정보를 함께 반환한다.
+
+**Response (할부 회차인 경우 추가 필드):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "transaction_id": 101,
+    "installment_id": 1,
+    "installment_seq": 1,
+    "installment_total_count": 3,
+    "installment_info": {
+      "original_amount": 120000,
+      "current_total_amount": 120000,
+      "installment_months": 3,
+      "purchase_date": "2026-06-20"
+    }
+  },
+  "error": null
+}
+```
+
+- `installment_info.current_total_amount`: DB 저장값이 아닌 회차별 amount 합계로 계산
+
+## GET /api/v1/transactions (목록 - 할부 회차 표시)
+
+할부 회차 거래는 목록에서 회차 정보를 보조 표시한다.
+
+**Response items 할부 관련 추가 필드:**
+
+```json
+{
+  "transaction_id": 101,
+  "installment_seq": 1,
+  "installment_total_count": 3,
+  "installment_original_amount": 120000
+}
+```

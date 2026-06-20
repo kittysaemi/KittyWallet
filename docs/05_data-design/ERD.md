@@ -48,6 +48,11 @@ erDiagram
     SYNC_CLIENT ||--o{ SYNC_HISTORY : records
     TRANSACTION ||--o{ SYNC_HISTORY : logged_by
 
+    CARD_INSTALLMENT ||--o{ TRANSACTION : generates
+    USER ||--o{ CARD_INSTALLMENT : owns
+    CARD ||--o{ CARD_INSTALLMENT : linked_to
+    CATEGORY ||--o{ CARD_INSTALLMENT : classifies
+
     ICON ||--o{ ACCOUNT : uses
     ICON ||--o{ CARD : uses
     ICON ||--o{ CATEGORY : uses
@@ -73,6 +78,19 @@ erDiagram
         DATETIME updated_at "수정일시"
     }
 
+    CARD_INSTALLMENT {
+        BIGINT installment_id PK "카드할부 고유 ID"
+        BIGINT user_id FK "사용자 ID"
+        BIGINT card_id FK "카드 ID"
+        BIGINT category_id FK "카테고리 ID"
+        DECIMAL original_amount "최초 구매금액"
+        INT installment_months "할부 개월 수"
+        DATE purchase_date "구매일"
+        VARCHAR memo "메모"
+        DATETIME created_at "생성일시"
+        DATETIME updated_at "수정일시"
+    }
+
     TRANSACTION {
         BIGINT transaction_id PK "거래 내역 고유 ID"
         BIGINT user_id FK "사용자 ID"
@@ -85,6 +103,9 @@ erDiagram
         DECIMAL amount "거래 금액"
         DATE transaction_date "거래일자"
         VARCHAR memo "거래 메모"
+        BIGINT installment_id FK "카드할부 ID (nullable, 할부 거래인 경우)"
+        INT installment_seq "할부 회차 번호 (nullable, 1부터 시작)"
+        INT installment_total_count "총 할부 회차 수 (nullable)"
         BOOLEAN deleted_yn "삭제 여부. true면 삭제"
         DATETIME synced_at "서버 반영 완료 일시"
         DATETIME created_at "생성일시"
@@ -218,6 +239,9 @@ erDiagram
 | CARD → ICON            | N:1 | 카드는 하나의 아이콘을 참조한다.                            |
 | CATEGORY → ICON        | N:1 | 카테고리는 하나의 아이콘을 참조한다.                          |
 | USER → REFRESH_TOKEN   | 1:N | 한 사용자는 여러 Refresh Token을 가질 수 있다 (다중 기기 지원). |
+| CARD_INSTALLMENT → USER  | N:1 | 한 사용자는 여러 카드할부를 등록할 수 있다. |
+| CARD_INSTALLMENT → CARD  | N:1 | 하나의 카드할부는 하나의 카드에 연결된다. |
+| CARD_INSTALLMENT → TRANSACTION | 1:N | 하나의 카드할부는 할부 개월 수만큼 월별 거래를 가진다. |
 
 ---
 
@@ -262,6 +286,7 @@ erDiagram
 | CATEGORY_USER_SETTING | include_in_statistics | 카테고리의 사용자별 통계 포함 여부를 관리한다. `false`면 모든 통계 집계에서 제외한다. |
 | ICON          | show       | 아이콘 선택 목록 제외 시 `false`로 변경한다.  |
 | REFRESH_TOKEN | revoked_at | 폐기 시 `revoked_at`을 현재 일시로 설정한다. 로그아웃, 비밀번호 재설정, 회원탈퇴 시 해당 사용자의 모든 토큰을 폐기한다. |
+| CARD_INSTALLMENT | deleted_yn | 할부 삭제 시 true로 변경하고 연결 거래도 소프트 삭제 |
 
 ---
 
