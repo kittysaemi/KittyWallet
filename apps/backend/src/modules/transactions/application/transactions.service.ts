@@ -433,11 +433,12 @@ export class TransactionsService {
         transaction.installmentId,
         userId
       );
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const currentTotalAmount = installmentTxs.reduce((sum, t) => sum + t.amount.toNumber(), 0);
+      const todayStr = getTodayInTimezone();
+      const currentTotalAmount = installmentTxs
+        .filter((t) => t.transactionDate.toISOString().split("T")[0] <= todayStr)
+        .reduce((sum, t) => sum + t.amount.toNumber(), 0);
       const remainingAmount = installmentTxs
-        .filter((t) => t.transactionDate > today)
+        .filter((t) => t.transactionDate.toISOString().split("T")[0] > todayStr)
         .reduce((sum, t) => sum + t.amount.toNumber(), 0);
       const installmentItems = installmentTxs.map((t) => ({
         transaction_id: Number(t.transactionId),

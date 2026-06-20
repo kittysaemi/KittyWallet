@@ -4,6 +4,7 @@ import type {
   CreateTransactionRequest,
   CreateTransactionResult,
   DeleteTransactionResult,
+  TransactionDetailItem,
   TransactionItem,
   TransactionListData,
   TransactionListParams,
@@ -29,8 +30,8 @@ export const transactionApi = {
     return res.data;
   },
 
-  getTransaction: async (id: number): Promise<ApiResponse<TransactionItem>> => {
-    const res = await apiClient.get<ApiResponse<TransactionItem>>(`/transactions/${id}`);
+  getTransaction: async (id: number): Promise<ApiResponse<TransactionDetailItem>> => {
+    const res = await apiClient.get<ApiResponse<TransactionDetailItem>>(`/transactions/${id}`);
     return res.data;
   },
 

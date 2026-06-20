@@ -76,6 +76,20 @@ export const TransactionReadOnlyRow: React.FC<TransactionReadOnlyRowProps> = ({
               )}
             </>
           )}
+          {tx.installment_seq != null && tx.installment_total_count != null && (
+            <>
+              <span className="shrink-0 text-[var(--color-text-caption)]">·</span>
+              <span className="shrink-0">
+                {tx.installment_seq}/{tx.installment_total_count}회차
+              </span>
+              {tx.installment_original_amount != null && (
+                <>
+                  <span className="shrink-0 text-[var(--color-text-caption)]">·</span>
+                  <span className="shrink-0">총 {fmt(tx.installment_original_amount)}원</span>
+                </>
+              )}
+            </>
+          )}
         </p>
       </div>
       <p className={`shrink-0 text-sm font-semibold ${isIncome ? "text-blue-500" : "text-red-500"}`}>
