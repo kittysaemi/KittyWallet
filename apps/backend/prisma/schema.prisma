@@ -27,6 +27,7 @@ model User {
   syncClients          SyncClient[]
   syncHistories        SyncHistory[]
   settings             UserSetting[]
+  cardInstallments     CardInstallment[]
 
   @@map("USER")
 }
@@ -133,6 +134,7 @@ model Category {
   icon                 Icon                  @relation(fields: [iconId], references: [iconId])
   categoryUserSettings CategoryUserSetting[]
   transactions         Transaction[]
+  cardInstallments     CardInstallment[]
 
   @@unique([userId, categoryName], map: "CATEGORY_user_id_category_name_key")
   @@index([userId])
@@ -195,8 +197,9 @@ model Card {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [userId])
-  icon Icon @relation(fields: [iconId], references: [iconId])
+  user             User              @relation(fields: [userId], references: [userId])
+  icon             Icon              @relation(fields: [iconId], references: [iconId])
+  cardInstallments CardInstallment[]
 
   @@index([userId])
   @@index([userId, cardName])
@@ -249,26 +252,30 @@ model SyncClient {
 }
 
 model Transaction {
-  transactionId   BigInt          @id @default(autoincrement()) @map("transaction_id")
-  userId          BigInt          @map("user_id")
-  categoryId      BigInt          @map("category_id")
-  walletId        BigInt          @map("wallet_id")
-  syncClientId    BigInt?         @map("sync_client_id")
-  clientTempId    String?         @map("client_temp_id")
-  transactionType TransactionType @map("transaction_type")
-  walletType      WalletType      @map("wallet_type")
-  amount          Decimal         @db.Decimal(15, 0)
-  transactionDate DateTime        @map("transaction_date") @db.Date
-  memo            String?         @db.VarChar(200)
-  deletedYn       Boolean         @default(false) @map("deleted_yn")
-  syncedAt        DateTime?       @map("synced_at")
-  createdAt       DateTime        @default(now()) @map("created_at")
-  updatedAt       DateTime        @updatedAt @map("updated_at")
+  transactionId        BigInt          @id @default(autoincrement()) @map("transaction_id")
+  userId               BigInt          @map("user_id")
+  categoryId           BigInt          @map("category_id")
+  walletId             BigInt          @map("wallet_id")
+  syncClientId         BigInt?         @map("sync_client_id")
+  clientTempId         String?         @map("client_temp_id")
+  transactionType      TransactionType @map("transaction_type")
+  walletType           WalletType      @map("wallet_type")
+  amount               Decimal         @db.Decimal(15, 0)
+  transactionDate      DateTime        @map("transaction_date") @db.Date
+  memo                 String?         @db.VarChar(200)
+  installmentId        BigInt?         @map("installment_id")
+  installmentSeq       Int?            @map("installment_seq")
+  installmentTotalCount Int?           @map("installment_total_count")
+  deletedYn            Boolean         @default(false) @map("deleted_yn")
+  syncedAt             DateTime?       @map("synced_at")
+  createdAt            DateTime        @default(now()) @map("created_at")
+  updatedAt            DateTime        @updatedAt @map("updated_at")
 
-  user          User         @relation(fields: [userId], references: [userId])
-  category      Category     @relation(fields: [categoryId], references: [categoryId])
-  syncClient    SyncClient?  @relation(fields: [syncClientId], references: [syncClientId])
-  syncHistories SyncHistory[]
+  user            User             @relation(fields: [userId], references: [userId])
+  category        Category         @relation(fields: [categoryId], references: [categoryId])
+  syncClient      SyncClient?      @relation(fields: [syncClientId], references: [syncClientId])
+  syncHistories   SyncHistory[]
+  cardInstallment CardInstallment? @relation(fields: [installmentId], references: [installmentId])
 
   @@unique([userId, syncClientId, clientTempId], map: "TRANSACTION_user_id_sync_client_id_client_temp_id_key")
   @@index([userId])
@@ -281,6 +288,7 @@ model Transaction {
   @@index([syncClientId])
   @@index([syncedAt])
   @@index([deletedYn])
+  @@index([installmentId])
   @@map("TRANSACTION")
 }
 
@@ -307,4 +315,30 @@ model SyncHistory {
   @@index([syncResult])
   @@index([serverAppliedAt])
   @@map("SYNC_HISTORY")
+}
+
+model CardInstallment {
+  installmentId     BigInt    @id @default(autoincrement()) @map("installment_id")
+  userId            BigInt    @map("user_id")
+  cardId            BigInt    @map("card_id")
+  categoryId        BigInt    @map("category_id")
+  originalAmount    Decimal   @map("original_amount") @db.Decimal(15, 0)
+  installmentMonths Int       @map("installment_months")
+  purchaseDate      DateTime  @map("purchase_date") @db.Date
+  memo              String?   @db.VarChar(200)
+  deletedYn         Boolean   @default(false) @map("deleted_yn")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  user         User          @relation(fields: [userId], references: [userId])
+  card         Card          @relation(fields: [cardId], references: [cardId])
+  category     Category      @relation(fields: [categoryId], references: [categoryId])
+  transactions Transaction[]
+
+  @@index([userId])
+  @@index([cardId])
+  @@index([categoryId])
+  @@index([purchaseDate])
+  @@index([deletedYn])
+  @@map("CARD_INSTALLMENT")
 }
