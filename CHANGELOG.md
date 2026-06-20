@@ -1,3 +1,10 @@
+# [1.13.0](https://github.com/kittysaemi/KittyWallet/compare/v1.12.0...v1.13.0) (2026-06-20)
+
+
+### Features
+
+* **api:** add icon snapshot storage ([549d319](https://github.com/kittysaemi/KittyWallet/commit/549d31980221a20a7ceea222d3fb052b77df2e1e))
+
 # [1.12.0](https://github.com/kittysaemi/KittyWallet/compare/v1.11.0...v1.12.0) (2026-06-20)
 
 
