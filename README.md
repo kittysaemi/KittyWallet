@@ -12,7 +12,7 @@
 | --- | --- |
 | 원격 저장소 | https://github.com/kittysaemi/KittyWallet |
 | --- | --- |
-| 서비스 위치 | https://kittysaemi.com/kittywallet
+| 서비스 위치 | https://kittysaemi.com/kittywallet |
 본 저장소의 구현 기준은 `AGENTS.md`와 `docs/00_project/문서인덱스.md`를 최우선으로 따릅니다.
 
 ---
