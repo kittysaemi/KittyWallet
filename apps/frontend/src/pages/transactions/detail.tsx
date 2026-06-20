@@ -14,6 +14,7 @@ import { categoryApi } from "../../entities/category/api/categoryApi";
 import { iconApi } from "../../entities/icon/api/iconApi";
 import type { IconItem } from "../../entities/icon/model/icon.types";
 import { IconRenderer } from "../../shared/ui/IconRenderer";
+import type { InstallmentInfo } from "../../entities/transaction/model/transaction.types";
 
 function formatAmount(amount: number, type: "INCOME" | "EXPENSE"): string {
   const formatted = amount.toLocaleString("ko-KR");
@@ -66,12 +67,47 @@ const Row: React.FC<RowProps> = ({ label, value, icon }) => (
   </div>
 );
 
+function fmt(n: number): string {
+  return n.toLocaleString("ko-KR");
+}
+
+const InstallmentSection: React.FC<{
+  seq: number;
+  totalCount: number;
+  info: InstallmentInfo;
+}> = ({ seq, totalCount, info }) => (
+  <div className="mt-4 rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] shadow-[0_4px_16px_var(--color-card-shadow)]">
+    <div className="px-5 py-4 border-b border-[var(--color-border-secondary)]">
+      <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+        할부 정보 ({seq}/{totalCount}회차)
+      </p>
+    </div>
+    <div className="divide-y divide-[var(--color-border-secondary)]">
+      <div className="flex justify-between px-5 py-3 text-sm">
+        <span className="text-[var(--color-text-secondary)]">최초 구매금액</span>
+        <span className="font-medium text-[var(--color-text-primary)]">{fmt(info.original_amount)}원</span>
+      </div>
+      <div className="flex justify-between px-5 py-3 text-sm">
+        <span className="text-[var(--color-text-secondary)]">현재 총 청구금액</span>
+        <span className="font-medium text-[var(--color-text-primary)]">{fmt(info.current_total_amount)}원</span>
+      </div>
+      {info.remaining_amount != null && (
+        <div className="flex justify-between px-5 py-3 text-sm">
+          <span className="text-[var(--color-text-secondary)]">남은 청구금액</span>
+          <span className="font-medium text-[var(--color-text-primary)]">{fmt(info.remaining_amount)}원</span>
+        </div>
+      )}
+    </div>
+  </div>
+);
+
 const TransactionDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
   const [deleteError, setDeleteError] = React.useState("");
+  const [showSchedule, setShowSchedule] = React.useState(false);
 
   const deleteMutation = useMutation({
     mutationFn: () => transactionApi.deleteTransaction(Number(id)),
@@ -278,6 +314,7 @@ const TransactionDetailPage: React.FC = () => {
 
         {/* 영수증 카드 */}
         {tx && (
+          <div>
           <div
             className="relative rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)]"
             style={{ boxShadow: "0 4px 16px var(--color-card-shadow)" }}
@@ -334,8 +371,53 @@ const TransactionDetailPage: React.FC = () => {
                 value={`${tx.wallet_name} (${tx.wallet_type === "ACCOUNT" ? "계좌" : "카드"})${tx.wallet_deleted ? " [삭제됨]" : ""}`}
                 icon={getIcon(iconMap, walletIconId)}
               />
+              {tx.installment_seq != null && tx.installment_total_count != null && (
+                <Row
+                  label="할부 회차"
+                  value={`${tx.installment_seq}/${tx.installment_total_count}회차`}
+                />
+              )}
               {tx.memo && <Row label="메모" value={tx.memo} />}
             </div>
+          </div>
+
+          {tx.installment_seq != null && tx.installment_total_count != null && tx.installment_info && (
+            <>
+              <InstallmentSection
+                seq={tx.installment_seq}
+                totalCount={tx.installment_total_count}
+                info={tx.installment_info}
+              />
+              <div className="mt-4 flex justify-end pr-5">
+                <button
+                  type="button"
+                  onClick={() => setShowSchedule((v) => !v)}
+                  className="text-xs text-[var(--color-text-caption)] transition hover:text-[var(--color-text-secondary)]"
+                >
+                  {showSchedule ? "닫기" : "할부 전체 일정"}
+                </button>
+              </div>
+              {showSchedule && tx.installment_info.installment_items && tx.installment_info.installment_items.length > 0 && (
+                <div className="mt-4 rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] shadow-[0_4px_16px_var(--color-card-shadow)]">
+                  <div className="divide-y divide-[var(--color-border-secondary)]">
+                    {tx.installment_info.installment_items.map((item) => {
+                      const isCurrent = item.installment_seq === tx.installment_seq;
+                      return (
+                        <div
+                          key={item.installment_seq}
+                          className={`flex items-center gap-3 px-5 py-3 text-sm ${isCurrent ? "font-semibold text-[var(--color-primary)]" : "text-[var(--color-text-secondary)]"}`}
+                        >
+                          <span className="w-20 shrink-0 whitespace-nowrap">{item.installment_seq}/{tx.installment_total_count}회차</span>
+                          <span className="flex-1">{item.transaction_date}</span>
+                          <span className="shrink-0">{fmt(item.amount)}원</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
           </div>
         )}
 

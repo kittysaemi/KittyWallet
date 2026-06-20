@@ -118,8 +118,16 @@ export class DashboardRepository {
   }
 
   async getRecentTransactions(userId: bigint, limit: number): Promise<RecentTransactionData[]> {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
     const transactions = await this.prisma.transaction.findMany({
-      where: { userId, deletedYn: false },
+      where: {
+        userId,
+        deletedYn: false,
+        transactionDate: { gte: startOfMonth, lte: endOfToday }
+      },
       include: { category: true },
       orderBy: [{ transactionDate: "desc" }, { createdAt: "desc" }],
       take: limit

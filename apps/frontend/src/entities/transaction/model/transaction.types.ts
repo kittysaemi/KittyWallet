@@ -14,6 +14,30 @@ export interface TransactionItem {
   transaction_date: string;
   created_at: string;
   updated_at: string;
+  installment_id?: number | null;
+  installment_seq?: number | null;
+  installment_total_count?: number | null;
+  installment_original_amount?: number | null;
+}
+
+export interface InstallmentItem {
+  transaction_id: number;
+  installment_seq: number;
+  amount: number;
+  transaction_date: string;
+}
+
+export interface InstallmentInfo {
+  original_amount: number;
+  current_total_amount: number;
+  remaining_amount: number;
+  installment_months: number;
+  purchase_date: string;
+  installment_items: InstallmentItem[];
+}
+
+export interface TransactionDetailItem extends TransactionItem {
+  installment_info?: InstallmentInfo | null;
 }
 
 export interface TransactionListData {
@@ -33,12 +57,15 @@ export interface CreateTransactionRequest {
   memo?: string;
   transaction_date: string;
   timezone?: string;
+  installment?: { installment_months: number };
 }
 
 export interface CreateTransactionResult {
   transaction_id: number;
   updated_at: string;
   synced_at: string | null;
+  installment_id?: number;
+  transactions?: InstallmentItem[];
 }
 
 export interface UpdateTransactionRequest {

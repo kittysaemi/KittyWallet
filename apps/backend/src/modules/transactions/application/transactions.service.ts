@@ -93,11 +93,20 @@ export interface TransactionItem {
   installment_original_amount?: number | null;
 }
 
+export interface InstallmentItem {
+  transaction_id: number;
+  installment_seq: number;
+  amount: number;
+  transaction_date: string;
+}
+
 export interface InstallmentInfo {
   original_amount: number;
   current_total_amount: number;
+  remaining_amount: number;
   installment_months: number;
   purchase_date: string;
+  installment_items: InstallmentItem[];
 }
 
 export interface TransactionDetailItem extends TransactionItem {
@@ -424,16 +433,27 @@ export class TransactionsService {
         transaction.installmentId,
         userId
       );
-      const currentTotalAmount = installmentTxs.reduce(
-        (sum, t) => sum + t.amount.toNumber(),
-        0
-      );
+      const todayStr = getTodayInTimezone();
+      const currentTotalAmount = installmentTxs
+        .filter((t) => t.transactionDate.toISOString().split("T")[0] <= todayStr)
+        .reduce((sum, t) => sum + t.amount.toNumber(), 0);
+      const remainingAmount = installmentTxs
+        .filter((t) => t.transactionDate.toISOString().split("T")[0] > todayStr)
+        .reduce((sum, t) => sum + t.amount.toNumber(), 0);
+      const installmentItems = installmentTxs.map((t) => ({
+        transaction_id: Number(t.transactionId),
+        installment_seq: t.installmentSeq!,
+        amount: t.amount.toNumber(),
+        transaction_date: t.transactionDate.toISOString().split("T")[0]
+      }));
       detail.installment_id = Number(transaction.installmentId);
       detail.installment_info = {
         original_amount: transaction.cardInstallment.originalAmount.toNumber(),
         current_total_amount: currentTotalAmount,
+        remaining_amount: remainingAmount,
         installment_months: transaction.cardInstallment.installmentMonths,
-        purchase_date: transaction.cardInstallment.purchaseDate.toISOString().split("T")[0]
+        purchase_date: transaction.cardInstallment.purchaseDate.toISOString().split("T")[0],
+        installment_items: installmentItems
       };
     }
 
