@@ -1,5 +1,13 @@
 # 아이콘 API
 
+## Provider 호환성 정책
+
+- compatibility core는 provider 공통이며 Lucide는 첫 adapter일 뿐이다.
+- upgrade 전 현재 등록 key와 대상 버전 key를 비교한다. alias/manual-map 근거가 있는 경우에만 provider_key 변경 plan을 만들고 icon_code는 유지한다.
+- 삭제·누락·브랜드 제거는 자동 대체하지 않는다. 기존 provider 버전에서 snapshot을 확보해 fallback 또는 manual review로 분류한다.
+- snapshot은 provider key lookup 실패 시에만 사용한다. 우선순위는 provider key, snapshot, 기본 fallback이다.
+- snapshot payload는 허용된 svg 또는 icon-node 구조만 저장·렌더링하며 script, event handler, javascript URL은 허용하지 않는다.
+
 ## 정책 요약
 
 - 아이콘은 계좌, 카드, 카테고리에서 공통으로 사용한다.
