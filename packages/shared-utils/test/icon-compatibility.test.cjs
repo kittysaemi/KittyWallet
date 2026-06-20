@@ -180,3 +180,11 @@ test("uses explicit Lucide aliases and keeps brand removals out of automatic rep
   assert.equal(report.items[0].nextProviderKey, "pen");
   assert.equal(report.items[1].reason, "brand-removed");
 });
+
+test("creates a migration plan from a Lucide compatibility report", async () => {
+  const adapter = new LucideCompatibilityAdapter({ sources: [{ version: "1", icons: { Edit2: "<svg />", Removed: "<svg />" } }, { version: "2", icons: { Pen: "<svg />" } }] });
+  const report = await createIconCompatibilityReport({ providerType: "lucide", fromVersion: "1", toVersion: "2", icons: [icon("edit-2"), icon("removed")], availableKeys: await adapter.getAvailableKeys({ version: "2" }), resolveAlias: (item) => adapter.resolveAlias({ providerKey: item.providerKey, toVersion: "2" }), canCreateSnapshot: async (item) => Boolean(await adapter.createSnapshot({ providerKey: item.providerKey, fromVersion: "1" })), getMissingReason: () => "removed" });
+  const plan = createIconMigrationPlan(report);
+  assert.equal(plan.keyMigrations[0].nextProviderKey, "pen");
+  assert.equal(plan.snapshotPlans[0].providerKey, "removed");
+});
