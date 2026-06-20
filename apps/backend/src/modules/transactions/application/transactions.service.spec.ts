@@ -1,6 +1,4 @@
-import { HttpStatus } from "@nestjs/common";
 import { Decimal } from "@prisma/client/runtime/library";
-import { AppException } from "../../../common/exceptions/app.exception";
 import { TransactionsRepository } from "../infrastructure/transactions.repository";
 import { TransactionsService } from "./transactions.service";
 
