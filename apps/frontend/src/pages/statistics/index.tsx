@@ -44,8 +44,8 @@ const TAB_ROWS: Array<Array<{ id: StatTab; label: string }>> = [
     { id: "top5", label: "Top5" }
   ],
   [
-    { id: "heatmap", label: "달력 히트맵" },
-    { id: "category-expense", label: "카테고리 통계" }
+    { id: "heatmap", label: "달력히트맵" },
+    { id: "category-expense", label: "카테고리통계" }
   ]
 ];
 

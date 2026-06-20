@@ -288,10 +288,10 @@ describe("StatisticsPage", () => {
     expect(screen.getByRole("img", { name: "월별 소비 흐름 차트" })).toBeInTheDocument();
   });
 
-  it("switches to 월간 요약 tab and shows summary data", async () => {
+  it("switches to 월간요약 tab and shows summary data", async () => {
     render(<StatisticsPage />, { wrapper: createWrapper() });
 
-    await userEvent.click(await screen.findByRole("button", { name: "월간 요약" }));
+    await userEvent.click(await screen.findByRole("button", { name: "월간요약" }));
 
     await waitFor(() => expect(mockedStatisticsApi.getSummaryStatistics).toHaveBeenCalled());
     expect(await screen.findByLabelText("월간 요약 카드")).toBeInTheDocument();
@@ -300,10 +300,10 @@ describe("StatisticsPage", () => {
     expect(screen.getAllByText("식비").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("switches to Top 5 tab and shows ranked categories", async () => {
+  it("switches to Top5 tab and shows ranked categories", async () => {
     render(<StatisticsPage />, { wrapper: createWrapper() });
 
-    await userEvent.click(await screen.findByRole("button", { name: "Top 5" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Top5" }));
 
     await waitFor(() => expect(mockedStatisticsApi.getCategoryTopStatistics).toHaveBeenCalled());
     expect(await screen.findByLabelText("Top 5 카테고리")).toBeInTheDocument();
@@ -311,26 +311,26 @@ describe("StatisticsPage", () => {
     expect(screen.getAllByText("기타").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("switches to 달력 히트맵 tab and shows calendar grid", async () => {
+  it("switches to 달력히트맵 tab and shows calendar grid", async () => {
     render(<StatisticsPage />, { wrapper: createWrapper() });
 
-    await userEvent.click(await screen.findByRole("button", { name: "달력 히트맵" }));
+    await userEvent.click(await screen.findByRole("button", { name: "달력히트맵" }));
 
     await waitFor(() => expect(mockedStatisticsApi.getCalendarStatistics).toHaveBeenCalled());
     expect(await screen.findByLabelText("달력 히트맵")).toBeInTheDocument();
   });
 
-  it("switches to 지출 흐름 tab and renders Sankey diagram", async () => {
+  it("switches to 소비흐름 tab and renders expense Sankey diagram", async () => {
     render(<StatisticsPage />, { wrapper: createWrapper() });
 
-    await userEvent.click(await screen.findByRole("button", { name: "지출 흐름" }));
+    await userEvent.click(await screen.findByRole("button", { name: "소비흐름" }));
 
     await waitFor(() => expect(mockedStatisticsApi.getSankeyStatistics).toHaveBeenCalled());
     expect(await screen.findByLabelText("지출 흐름 Sankey 다이어그램")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "지출 흐름 Sankey 차트" })).toBeInTheDocument();
   });
 
-  it("renders Sankey empty state when total_expense is 0", async () => {
+  it("renders expense Sankey empty state when total_expense is 0", async () => {
     mockedStatisticsApi.getSankeyStatistics.mockResolvedValueOnce({
       success: true,
       data: { month: "2026-06", total_expense: 0, nodes: [], links: [] },
@@ -338,15 +338,16 @@ describe("StatisticsPage", () => {
     });
 
     render(<StatisticsPage />, { wrapper: createWrapper() });
-    await userEvent.click(await screen.findByRole("button", { name: "지출 흐름" }));
+    await userEvent.click(await screen.findByRole("button", { name: "소비흐름" }));
 
     expect(await screen.findByText("통계 데이터가 없습니다")).toBeInTheDocument();
   });
 
-  it("switches to 수입 흐름 tab and renders income Sankey diagram", async () => {
+  it("switches to income mode inside 소비흐름 tab and renders income Sankey diagram", async () => {
     render(<StatisticsPage />, { wrapper: createWrapper() });
 
-    await userEvent.click(await screen.findByRole("button", { name: "수입 흐름" }));
+    await userEvent.click(await screen.findByRole("button", { name: "소비흐름" }));
+    await userEvent.click(await screen.findByRole("button", { name: "수입" }));
 
     await waitFor(() => expect(mockedStatisticsApi.getSankeyIncomeStatistics).toHaveBeenCalled());
     expect(await screen.findByLabelText("수입 흐름 Sankey 다이어그램")).toBeInTheDocument();
@@ -361,7 +362,8 @@ describe("StatisticsPage", () => {
     });
 
     render(<StatisticsPage />, { wrapper: createWrapper() });
-    await userEvent.click(await screen.findByRole("button", { name: "수입 흐름" }));
+    await userEvent.click(await screen.findByRole("button", { name: "소비흐름" }));
+    await userEvent.click(await screen.findByRole("button", { name: "수입" }));
 
     expect(await screen.findByText("통계 데이터가 없습니다")).toBeInTheDocument();
   });
@@ -383,7 +385,7 @@ describe("StatisticsPage", () => {
   it("Top5 tab uses category statistics when switched to weekly mode", async () => {
     render(<StatisticsPage />, { wrapper: createWrapper() });
 
-    await userEvent.click(await screen.findByRole("button", { name: "Top 5" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Top5" }));
     await userEvent.click(await screen.findByRole("button", { name: "주별" }));
 
     await waitFor(() => expect(mockedStatisticsApi.getCategoryStatistics).toHaveBeenCalled());
