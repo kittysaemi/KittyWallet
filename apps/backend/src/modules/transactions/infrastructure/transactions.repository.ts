@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import {
   Account,
   Card,
+  CardInstallment,
   Category,
   Prisma,
   Transaction,
@@ -12,6 +13,10 @@ import { PrismaService } from "../../../database/prisma.service";
 import { BalanceViolationError } from "../domain/errors";
 
 export type TransactionWithCategory = Transaction & { category: Category };
+export type TransactionWithInstallment = Transaction & {
+  category: Category;
+  cardInstallment: CardInstallment | null;
+};
 
 export interface FindTransactionsCondition {
   userId: bigint;
@@ -34,6 +39,19 @@ export interface CreateTransactionInput {
   transactionDate: Date;
   memo?: string | null;
   syncedAt?: Date | null;
+  installmentId?: bigint | null;
+  installmentSeq?: number | null;
+  installmentTotalCount?: number | null;
+}
+
+export interface CreateInstallmentInput {
+  userId: bigint;
+  cardId: bigint;
+  categoryId: bigint;
+  originalAmount: number;
+  installmentMonths: number;
+  purchaseDate: Date;
+  memo?: string | null;
 }
 
 export type AccountBalanceTransaction = Pick<
@@ -71,10 +89,10 @@ export class TransactionsRepository {
     page: number,
     limit: number,
     orderBy: Prisma.TransactionOrderByWithRelationInput[]
-  ): Promise<TransactionWithCategory[]> {
+  ): Promise<TransactionWithInstallment[]> {
     return this.prisma.transaction.findMany({
       where: this.buildWhere(condition),
-      include: { category: true },
+      include: { category: true, cardInstallment: true },
       orderBy,
       skip: (page - 1) * limit,
       take: limit
@@ -85,19 +103,81 @@ export class TransactionsRepository {
     return this.prisma.transaction.count({ where: this.buildWhere(condition) });
   }
 
-  findById(transactionId: bigint, userId: bigint): Promise<TransactionWithCategory | null> {
+  findById(transactionId: bigint, userId: bigint): Promise<TransactionWithInstallment | null> {
     return this.prisma.transaction.findFirst({
       where: { transactionId, userId, deletedYn: false },
-      include: { category: true }
+      include: { category: true, cardInstallment: true }
     });
   }
 
-  findRecent(userId: bigint, limit: number): Promise<TransactionWithCategory[]> {
+  findRecent(userId: bigint, limit: number): Promise<TransactionWithInstallment[]> {
     return this.prisma.transaction.findMany({
       where: { userId, deletedYn: false },
-      include: { category: true },
+      include: { category: true, cardInstallment: true },
       orderBy: [{ transactionDate: "desc" }, { createdAt: "desc" }],
       take: limit
+    });
+  }
+
+  findInstallmentTransactions(installmentId: bigint, userId: bigint): Promise<Transaction[]> {
+    return this.prisma.transaction.findMany({
+      where: { installmentId, userId, deletedYn: false },
+      orderBy: [{ installmentSeq: "asc" }]
+    });
+  }
+
+  createInstallmentWithTransactions(
+    installmentInput: CreateInstallmentInput,
+    now: Date
+  ): Promise<{ installment: CardInstallment; transactions: Transaction[] }> {
+    return this.prisma.$transaction(async (tx) => {
+      const installment = await tx.cardInstallment.create({
+        data: {
+          user: { connect: { userId: installmentInput.userId } },
+          card: { connect: { cardId: installmentInput.cardId } },
+          category: { connect: { categoryId: installmentInput.categoryId } },
+          originalAmount: installmentInput.originalAmount,
+          installmentMonths: installmentInput.installmentMonths,
+          purchaseDate: installmentInput.purchaseDate,
+          memo: installmentInput.memo ?? null,
+          deletedYn: false
+        }
+      });
+
+      const baseAmount = Math.floor(
+        installmentInput.originalAmount / installmentInput.installmentMonths
+      );
+      const remainder =
+        installmentInput.originalAmount -
+        baseAmount * installmentInput.installmentMonths;
+
+      const transactions: Transaction[] = [];
+      for (let seq = 1; seq <= installmentInput.installmentMonths; seq++) {
+        const amount = seq === 1 ? baseAmount + remainder : baseAmount;
+        const txDate = new Date(installmentInput.purchaseDate);
+        txDate.setMonth(txDate.getMonth() + seq - 1);
+
+        const transaction = await tx.transaction.create({
+          data: {
+            user: { connect: { userId: installmentInput.userId } },
+            category: { connect: { categoryId: installmentInput.categoryId } },
+            walletId: installmentInput.cardId,
+            transactionType: "EXPENSE",
+            walletType: "CARD",
+            amount,
+            transactionDate: txDate,
+            memo: installmentInput.memo ?? null,
+            cardInstallment: { connect: { installmentId: installment.installmentId } },
+            installmentSeq: seq,
+            installmentTotalCount: installmentInput.installmentMonths,
+            deletedYn: false,
+            syncedAt: now
+          }
+        });
+        transactions.push(transaction);
+      }
+
+      return { installment, transactions };
     });
   }
 
@@ -213,6 +293,11 @@ export class TransactionsRepository {
         amount: input.amount,
         transactionDate: input.transactionDate,
         memo: input.memo ?? null,
+        ...(input.installmentId
+          ? { cardInstallment: { connect: { installmentId: input.installmentId } } }
+          : {}),
+        installmentSeq: input.installmentSeq ?? null,
+        installmentTotalCount: input.installmentTotalCount ?? null,
         deletedYn: false,
         syncedAt: input.syncedAt ?? null
       }

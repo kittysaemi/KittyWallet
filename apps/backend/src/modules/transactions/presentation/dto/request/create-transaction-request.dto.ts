@@ -1,5 +1,21 @@
-import { IsDateString, IsIn, IsInt, IsOptional, IsString, MaxLength, Min } from "class-validator";
+import {
+  IsDateString,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  MaxLength,
+  Min,
+  ValidateNested
+} from "class-validator";
+import { Type } from "class-transformer";
 import { SUPPORTED_TIMEZONES } from "../../../../settings/domain/settings-policy";
+
+class InstallmentDto {
+  @IsInt()
+  @Min(2)
+  installment_months!: number;
+}
 
 export class CreateTransactionRequestDto {
   @IsIn(["ACCOUNT", "CARD"])
@@ -31,4 +47,9 @@ export class CreateTransactionRequestDto {
   @IsOptional()
   @IsIn(SUPPORTED_TIMEZONES)
   timezone?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => InstallmentDto)
+  installment?: InstallmentDto;
 }

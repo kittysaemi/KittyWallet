@@ -90,7 +90,8 @@ export class TransactionsController {
       amount: dto.amount,
       memo: dto.memo,
       transactionDate: dto.transaction_date,
-      timezone: dto.timezone
+      timezone: dto.timezone,
+      installmentMonths: dto.installment?.installment_months
     });
   }
 }

@@ -5,8 +5,9 @@ import { getTodayInTimezone } from "../../../common/utils/date.util";
 import { BalanceViolationError } from "../domain/errors";
 import {
   AccountBalanceTransaction,
+  CreateInstallmentInput,
   FindTransactionsCondition,
-  TransactionWithCategory,
+  TransactionWithInstallment,
   TransactionsRepository
 } from "../infrastructure/transactions.repository";
 
@@ -63,6 +64,7 @@ interface CreateTransactionCommand {
   memo?: string;
   transactionDate: string;
   timezone?: string;
+  installmentMonths?: number;
 }
 
 interface BalanceCandidate {
@@ -86,12 +88,36 @@ export interface TransactionItem {
   transaction_date: string;
   created_at: string;
   updated_at: string;
+  installment_seq?: number | null;
+  installment_total_count?: number | null;
+  installment_original_amount?: number | null;
+}
+
+export interface InstallmentInfo {
+  original_amount: number;
+  current_total_amount: number;
+  installment_months: number;
+  purchase_date: string;
+}
+
+export interface TransactionDetailItem extends TransactionItem {
+  installment_id?: number | null;
+  installment_info?: InstallmentInfo | null;
+}
+
+export interface InstallmentTransactionItem {
+  transaction_id: number;
+  installment_seq: number;
+  amount: number;
+  transaction_date: string;
 }
 
 export interface CreateTransactionResult {
   transaction_id: number;
   updated_at: string;
   synced_at: string | null;
+  installment_id?: number;
+  transactions?: InstallmentTransactionItem[];
 }
 
 @Injectable()
@@ -384,14 +410,34 @@ export class TransactionsService {
     return { items, page: command.page, limit: command.limit, total_count: total, period_summary };
   }
 
-  async getTransaction(transactionId: bigint, userId: bigint): Promise<TransactionItem> {
+  async getTransaction(transactionId: bigint, userId: bigint): Promise<TransactionDetailItem> {
     const transaction = await this.transactionsRepository.findById(transactionId, userId);
     if (!transaction) {
       throw new AppException("TX_005", "거래 내역을 찾을 수 없습니다.", HttpStatus.NOT_FOUND);
     }
 
     const [item] = await this.attachWalletNames([transaction]);
-    return item;
+    const detail: TransactionDetailItem = { ...item };
+
+    if (transaction.installmentId && transaction.cardInstallment) {
+      const installmentTxs = await this.transactionsRepository.findInstallmentTransactions(
+        transaction.installmentId,
+        userId
+      );
+      const currentTotalAmount = installmentTxs.reduce(
+        (sum, t) => sum + t.amount.toNumber(),
+        0
+      );
+      detail.installment_id = Number(transaction.installmentId);
+      detail.installment_info = {
+        original_amount: transaction.cardInstallment.originalAmount.toNumber(),
+        current_total_amount: currentTotalAmount,
+        installment_months: transaction.cardInstallment.installmentMonths,
+        purchase_date: transaction.cardInstallment.purchaseDate.toISOString().split("T")[0]
+      };
+    }
+
+    return detail;
   }
 
   async getRecentTransactions(
@@ -417,7 +463,7 @@ export class TransactionsService {
   }
 
   private async attachWalletNames(
-    transactions: TransactionWithCategory[]
+    transactions: TransactionWithInstallment[]
   ): Promise<TransactionItem[]> {
     const accountIds = transactions
       .filter((t) => t.walletType === "ACCOUNT")
@@ -440,7 +486,7 @@ export class TransactionsService {
   }
 
   private toItem(
-    t: TransactionWithCategory,
+    t: TransactionWithInstallment,
     accountMap: Map<string, { name: string; deleted: boolean }>,
     cardMap: Map<string, { name: string; deleted: boolean }>
   ): TransactionItem {
@@ -462,7 +508,10 @@ export class TransactionsService {
       memo: t.memo,
       transaction_date: t.transactionDate.toISOString().split("T")[0],
       created_at: t.createdAt.toISOString(),
-      updated_at: t.updatedAt.toISOString()
+      updated_at: t.updatedAt.toISOString(),
+      installment_seq: t.installmentSeq ?? null,
+      installment_total_count: t.installmentTotalCount ?? null,
+      installment_original_amount: t.cardInstallment?.originalAmount.toNumber() ?? null
     };
   }
 
@@ -546,6 +595,37 @@ export class TransactionsService {
     const card = await this.transactionsRepository.findCard(command.walletId, command.userId);
     if (!card) {
       throw new AppException("TX_004", "존재하지 않는 카드입니다.", HttpStatus.NOT_FOUND);
+    }
+
+    if (command.installmentMonths) {
+      const installmentInput: CreateInstallmentInput = {
+        userId: command.userId,
+        cardId: command.walletId,
+        categoryId: command.categoryId,
+        originalAmount: command.amount,
+        installmentMonths: command.installmentMonths,
+        purchaseDate: transactionDate,
+        memo: command.memo
+      };
+
+      const { installment, transactions } =
+        await this.transactionsRepository.createInstallmentWithTransactions(
+          installmentInput,
+          now
+        );
+
+      return {
+        transaction_id: Number(transactions[0].transactionId),
+        updated_at: transactions[0].updatedAt.toISOString(),
+        synced_at: transactions[0].syncedAt?.toISOString() ?? null,
+        installment_id: Number(installment.installmentId),
+        transactions: transactions.map((t) => ({
+          transaction_id: Number(t.transactionId),
+          installment_seq: t.installmentSeq!,
+          amount: t.amount.toNumber(),
+          transaction_date: t.transactionDate.toISOString().split("T")[0]
+        }))
+      };
     }
 
     const transaction = await this.transactionsRepository.create({
