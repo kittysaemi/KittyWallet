@@ -1,3 +1,17 @@
+# [1.11.0](https://github.com/kittysaemi/KittyWallet/compare/v1.10.0...v1.11.0) (2026-06-20)
+
+
+### Features
+
+* **tools:** add icon migration plan ([c147aad](https://github.com/kittysaemi/KittyWallet/commit/c147aadc4c2f26c64a80fc34937f7343a7fa0f5c))
+
+# [1.10.0](https://github.com/kittysaemi/KittyWallet/compare/v1.9.0...v1.10.0) (2026-06-20)
+
+
+### Features
+
+* **tools:** add Lucide compatibility adapter ([70811af](https://github.com/kittysaemi/KittyWallet/commit/70811afda2150f2210e141650c399db91a7ad45e))
+
 # [1.9.0](https://github.com/kittysaemi/KittyWallet/compare/v1.8.0...v1.9.0) (2026-06-19)
 
 
