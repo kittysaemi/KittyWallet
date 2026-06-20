@@ -34,6 +34,7 @@ erDiagram
     USER ||--o{ CATEGORY_USER_SETTING : configures
     USER ||--o{ ICON : owns
     ICON_DICTIONARY ||--o{ ICON : maps
+    ICON_ASSET_SNAPSHOT o|--o{ ICON_DICTIONARY : fallback_for
     USER ||--o{ USER_SETTING : owns
     USER ||--o{ SYNC_CLIENT : owns
     USER ||--o{ SYNC_HISTORY : owns
@@ -62,9 +63,21 @@ erDiagram
         VARCHAR icon_code "서비스 내부 아이콘 코드"
         VARCHAR provider_type "외부 Provider 유형"
         VARCHAR provider_key "Provider 내부 식별자"
+        VARCHAR provider_version "Provider 버전"
+        VARCHAR snapshot_hash FK "fallback snapshot 참조"
         VARCHAR[] search_keywords "검색어/별칭"
         DATETIME created_at
         DATETIME updated_at
+    }
+
+    ICON_ASSET_SNAPSHOT {
+        VARCHAR snapshot_hash PK "snapshot hash"
+        VARCHAR provider_type "원본 Provider 유형"
+        VARCHAR snapshot_format "svg 또는 icon-node"
+        TEXT snapshot_payload "검증된 snapshot payload"
+        VARCHAR source_provider_key "원본 Provider key"
+        VARCHAR source_provider_version "원본 Provider 버전"
+        DATETIME created_at
     }
 
     USER {
@@ -285,6 +298,9 @@ erDiagram
 | CATEGORY_USER_SETTING | show | 기본 카테고리의 사용자별 선택 목록 표시 여부를 관리한다. |
 | CATEGORY_USER_SETTING | include_in_statistics | 카테고리의 사용자별 통계 포함 여부를 관리한다. `false`면 모든 통계 집계에서 제외한다. |
 | ICON          | show       | 아이콘 선택 목록 제외 시 `false`로 변경한다.  |
+| ICON          | 물리 삭제 | 미사용 아이콘 정리에서 사용자 등록 아이콘이고 계좌/카드/카테고리 참조가 없을 때만 삭제한다. 기본 아이콘은 삭제하지 않는다. |
+| ICON_DICTIONARY | 물리 삭제 | 삭제 대상 ICON 외에 참조 ICON이 없을 때만 함께 삭제한다. |
+| ICON_ASSET_SNAPSHOT | 물리 삭제 | 삭제 대상 dictionary 외에 참조 dictionary가 없을 때만 함께 삭제한다. 공유 snapshot은 유지한다. |
 | REFRESH_TOKEN | revoked_at | 폐기 시 `revoked_at`을 현재 일시로 설정한다. 로그아웃, 비밀번호 재설정, 회원탈퇴 시 해당 사용자의 모든 토큰을 폐기한다. |
 | CARD_INSTALLMENT | deleted_yn | 할부 삭제 시 true로 변경하고 연결 거래도 소프트 삭제 |
 
@@ -318,6 +334,7 @@ erDiagram
 | CATEGORY_USER_SETTING | `(user_id, category_id)` unique |
 | ICON_DICTIONARY | `icon_code` unique, `(provider_type, provider_key)` unique |
 | ICON | 사용자 아이콘 `(user_id, icon_dictionary_id)` unique. 기본 아이콘은 시드 로직에서 중복을 방지 |
+| ICON_ASSET_SNAPSHOT | `snapshot_hash` primary key. `ICON_DICTIONARY.snapshot_hash`가 참조하며, 마지막 참조가 제거될 때만 삭제 가능 |
 
 동기화 대상은 MVP 기준 거래만 포함한다.
 

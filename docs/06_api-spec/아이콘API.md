@@ -11,7 +11,7 @@
 ## 정책 요약
 
 - 아이콘은 계좌, 카드, 카테고리에서 공통으로 사용한다.
-- 아이콘은 등록만 가능하며 사용자가 아이콘 자체를 수정하거나 삭제하지 않는다.
+- 아이콘은 등록 후 표시/숨김 상태를 바꿀 수 있으며, 사용처가 없는 사용자 등록 아이콘은 정리 API로만 물리 삭제할 수 있다.
 - 사용자는 사용자 아이콘의 표시/숨김 상태만 변경할 수 있다.
 - `show=true` 아이콘만 신규 선택 목록에 표시한다.
 - `show=false` 아이콘은 신규 선택 목록에서만 제외하며, 기존 데이터에 연결된 아이콘은 계속 표시한다.
@@ -165,7 +165,7 @@ MVP 기본 아이콘은 현재 provider의 key를 기준으로 사전 매핑과 
 - `ICON_DICTIONARY`에 매핑이 없으면 생성하고, 있으면 재사용한다.
 - 같은 사용자가 이미 선택 가능한 동일 아이콘을 보유하고 있으면 중복으로 등록하지 않는다.
 - 기본 아이콘은 seed 데이터로만 생성하며 사용자 API로 생성하지 않는다.
-- 아이콘은 등록 후 수정/삭제하지 않는다.
+- 아이콘은 등록 후 표시 상태만 수정할 수 있다. 삭제는 `DELETE /api/v1/icons/cleanup`의 미사용 아이콘 정리 흐름으로만 처리한다.
 
 ## Response
 
@@ -228,6 +228,94 @@ MVP 기본 아이콘은 현재 provider의 key를 기준으로 사전 매핑과 
 |---|---|---|
 | 400 | VALIDATION_001 | 수정 가능한 필드가 없음 |
 | 404 | ICON_002 | 아이콘 없음 |
+
+# 미사용 아이콘 정리 후보 API
+
+## 목적
+
+사용자가 등록한 아이콘 중 계좌, 카드, 카테고리 어디에서도 사용하지 않는 아이콘만 반환한다. 기본 아이콘과 사용 중인 아이콘은 반환하지 않는다.
+
+## Endpoint
+
+`GET /api/v1/icons/cleanup-candidates`
+
+## Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "icon_id": 12,
+        "icon_code": "icon-custom-coffee",
+        "provider_type": "lucide",
+        "provider_key": "coffee",
+        "preview": null,
+        "is_provider_available": true,
+        "can_register_again": true,
+        "created_at": "2026-06-14T10:00:00.000Z"
+      }
+    ]
+  },
+  "error": null
+}
+```
+
+## 비즈니스 규칙
+
+- 후보는 현재 로그인한 사용자가 직접 등록한 아이콘만 포함한다.
+- 계좌, 카드, 카테고리 중 하나라도 해당 `icon_id`를 참조하면 후보에서 제외한다.
+- `is_provider_available`은 현재 Provider Adapter가 `provider_type + provider_key`를 해석할 수 있는지 나타낸다.
+- `can_register_again`은 `is_provider_available`과 같으며, `false`인 아이콘은 삭제 후 다시 등록할 수 없다.
+- Provider 조회와 availability 판정은 provider 공통 Adapter 계층을 통해 수행하며 특정 외부 API를 직접 호출하지 않는다.
+
+# 미사용 아이콘 물리 삭제 API
+
+## 목적
+
+선택한 미사용 사용자 아이콘을 물리 삭제한다. 삭제 후에는 목록, 선택 목록, 사용자 등록 데이터 및 중복 검사 기준에 해당 아이콘의 등록 흔적이 남지 않아야 한다.
+
+## Endpoint
+
+`DELETE /api/v1/icons/cleanup`
+
+## Request Body
+
+```json
+{
+  "icon_ids": [12, 15]
+}
+```
+
+## Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "deleted_count": 2,
+    "deleted_icon_ids": [12, 15]
+  },
+  "error": null
+}
+```
+
+## 비즈니스 규칙
+
+- 요청은 비어 있지 않은 중복 없는 `icon_ids` 배열이어야 한다.
+- 하나의 트랜잭션에서 삭제 직전에 사용자 소유, 기본 아이콘 여부, 계좌/카드/카테고리 참조 여부를 다시 검증한다.
+- 선택한 항목 중 하나라도 삭제 불가하면 전체 삭제를 실패시키고 어떤 아이콘도 삭제하지 않는다.
+- 삭제 대상 `ICON` 행을 물리 삭제한다. 연결된 `ICON_DICTIONARY`는 다른 `ICON`이 참조하지 않을 때만 함께 삭제한다.
+- 함께 삭제되는 `ICON_DICTIONARY`가 참조하던 `ICON_ASSET_SNAPSHOT`은 다른 dictionary가 참조하지 않을 때만 삭제한다. 공유 snapshot은 유지한다.
+- `ICON_DICTIONARY`가 제거되면 `icon_code`, `provider_type + provider_key` 중복 검사에서도 제거되어 현재 Provider에서 제공하는 아이콘은 다시 등록할 수 있다.
+
+## 오류 처리
+
+| HTTP Status | 코드 | 설명 |
+|---|---|---|
+| 400 | VALIDATION_001 | `icon_ids`가 비어 있거나 형식이 올바르지 않음 |
+| 409 | ICON_004 | 선택한 아이콘 중 사용자 소유가 아니거나 기본 아이콘 또는 사용 중인 아이콘이 있어 전체 삭제 불가 |
 
 # 아이콘 선택 정책
 
