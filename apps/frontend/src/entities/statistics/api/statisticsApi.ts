@@ -2,6 +2,8 @@ import { apiClient } from "../../../shared/api/apiClient";
 import type {
   ApiResponse,
   CalendarStatisticsData,
+  CategoryExpenseData,
+  CategoryExpenseParams,
   CategoryStatisticsData,
   CategoryStatisticsParams,
   CategoryTopStatisticsData,
@@ -85,6 +87,16 @@ export const statisticsApi = {
   ): Promise<ApiResponse<SankeyIncomeStatisticsData>> => {
     const res = await apiClient.get<ApiResponse<SankeyIncomeStatisticsData>>(
       "/statistics/sankey-income",
+      { params }
+    );
+    return res.data;
+  },
+
+  getCategoryExpenseStatistics: async (
+    params?: CategoryExpenseParams
+  ): Promise<ApiResponse<CategoryExpenseData>> => {
+    const res = await apiClient.get<ApiResponse<CategoryExpenseData>>(
+      "/statistics/category-expenses",
       { params }
     );
     return res.data;
