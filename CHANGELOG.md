@@ -1,3 +1,18 @@
+## [1.22.2](https://github.com/kittysaemi/KittyWallet/compare/v1.22.1...v1.22.2) (2026-06-21)
+
+
+### Bug Fixes
+
+* **#313:** 할부 unique 위반 수정 및 오프라인 거래내역 표시 ([e1bcf11](https://github.com/kittysaemi/KittyWallet/commit/e1bcf116501e8a7f47663d33293d46da5521ae0e)), closes [#313](https://github.com/kittysaemi/KittyWallet/issues/313)
+
+## [1.22.1](https://github.com/kittysaemi/KittyWallet/compare/v1.22.0...v1.22.1) (2026-06-21)
+
+
+### Bug Fixes
+
+* **#313:** 할부 sync clientTempId 원자적 설정 및 오프라인 캐시 보호 ([f5deafe](https://github.com/kittysaemi/KittyWallet/commit/f5deafea7cd1d2f973a24cc103fb70619bba4d91)), closes [#313](https://github.com/kittysaemi/KittyWallet/issues/313)
+* Prisma create 시 syncClientId relation connect 문법 적용 ([e14aab5](https://github.com/kittysaemi/KittyWallet/commit/e14aab532e02aaf782cba40c96e13c50cab4a3d4))
+
 # [1.22.0](https://github.com/kittysaemi/KittyWallet/compare/v1.21.0...v1.22.0) (2026-06-21)
 
 
