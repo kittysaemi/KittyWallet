@@ -16,7 +16,8 @@ vi.mock("../../entities/statistics/api/statisticsApi", () => ({
     getCategoryTopStatistics: vi.fn(),
     getCalendarStatistics: vi.fn(),
     getSankeyStatistics: vi.fn(),
-    getSankeyIncomeStatistics: vi.fn()
+    getSankeyIncomeStatistics: vi.fn(),
+    getCategoryExpenseStatistics: vi.fn()
   }
 }));
 
@@ -204,6 +205,19 @@ const SANKEY_INCOME_DATA = {
 };
 
 describe("StatisticsPage", () => {
+  const CATEGORY_EXPENSE_DATA = {
+    success: true,
+    data: {
+      period_type: "all" as const,
+      total_amount: 120000,
+      items: [
+        { category_id: 1, category_name: "식비", icon_id: null, amount: 90000, transaction_count: 5, ratio: 75.0 },
+        { category_id: 2, category_name: "교통", icon_id: null, amount: 30000, transaction_count: 2, ratio: 25.0 }
+      ]
+    },
+    error: null
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
     mockedStatisticsApi.getMonthlyStatistics.mockResolvedValue(MONTHLY_DATA);
@@ -214,6 +228,7 @@ describe("StatisticsPage", () => {
     mockedStatisticsApi.getCalendarStatistics.mockResolvedValue(CALENDAR_DATA);
     mockedStatisticsApi.getSankeyStatistics.mockResolvedValue(SANKEY_DATA);
     mockedStatisticsApi.getSankeyIncomeStatistics.mockResolvedValue(SANKEY_INCOME_DATA);
+    mockedStatisticsApi.getCategoryExpenseStatistics.mockResolvedValue(CATEGORY_EXPENSE_DATA);
     mockedIconApi.getIcons.mockResolvedValue(ICON_EMPTY);
   });
 
@@ -391,5 +406,61 @@ describe("StatisticsPage", () => {
     await waitFor(() => expect(mockedStatisticsApi.getCategoryStatistics).toHaveBeenCalled());
     expect(await screen.findByLabelText("Top 5 카테고리")).toBeInTheDocument();
     expect(screen.getAllByText("식비").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("switches to 카테고리통계 tab and shows category expense list", async () => {
+    render(<StatisticsPage />, { wrapper: createWrapper() });
+
+    await userEvent.click(await screen.findByRole("button", { name: "카테고리통계" }));
+
+    await waitFor(() => expect(mockedStatisticsApi.getCategoryExpenseStatistics).toHaveBeenCalled());
+    expect(await screen.findByLabelText("카테고리별 지출 통계")).toBeInTheDocument();
+    expect(screen.getByText("카테고리별 지출")).toBeInTheDocument();
+    expect(screen.getAllByText("식비").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("교통").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("120,000원")).toBeInTheDocument();
+  });
+
+  it("카테고리통계 탭에서 년별 선택 시 연도 네비게이터가 표시된다", async () => {
+    render(<StatisticsPage />, { wrapper: createWrapper() });
+
+    await userEvent.click(await screen.findByRole("button", { name: "카테고리통계" }));
+    await userEvent.click(await screen.findByRole("button", { name: "년별" }));
+
+    expect(await screen.findByRole("button", { name: "이전 기간" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "다음 기간" })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(mockedStatisticsApi.getCategoryExpenseStatistics).toHaveBeenCalledWith(
+        expect.objectContaining({ period_type: "year" })
+      )
+    );
+  });
+
+  it("카테고리통계 탭에서 월별 선택 시 월 네비게이터가 표시된다", async () => {
+    render(<StatisticsPage />, { wrapper: createWrapper() });
+
+    await userEvent.click(await screen.findByRole("button", { name: "카테고리통계" }));
+    await userEvent.click(await screen.findByRole("button", { name: "월별" }));
+
+    expect(await screen.findByRole("button", { name: "이전 기간" })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(mockedStatisticsApi.getCategoryExpenseStatistics).toHaveBeenCalledWith(
+        expect.objectContaining({ period_type: "month" })
+      )
+    );
+  });
+
+  it("카테고리통계 탭 전체 기간에 데이터 없을 때 빈 상태를 표시한다", async () => {
+    mockedStatisticsApi.getCategoryExpenseStatistics.mockResolvedValueOnce({
+      success: true,
+      data: { period_type: "all", total_amount: 0, items: [] },
+      error: null
+    });
+
+    render(<StatisticsPage />, { wrapper: createWrapper() });
+    await userEvent.click(await screen.findByRole("button", { name: "카테고리통계" }));
+
+    expect(await screen.findByText("통계 데이터가 없습니다")).toBeInTheDocument();
+    expect(screen.getByText("해당 기간에 기록된 지출이 없습니다.")).toBeInTheDocument();
   });
 });
