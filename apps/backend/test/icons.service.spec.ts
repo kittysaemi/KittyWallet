@@ -1,5 +1,5 @@
 import { HttpStatus } from "@nestjs/common";
-import type { AppException } from "../src/common/exceptions/app.exception";
+import { AppException } from "../src/common/exceptions/app.exception";
 import type { IconProviderAdapter } from "../src/modules/icons/application/icon-provider.adapter";
 import { IconsService } from "../src/modules/icons/application/icons.service";
 import { IconsRepository } from "../src/modules/icons/infrastructure/icons.repository";
@@ -20,6 +20,7 @@ describe("IconsService", () => {
   const iconsRepository = {
     findManyForUser: jest.fn(),
     findCleanupCandidates: jest.fn(),
+    deleteUnusedIcons: jest.fn(),
     findAvailableIconByDictionaryId: jest.fn(),
     findEditableIcon: jest.fn(),
     createUserIcon: jest.fn(),
@@ -152,6 +153,47 @@ describe("IconsService", () => {
       items: [{ is_provider_available: false, can_register_again: false }]
     });
     expect(iconProviderAdapter.validate).not.toHaveBeenCalled();
+  });
+
+  it("returns the physically deleted icon ids", async () => {
+    iconsRepository.deleteUnusedIcons.mockResolvedValue([BigInt(12), BigInt(15)]);
+
+    await expect(
+      service.deleteUnusedIcons({ userId: BigInt(1), iconIds: [BigInt(12), BigInt(15)] })
+    ).resolves.toEqual({ deleted_count: 2, deleted_icon_ids: [12, 15] });
+
+    expect(iconsRepository.deleteUnusedIcons).toHaveBeenCalledWith(BigInt(1), [BigInt(12), BigInt(15)]);
+  });
+
+  it("keeps the whole deletion atomic when repository revalidation rejects an icon", async () => {
+    iconsRepository.deleteUnusedIcons.mockRejectedValue(
+      new AppException(
+        "ICON_004",
+        "선택한 아이콘 중 사용 중인 아이콘이 있어 삭제할 수 없습니다.",
+        HttpStatus.CONFLICT
+      )
+    );
+
+    await expect(
+      service.deleteUnusedIcons({ userId: BigInt(1), iconIds: [BigInt(12), BigInt(15)] })
+    ).rejects.toMatchObject({ code: "ICON_004", statusCode: HttpStatus.CONFLICT });
+  });
+
+  it("allows registration again after the repository removes the previous registration", async () => {
+    iconsRepository.deleteUnusedIcons.mockResolvedValue([BigInt(12)]);
+    iconsRepository.findDictionaryByIconCode.mockResolvedValue(null);
+    iconProviderAdapter.resolveByIconCode.mockReturnValue({
+      iconCode: "icon-wallet",
+      providerType: "lucide",
+      providerKey: "wallet",
+      searchKeywords: ["wallet"]
+    });
+    iconsRepository.upsertDictionary.mockResolvedValue(dictionary);
+    iconsRepository.findAvailableIconByDictionaryId.mockResolvedValue(null);
+    iconsRepository.createUserIcon.mockResolvedValue({ iconId: BigInt(20) } as never);
+
+    await service.deleteUnusedIcons({ userId: BigInt(1), iconIds: [BigInt(12)] });
+    await expect(service.createIcon({ userId: BigInt(1), iconCode: "icon-wallet" })).resolves.toEqual({ icon_id: 20 });
   });
 
   it("rejects duplicate available icons", async () => {

@@ -49,6 +49,11 @@ interface UpdateIconCommand {
   show?: boolean;
 }
 
+interface DeleteUnusedIconsCommand {
+  userId: bigint;
+  iconIds: bigint[];
+}
+
 @Injectable()
 export class IconsService {
   constructor(
@@ -121,6 +126,20 @@ export class IconsService {
     return {
       icon_id: Number(updated.iconId),
       show: updated.show
+    };
+  }
+
+  async deleteUnusedIcons(
+    command: DeleteUnusedIconsCommand
+  ): Promise<{ deleted_count: number; deleted_icon_ids: number[] }> {
+    const deletedIconIds = await this.iconsRepository.deleteUnusedIcons(
+      command.userId,
+      command.iconIds
+    );
+
+    return {
+      deleted_count: deletedIconIds.length,
+      deleted_icon_ids: deletedIconIds.map(Number)
     };
   }
 
