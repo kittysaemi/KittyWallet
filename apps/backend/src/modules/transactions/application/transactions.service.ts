@@ -37,6 +37,7 @@ interface UpdateTransactionCommand {
   amount?: number;
   memo?: string | null;
   transactionDate?: string;
+  interest?: number;
   timezone?: string;
 }
 
@@ -86,6 +87,7 @@ export interface TransactionItem {
   category_name: string;
   transaction_type: string;
   amount: number;
+  interest: number;
   memo: string | null;
   transaction_date: string;
   created_at: string;
@@ -99,6 +101,7 @@ export interface InstallmentItem {
   transaction_id: number;
   installment_seq: number;
   amount: number;
+  interest: number;
   transaction_date: string;
 }
 
@@ -106,6 +109,7 @@ export interface InstallmentInfo {
   original_amount: number;
   current_total_amount: number;
   remaining_amount: number;
+  total_interest: number;
   installment_months: number;
   purchase_date: string;
   installment_items: InstallmentItem[];
@@ -177,7 +181,8 @@ export class TransactionsService {
       command.transactionType !== undefined ||
       command.amount !== undefined ||
       command.memo !== undefined ||
-      command.transactionDate !== undefined;
+      command.transactionDate !== undefined ||
+      command.interest !== undefined;
     if (!hasUpdate) {
       throw new AppException(
         "VALIDATION_001",
@@ -304,7 +309,8 @@ export class TransactionsService {
         : {}),
       ...(command.amount !== undefined ? { amount: command.amount } : {}),
       ...(command.memo !== undefined ? { memo: command.memo } : {}),
-      ...(command.transactionDate !== undefined ? { transactionDate: effDate } : {})
+      ...(command.transactionDate !== undefined ? { transactionDate: effDate } : {}),
+      ...(command.interest !== undefined ? { interest: command.interest } : {})
     };
 
     let updated;
@@ -444,17 +450,21 @@ export class TransactionsService {
         transaction.installmentId,
         userId
       );
-      const todayStr = getTodayInTimezone();
+      const currentSeq = transaction.installmentSeq ?? 0;
       const currentTotalAmount = installmentTxs
-        .filter((t) => t.transactionDate.toISOString().split("T")[0] <= todayStr)
+        .filter((t) => (t.installmentSeq ?? 0) <= currentSeq)
         .reduce((sum, t) => sum + t.amount.toNumber(), 0);
       const remainingAmount = installmentTxs
-        .filter((t) => t.transactionDate.toISOString().split("T")[0] > todayStr)
+        .filter((t) => (t.installmentSeq ?? 0) > currentSeq)
         .reduce((sum, t) => sum + t.amount.toNumber(), 0);
+      const totalInterest = installmentTxs
+        .filter((t) => (t.installmentSeq ?? 0) <= currentSeq)
+        .reduce((sum, t) => sum + t.interest, 0);
       const installmentItems = installmentTxs.map((t) => ({
         transaction_id: Number(t.transactionId),
         installment_seq: t.installmentSeq!,
         amount: t.amount.toNumber(),
+        interest: t.interest,
         transaction_date: t.transactionDate.toISOString().split("T")[0]
       }));
       detail.installment_id = Number(transaction.installmentId);
@@ -462,6 +472,7 @@ export class TransactionsService {
         original_amount: transaction.cardInstallment.originalAmount.toNumber(),
         current_total_amount: currentTotalAmount,
         remaining_amount: remainingAmount,
+        total_interest: totalInterest,
         installment_months: transaction.cardInstallment.installmentMonths,
         purchase_date: transaction.cardInstallment.purchaseDate.toISOString().split("T")[0],
         installment_items: installmentItems
@@ -536,6 +547,7 @@ export class TransactionsService {
       category_name: t.category.categoryName,
       transaction_type: t.transactionType,
       amount: t.amount.toNumber(),
+      interest: t.interest,
       memo: t.memo,
       transaction_date: t.transactionDate.toISOString().split("T")[0],
       created_at: t.createdAt.toISOString(),
@@ -681,6 +693,65 @@ export class TransactionsService {
       transaction_id: Number(transaction.transactionId),
       updated_at: transaction.updatedAt.toISOString(),
       synced_at: transaction.syncedAt?.toISOString() ?? null
+    };
+  }
+
+  async convertToInstallment(
+    transactionId: bigint,
+    userId: bigint,
+    installmentMonths: number
+  ): Promise<CreateTransactionResult> {
+    const existing = await this.transactionsRepository.findById(transactionId, userId);
+    if (!existing) {
+      throw new AppException("TX_005", "거래 내역을 찾을 수 없습니다.", HttpStatus.NOT_FOUND);
+    }
+    if (existing.walletType !== "CARD" || existing.transactionType !== "EXPENSE") {
+      throw new AppException(
+        "TX_008",
+        "카드 지출 거래만 할부로 전환할 수 있습니다.",
+        HttpStatus.BAD_REQUEST
+      );
+    }
+    if (existing.installmentId) {
+      throw new AppException(
+        "TX_009",
+        "이미 할부 거래입니다.",
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    const card = await this.transactionsRepository.findOwnedCard(existing.walletId, userId);
+    if (!card || card.deletedYn) {
+      throw new AppException("TX_004", "존재하지 않는 카드입니다.", HttpStatus.NOT_FOUND);
+    }
+
+    const now = new Date();
+    const installmentInput: CreateInstallmentInput = {
+      userId,
+      cardId: existing.walletId,
+      categoryId: existing.categoryId,
+      originalAmount: existing.amount.toNumber(),
+      installmentMonths,
+      purchaseDate: existing.transactionDate,
+      memo: existing.memo ?? undefined
+    };
+
+    const { installment, transactions } =
+      await this.transactionsRepository.createInstallmentWithTransactions(installmentInput, now);
+
+    await this.transactionsRepository.softDeleteWithBalance(transactionId);
+
+    return {
+      transaction_id: Number(transactions[0].transactionId),
+      updated_at: transactions[0].updatedAt.toISOString(),
+      synced_at: transactions[0].syncedAt?.toISOString() ?? null,
+      installment_id: Number(installment.installmentId),
+      transactions: transactions.map((t) => ({
+        transaction_id: Number(t.transactionId),
+        installment_seq: t.installmentSeq!,
+        amount: t.amount.toNumber(),
+        transaction_date: t.transactionDate.toISOString().split("T")[0]
+      }))
     };
   }
 

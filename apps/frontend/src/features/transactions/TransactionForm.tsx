@@ -237,6 +237,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const [amountStr, setAmountStr] = React.useState<string>(
     initialData ? initialData.amount.toLocaleString("ko-KR") : ""
   );
+  const [interestStr, setInterestStr] = React.useState<string>(() => {
+    if (!initialData?.interest) return "";
+    return initialData.interest.toLocaleString("ko-KR");
+  });
   const [date, setDate] = React.useState<string>(() => initialData?.transaction_date ?? getTodayInTimezone(timezone));
   const [memo, setMemo] = React.useState<string>(initialData?.memo ?? "");
   const [installmentMonthsStr, setInstallmentMonthsStr] = React.useState<string>("");
@@ -354,6 +358,22 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     }
   });
 
+  const convertMutation = useMutation({
+    mutationFn: (months: number) =>
+      transactionApi.convertToInstallment(transactionId!, { installment_months: months, timezone }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      void queryClient.invalidateQueries({ queryKey: ["cards"] });
+      void queryClient.invalidateQueries({ queryKey: ["statistics"] });
+      void invalidateTransactionCaches();
+      onSuccess();
+    },
+    onError: () => {
+      setApiError("할부 전환에 실패했습니다. 다시 시도해주세요.");
+    }
+  });
+
   const mutation = isEditMode ? updateMutation : createMutation;
 
   function handleTxTypeChange(type: "INCOME" | "EXPENSE") {
@@ -384,6 +404,46 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     e.preventDefault();
     setApiError("");
     mutation.reset();
+
+    // 할부 수정: 이자만 전송
+    if (isEditMode && isInstallmentTx) {
+      const interestAmount = interestStr ? parseInt(interestStr.replace(/,/g, ""), 10) : 0;
+      if (isNaN(interestAmount) || interestAmount < 0) {
+        setErrors({ interest: "이자는 0원 이상이어야 합니다." });
+        return;
+      }
+      setErrors({});
+      if (!navigator.onLine) {
+        void (async () => {
+          try {
+            const offline = await addOfflineTransaction({
+              transaction_type: txType,
+              wallet_type: walletType,
+              wallet_id: walletId,
+              category_id: categoryId,
+              amount: initialData?.amount ?? 0,
+              transaction_date: date,
+              server_id: String(transactionId)
+            });
+            await enqueueSyncItem({
+              local_id: offline.local_id,
+              client_temp_id: offline.client_temp_id,
+              server_id: String(transactionId),
+              action: "UPDATE",
+              payload: { interest: interestAmount }
+            });
+            usePwaStore.getState().setSyncStatus("pending_sync");
+            void queryClient.invalidateQueries({ queryKey: ["transactions"] });
+            onSuccess();
+          } catch {
+            setApiError("오프라인 거래 저장에 실패했습니다. 다시 시도해주세요.");
+          }
+        })();
+        return;
+      }
+      updateMutation.mutate({ interest: interestAmount, memo: memo || undefined, timezone });
+      return;
+    }
 
     const parsed = schema.safeParse({
       transaction_type: txType,
@@ -429,9 +489,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             client_temp_id: offline.client_temp_id,
             server_id: isEditMode && transactionId ? String(transactionId) : undefined,
             action: isEditMode ? "UPDATE" : "CREATE",
-            payload: futureInstallment
-              ? { amount: parsed.data.amount }
-              : { ...parsed.data, ...installmentPayload }
+            payload: { ...parsed.data, ...installmentPayload }
           });
           usePwaStore.getState().setSyncStatus("pending_sync");
           void queryClient.invalidateQueries({ queryKey: ["transactions"] });
@@ -447,27 +505,31 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       return;
     }
     if (isEditMode) {
-      if (futureInstallment) {
-        updateMutation.mutate({ amount: parsed.data.amount, timezone });
-      } else {
-        updateMutation.mutate({
-          transaction_type: parsed.data.transaction_type,
-          wallet_type: parsed.data.wallet_type,
-          wallet_id: parsed.data.wallet_id,
-          category_id: parsed.data.category_id,
-          amount: parsed.data.amount,
-          memo: parsed.data.memo ?? null,
-          transaction_date: parsed.data.transaction_date,
-          timezone
-        });
+      const convertMonths =
+        !isInstallmentTx && walletType === "CARD" && txType === "EXPENSE" && installmentMonthsStr
+          ? parseInt(installmentMonthsStr, 10)
+          : undefined;
+      if (convertMonths && convertMonths >= 2) {
+        convertMutation.mutate(convertMonths);
+        return;
       }
+      updateMutation.mutate({
+        transaction_type: parsed.data.transaction_type,
+        wallet_type: parsed.data.wallet_type,
+        wallet_id: parsed.data.wallet_id,
+        category_id: parsed.data.category_id,
+        amount: parsed.data.amount,
+        memo: parsed.data.memo ?? null,
+        transaction_date: parsed.data.transaction_date,
+        timezone
+      });
     } else {
       createMutation.mutate({ ...parsed.data, timezone, ...installmentPayload });
       void runSyncQueue(queryClient);
     }
   }
 
-  const isSaving = mutation.isPending || readOnly;
+  const isSaving = mutation.isPending || convertMutation.isPending || readOnly;
   const isLoading = accountsQuery.isLoading || cardsQuery.isLoading || iconsQuery.isLoading;
 
   const insufficientBalance = React.useMemo(() => {
@@ -496,7 +558,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const incomeDisabled = walletType === "CARD" || isInstallmentTx;
 
   // 필수 필드가 모두 채워지고 잔액 문제가 없을 때만 제출 가능
-  const canSubmit = !isSaving && !insufficientBalance && walletId > 0 && categoryId > 0 && !!amountStr;
+  const canSubmit = isInstallmentTx
+    ? !isSaving
+    : !isSaving && !insufficientBalance && walletId > 0 && categoryId > 0 && !!amountStr;
 
   const toggleBase =
     "flex-1 min-h-11 rounded-xl text-sm font-semibold transition border focus:outline-none";
@@ -513,7 +577,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       {futureInstallment && (
         <div className="rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] px-4 py-3">
           <p className="text-xs text-[var(--color-text-secondary)]">
-            미래 예정 할부 항목입니다. <span className="font-medium text-[var(--color-text-primary)]">금액만 수정</span>할 수 있습니다.
+            미래 예정 할부 항목입니다. <span className="font-medium text-[var(--color-text-primary)]">이자와 메모만 수정</span>할 수 있습니다.
           </p>
         </div>
       )}
@@ -541,29 +605,63 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         </div>
       </div>
 
-      {/* 금액 */}
-      <Input
-        label="금액"
-        name="amount"
-        type="text"
-        inputMode="numeric"
-        placeholder="0"
-        value={amountStr}
-        onChange={(e) => {
-          const raw = e.target.value.replace(/[^0-9]/g, "");
-          setAmountStr(raw ? parseInt(raw, 10).toLocaleString("ko-KR") : "");
-          setErrors((err) => ({ ...err, amount: "" }));
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "." || e.key === ",") e.preventDefault();
-        }}
-        error={errors.amount}
-        disabled={isSaving}
-        autoComplete="off"
-      />
+      {/* 금액 / 원금+이자 */}
+      {isInstallmentTx ? (
+        <>
+          {/* 원금 — 읽기 전용 */}
+          <div className="flex flex-col gap-1">
+            <p className="text-sm font-medium text-[var(--color-text-secondary)]">원금 (월 납부)</p>
+            <div className="flex min-h-11 items-center rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] px-3 py-2 opacity-50 cursor-not-allowed">
+              <span className="text-sm text-[var(--color-text-primary)]">
+                {initialData ? initialData.amount.toLocaleString("ko-KR") : "0"}원
+              </span>
+            </div>
+          </div>
+          {/* 이자 — 편집 가능 */}
+          <Input
+            label="이자"
+            name="interest"
+            type="text"
+            inputMode="numeric"
+            placeholder="0"
+            value={interestStr}
+            onChange={(e) => {
+              const raw = e.target.value.replace(/[^0-9]/g, "");
+              setInterestStr(raw ? parseInt(raw, 10).toLocaleString("ko-KR") : "");
+              setErrors((err) => ({ ...err, interest: "" }));
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "." || e.key === ",") e.preventDefault();
+            }}
+            error={errors.interest}
+            disabled={isSaving}
+            autoComplete="off"
+          />
+        </>
+      ) : (
+        <Input
+          label="금액"
+          name="amount"
+          type="text"
+          inputMode="numeric"
+          placeholder="0"
+          value={amountStr}
+          onChange={(e) => {
+            const raw = e.target.value.replace(/[^0-9]/g, "");
+            setAmountStr(raw ? parseInt(raw, 10).toLocaleString("ko-KR") : "");
+            setErrors((err) => ({ ...err, amount: "" }));
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "." || e.key === ",") e.preventDefault();
+          }}
+          error={errors.amount}
+          disabled={isSaving}
+          autoComplete="off"
+        />
+      )}
 
-      {/* 카드할부 (등록 전용, 카드 지출만) */}
-      {!isEditMode && txType === "EXPENSE" && walletType === "CARD" && (
+      {/* 카드할부 개월수 (등록 시 신규 / 편집 시 비할부 카드 지출만 전환 가능) */}
+      {txType === "EXPENSE" && walletType === "CARD" && (!isEditMode || (!isInstallmentTx && isEditMode)) && (
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="installment_months"
@@ -582,7 +680,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               disabled={isSaving}
               className="w-full appearance-none min-h-11 rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 py-2 pr-9 text-sm text-[var(--color-text-primary)] transition focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-soft)] disabled:opacity-50"
             >
-              <option value="">일시불</option>
+              <option value="">{isEditMode ? "할부 전환 안함" : "일시불"}</option>
               {Array.from({ length: 11 }, (_, i) => i + 2).map((n) => (
                 <option key={n} value={String(n)}>
                   {n}개월
@@ -597,6 +695,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           {errors.installment_months && (
             <p className="text-xs text-[var(--color-danger)]">{errors.installment_months}</p>
           )}
+          {isEditMode && installmentMonthsStr && (
+            <p className="text-xs text-[var(--color-text-secondary)]">
+              현재 거래가 {installmentMonthsStr}개월 할부로 전환됩니다. 원래 거래는 삭제됩니다.
+            </p>
+          )}
         </div>
       )}
 
@@ -606,7 +709,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         name="transaction_date"
         type="date"
         value={date}
-        {...(!futureInstallment ? { max: today } : {})}
+        max={today}
         onChange={(e) => {
           setDate(e.target.value);
           setErrors((err) => ({ ...err, transaction_date: "" }));
@@ -715,7 +818,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         value={memo}
         onChange={(e) => setMemo(e.target.value)}
         error={errors.memo}
-        disabled={isSaving || isInstallmentTx}
+        disabled={isSaving}
         maxLength={200}
       />
 

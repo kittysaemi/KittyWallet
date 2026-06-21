@@ -10,6 +10,7 @@ export interface TransactionItem {
   category_name: string;
   transaction_type: "INCOME" | "EXPENSE";
   amount: number;
+  interest?: number;
   memo: string | null;
   transaction_date: string;
   created_at: string;
@@ -24,6 +25,7 @@ export interface InstallmentItem {
   transaction_id: number;
   installment_seq: number;
   amount: number;
+  interest?: number;
   transaction_date: string;
 }
 
@@ -31,6 +33,7 @@ export interface InstallmentInfo {
   original_amount: number;
   current_total_amount: number;
   remaining_amount: number;
+  total_interest?: number;
   installment_months: number;
   purchase_date: string;
   installment_items: InstallmentItem[];
@@ -74,6 +77,7 @@ export interface UpdateTransactionRequest {
   category_id?: number;
   transaction_type?: "INCOME" | "EXPENSE";
   amount?: number;
+  interest?: number;
   memo?: string | null;
   transaction_date?: string;
   timezone?: string;
@@ -106,6 +110,11 @@ export interface TransactionListParams {
   page?: number;
   limit?: number;
   sort?: string;
+}
+
+export interface ConvertToInstallmentRequest {
+  installment_months: number;
+  timezone?: string;
 }
 
 export type { ApiResponse };

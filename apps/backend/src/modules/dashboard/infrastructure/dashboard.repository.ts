@@ -27,10 +27,14 @@ export interface RecentTransactionData {
   category_name: string;
   transaction_type: string;
   amount: number;
+  interest: number;
   memo: string | null;
   transaction_date: string;
   created_at: string;
   updated_at: string;
+  installment_seq: number | null;
+  installment_total_count: number | null;
+  installment_original_amount: number | null;
 }
 
 @Injectable()
@@ -128,7 +132,7 @@ export class DashboardRepository {
         deletedYn: false,
         transactionDate: { gte: startOfMonth, lte: endOfToday }
       },
-      include: { category: true },
+      include: { category: true, cardInstallment: true },
       orderBy: [{ transactionDate: "desc" }, { createdAt: "desc" }],
       take: limit
     });
@@ -174,10 +178,14 @@ export class DashboardRepository {
       category_name: t.category.categoryName,
       transaction_type: t.transactionType,
       amount: t.amount.toNumber(),
+      interest: t.interest,
       memo: t.memo,
       transaction_date: t.transactionDate.toISOString().split("T")[0],
       created_at: t.createdAt.toISOString(),
-      updated_at: t.updatedAt.toISOString()
+      updated_at: t.updatedAt.toISOString(),
+      installment_seq: t.installmentSeq ?? null,
+      installment_total_count: t.installmentTotalCount ?? null,
+      installment_original_amount: t.cardInstallment?.originalAmount.toNumber() ?? null
     }));
   }
 

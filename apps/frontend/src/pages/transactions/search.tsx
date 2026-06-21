@@ -112,6 +112,12 @@ const TransactionRow: React.FC<TransactionRowProps> = ({ item, iconMap, category
               삭제된 지갑
             </span>
           )}
+          {item.installment_seq != null && item.installment_total_count != null && (
+            <>
+              <span className="shrink-0 text-[var(--color-text-caption)]">·</span>
+              <span className="shrink-0">{item.installment_seq}/{item.installment_total_count}회차</span>
+            </>
+          )}
         </p>
       </div>
       <p
@@ -121,7 +127,7 @@ const TransactionRow: React.FC<TransactionRowProps> = ({ item, iconMap, category
             : "text-[var(--color-text-primary)]"
         }`}
       >
-        {formatAmount(item.amount, item.transaction_type)}
+        {formatAmount(item.amount + (item.interest ?? 0), item.transaction_type)}
       </p>
     </div>
   );

@@ -3,6 +3,7 @@ import { CurrentUser, JwtPayload } from "../../../common/decorators/current-user
 import { TransactionsService } from "../application/transactions.service";
 import { CreateTransactionRequestDto } from "./dto/request/create-transaction-request.dto";
 import { UpdateTransactionRequestDto } from "./dto/request/update-transaction-request.dto";
+import { ConvertToInstallmentRequestDto } from "./dto/request/convert-to-installment-request.dto";
 import { TransactionListQueryDto } from "./dto/request/transaction-list-query.dto";
 import { TransactionRecentQueryDto } from "./dto/request/transaction-recent-query.dto";
 
@@ -69,6 +70,7 @@ export class TransactionsController {
       amount: dto.amount,
       memo: dto.memo,
       transactionDate: dto.transaction_date,
+      interest: dto.interest,
       timezone: dto.timezone
     });
   }
@@ -76,6 +78,20 @@ export class TransactionsController {
   @Delete(":id")
   deleteTransaction(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
     return this.transactionsService.deleteTransaction(BigInt(id), BigInt(user.sub));
+  }
+
+  @Post(":id/convert-to-installment")
+  @HttpCode(201)
+  convertToInstallment(
+    @CurrentUser() user: JwtPayload,
+    @Param("id") id: string,
+    @Body() dto: ConvertToInstallmentRequestDto
+  ) {
+    return this.transactionsService.convertToInstallment(
+      BigInt(id),
+      BigInt(user.sub),
+      dto.installment_months
+    );
   }
 
   @Post()

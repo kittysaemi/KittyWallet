@@ -438,6 +438,10 @@ const HeatmapContent: React.FC<{
 }> = ({ data, isLoading, isError, onRetry }) => {
   const [selectedDate, setSelectedDate] = React.useState<string | null>(null);
 
+  React.useEffect(() => {
+    setSelectedDate(null);
+  }, [data?.month]);
+
   const expenseMap = React.useMemo(() => {
     const map = new Map<string, number>();
     data?.daily_items.forEach((item) => map.set(item.date, item.expense_amount));
@@ -548,7 +552,7 @@ const HeatmapContent: React.FC<{
                           : "text-blue-500"
                       }`}
                     >
-                      {formatSignedAmount(item.amount, item.transaction_type)}
+                      {formatSignedAmount(item.amount + (item.interest ?? 0), item.transaction_type)}
                     </span>
                   </li>
                 ))}

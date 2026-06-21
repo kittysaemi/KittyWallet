@@ -1,6 +1,7 @@
 import { apiClient } from "../../../shared/api/apiClient";
 import type {
   ApiResponse,
+  ConvertToInstallmentRequest,
   CreateTransactionRequest,
   CreateTransactionResult,
   DeleteTransactionResult,
@@ -56,6 +57,17 @@ export const transactionApi = {
   deleteTransaction: async (id: number): Promise<ApiResponse<DeleteTransactionResult>> => {
     const res = await apiClient.delete<ApiResponse<DeleteTransactionResult>>(
       `/transactions/${id}`
+    );
+    return res.data;
+  },
+
+  convertToInstallment: async (
+    id: number,
+    data: ConvertToInstallmentRequest
+  ): Promise<ApiResponse<CreateTransactionResult>> => {
+    const res = await apiClient.post<ApiResponse<CreateTransactionResult>>(
+      `/transactions/${id}/convert-to-installment`,
+      data
     );
     return res.data;
   }
