@@ -1,6 +1,6 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, RefreshCw, WifiOff } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, RefreshCw, WifiOff } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import type { TransactionItem } from "../../entities/transaction/model/transaction.types";
@@ -10,6 +10,10 @@ import type { IconItem } from "../../entities/icon/model/icon.types";
 import { IconRenderer } from "../../shared/ui/IconRenderer";
 import { useTimezone } from "../../shared/hooks/useTimezone";
 import { getTodayInTimezone } from "../../shared/utils/date";
+import { accountApi } from "../../entities/account/api/accountApi";
+import { cardApi } from "../../entities/card/api/cardApi";
+import { getAllOfflineTransactions } from "../../pwa/indexed-db/repositories/offlineTransaction.repository";
+import type { OfflineTransaction } from "../../pwa/types/indexedDb.types";
 
 const cardClass =
   "rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] shadow-[0_4px_16px_var(--color-card-shadow)]";
@@ -121,6 +125,67 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ item, iconMap, catego
   );
 };
 
+interface PendingTransactionCardProps {
+  tx: OfflineTransaction;
+  iconMap: Map<number, IconItem>;
+  categoryIconMap: Map<number, number>;
+  categoryNameMap: Map<number, string>;
+  accountNameMap: Map<number, string>;
+  cardNameMap: Map<number, string>;
+}
+
+const PendingTransactionCard: React.FC<PendingTransactionCardProps> = ({
+  tx, iconMap, categoryIconMap, categoryNameMap, accountNameMap, cardNameMap
+}) => {
+  const categoryName = categoryNameMap.get(tx.category_id) ?? "카테고리";
+  const walletName = tx.wallet_type === "ACCOUNT"
+    ? (accountNameMap.get(tx.wallet_id) ?? "계좌")
+    : (cardNameMap.get(tx.wallet_id) ?? "카드");
+  const iconId = categoryIconMap.get(tx.category_id);
+  const icon = iconId ? iconMap.get(iconId) : undefined;
+  const isFailed = tx.sync_status === "sync_failed";
+
+  return (
+    <div className={`${cardClass} flex items-center gap-3 p-4 opacity-70`}>
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-bg-secondary)]">
+        {icon ? (
+          <IconRenderer
+            providerType={icon.provider_type}
+            providerKey={icon.provider_key}
+            size={20}
+            className="text-[var(--color-text-primary)]"
+          />
+        ) : (
+          <span className="text-sm font-medium text-[var(--color-text-secondary)]">
+            {categoryName.slice(0, 1)}
+          </span>
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="flex min-w-0 items-center gap-1 text-sm font-medium text-[var(--color-text-primary)]">
+          <span className="truncate">{categoryName}</span>
+          {tx.memo && (
+            <>
+              <span className="shrink-0 text-[var(--color-text-caption)]">·</span>
+              <span className="truncate text-[var(--color-text-secondary)]">{tx.memo}</span>
+            </>
+          )}
+        </p>
+        <p className="flex items-center gap-1 text-xs text-[var(--color-text-secondary)]">
+          <span className="truncate">{walletName}</span>
+          <span className={`shrink-0 inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-medium leading-none ${isFailed ? "bg-red-100 text-red-600" : "bg-amber-100 text-amber-600"}`}>
+            <Clock size={10} />
+            {isFailed ? "동기화 실패" : "동기화 대기"}
+          </span>
+        </p>
+      </div>
+      <p className={`shrink-0 text-sm font-semibold ${tx.transaction_type === "INCOME" ? "text-blue-500" : "text-[var(--color-danger)]"}`}>
+        {tx.transaction_type === "INCOME" ? "+" : "-"}{tx.amount.toLocaleString("ko-KR")}원
+      </p>
+    </div>
+  );
+};
+
 let _savedTxState: { year: number; month: number; page: number; scrollTop?: number } | null = null;
 
 const TransactionsPage: React.FC = () => {
@@ -159,6 +224,26 @@ const TransactionsPage: React.FC = () => {
     staleTime: 10 * 60 * 1000
   });
 
+  const accountsQuery = useQuery({
+    queryKey: ["accounts"],
+    queryFn: () => accountApi.getAccounts({ include_balance: true }),
+    staleTime: 5 * 60 * 1000
+  });
+
+  const cardsQuery = useQuery({
+    queryKey: ["cards"],
+    queryFn: () => cardApi.getCards(),
+    staleTime: 5 * 60 * 1000
+  });
+
+  const [pendingTxs, setPendingTxs] = React.useState<OfflineTransaction[]>([]);
+
+  React.useEffect(() => {
+    getAllOfflineTransactions()
+      .then(all => setPendingTxs(all.filter(tx => !tx.deleted_yn && tx.sync_status !== "synced")))
+      .catch(() => {});
+  }, [query.dataUpdatedAt]);
+
   const iconMap = React.useMemo(() => {
     const map = new Map<number, IconItem>();
     iconsQuery.data?.data?.items.forEach((icon) => map.set(icon.icon_id, icon));
@@ -170,6 +255,29 @@ const TransactionsPage: React.FC = () => {
     categoriesQuery.data?.data?.items.forEach((cat) => map.set(cat.category_id, cat.icon_id));
     return map;
   }, [categoriesQuery.data]);
+
+  const categoryNameMap = React.useMemo(() => {
+    const map = new Map<number, string>();
+    categoriesQuery.data?.data?.items.forEach((cat) => map.set(cat.category_id, cat.category_name));
+    return map;
+  }, [categoriesQuery.data]);
+
+  const accountNameMap = React.useMemo(() => {
+    const map = new Map<number, string>();
+    accountsQuery.data?.data?.items.forEach((acc) => map.set(acc.account_id, acc.account_name));
+    return map;
+  }, [accountsQuery.data]);
+
+  const cardNameMap = React.useMemo(() => {
+    const map = new Map<number, string>();
+    cardsQuery.data?.data?.items.forEach((card) => map.set(card.card_id, card.card_name));
+    return map;
+  }, [cardsQuery.data]);
+
+  const monthPendingTxs = React.useMemo(() => {
+    const prefix = `${year}-${String(month).padStart(2, "0")}`;
+    return pendingTxs.filter(tx => tx.transaction_date.startsWith(prefix));
+  }, [pendingTxs, year, month]);
 
   const items = query.data?.data?.items ?? [];
   const totalCount = query.data?.data?.total_count ?? 0;
@@ -255,6 +363,23 @@ const TransactionsPage: React.FC = () => {
           </button>
         </div>
 
+        {/* 동기화 대기 중인 내역 */}
+        {monthPendingTxs.length > 0 && (
+          <div className="mb-4 flex flex-col gap-2">
+            {monthPendingTxs.map(tx => (
+              <PendingTransactionCard
+                key={tx.local_id}
+                tx={tx}
+                iconMap={iconMap}
+                categoryIconMap={categoryIconMap}
+                categoryNameMap={categoryNameMap}
+                accountNameMap={accountNameMap}
+                cardNameMap={cardNameMap}
+              />
+            ))}
+          </div>
+        )}
+
         {/* 로딩 */}
         {query.isLoading && <TransactionSkeleton />}
 
@@ -278,7 +403,7 @@ const TransactionsPage: React.FC = () => {
         )}
 
         {/* 빈 상태 */}
-        {!query.isLoading && !query.isError && items.length === 0 && (
+        {!query.isLoading && !query.isError && items.length === 0 && monthPendingTxs.length === 0 && (
           <div className={`${cardClass} flex flex-col items-center gap-2 px-6 py-12 text-center`}>
             <p className="text-base font-medium text-[var(--color-text-primary)]">
               거래 내역이 없습니다

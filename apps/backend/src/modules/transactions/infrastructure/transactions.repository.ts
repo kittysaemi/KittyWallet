@@ -179,7 +179,8 @@ export class TransactionsRepository {
             ...(installmentInput.syncClientId != null
               ? { syncClient: { connect: { syncClientId: installmentInput.syncClientId } } }
               : {}),
-            clientTempId: installmentInput.clientTempId ?? null
+            // unique(userId, syncClientId, clientTempId) 위반 방지: 1회차만 clientTempId 설정
+            clientTempId: seq === 1 ? (installmentInput.clientTempId ?? null) : null
           }
         });
         transactions.push(transaction);
