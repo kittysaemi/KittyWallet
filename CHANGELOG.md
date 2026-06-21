@@ -1,3 +1,10 @@
+# [1.22.0](https://github.com/kittysaemi/KittyWallet/compare/v1.21.0...v1.22.0) (2026-06-21)
+
+
+### Features
+
+* add unused icon cleanup UI ([27b3796](https://github.com/kittysaemi/KittyWallet/commit/27b3796b66752b3c167104a7d78e1aeee0638f5c))
+
 # [1.21.0](https://github.com/kittysaemi/KittyWallet/compare/v1.20.0...v1.21.0) (2026-06-21)
 
 
