@@ -1,3 +1,17 @@
+# [1.20.0](https://github.com/kittysaemi/KittyWallet/compare/v1.19.0...v1.20.0) (2026-06-21)
+
+
+### Features
+
+* clean up unused icon snapshots ([6128428](https://github.com/kittysaemi/KittyWallet/commit/612842870969f486258a4dc7980cd2968e38e427))
+
+# [1.19.0](https://github.com/kittysaemi/KittyWallet/compare/v1.18.0...v1.19.0) (2026-06-21)
+
+
+### Features
+
+* delete unused icons ([1511d2c](https://github.com/kittysaemi/KittyWallet/commit/1511d2c2d220d9c7a1046b7901569ce9858159ed))
+
 # [1.18.0](https://github.com/kittysaemi/KittyWallet/compare/v1.17.0...v1.18.0) (2026-06-20)
 
 

@@ -1,5 +1,6 @@
-import { Injectable } from "@nestjs/common";
+import { HttpStatus, Injectable } from "@nestjs/common";
 import { Icon, IconAssetSnapshot, IconDictionary, Prisma } from "@prisma/client";
+import { AppException } from "../../../common/exceptions/app.exception";
 import { PrismaService } from "../../../database/prisma.service";
 
 export type IconWithDictionary = Icon & { iconDictionary: IconDictionary & { snapshot: IconAssetSnapshot | null } };
@@ -30,6 +31,68 @@ export class IconsRepository {
       },
       include: { iconDictionary: { include: { snapshot: true } } },
       orderBy: { iconId: "asc" }
+    });
+  }
+
+  async deleteUnusedIcons(userId: bigint, iconIds: bigint[]): Promise<bigint[]> {
+    return this.prisma.$transaction(async (tx) => {
+      const icons = await tx.icon.findMany({
+        where: {
+          iconId: { in: iconIds },
+          userId,
+          isDefault: false,
+          accounts: { none: {} },
+          cards: { none: {} },
+          categories: { none: {} }
+        },
+        select: { iconId: true, iconDictionaryId: true }
+      });
+
+      if (icons.length !== iconIds.length) {
+        throw new AppException(
+          "ICON_004",
+          "선택한 아이콘 중 사용 중인 아이콘이 있어 삭제할 수 없습니다.",
+          HttpStatus.CONFLICT
+        );
+      }
+
+      await tx.icon.deleteMany({ where: { iconId: { in: iconIds } } });
+
+      const dictionaryIds = icons.map((icon) => icon.iconDictionaryId);
+      const unusedDictionaries = await tx.iconDictionary.findMany({
+        where: {
+          iconDictionaryId: { in: dictionaryIds },
+          icons: { none: {} }
+        },
+        select: { iconDictionaryId: true, snapshotHash: true }
+      });
+
+      if (unusedDictionaries.length > 0) {
+        await tx.iconDictionary.deleteMany({
+          where: { iconDictionaryId: { in: unusedDictionaries.map((dictionary) => dictionary.iconDictionaryId) } }
+        });
+
+        const snapshotHashes = unusedDictionaries.flatMap((dictionary) =>
+          dictionary.snapshotHash ? [dictionary.snapshotHash] : []
+        );
+        if (snapshotHashes.length > 0) {
+          const unusedSnapshots = await tx.iconAssetSnapshot.findMany({
+            where: {
+              snapshotHash: { in: snapshotHashes },
+              dictionaries: { none: {} }
+            },
+            select: { snapshotHash: true }
+          });
+
+          if (unusedSnapshots.length > 0) {
+            await tx.iconAssetSnapshot.deleteMany({
+              where: { snapshotHash: { in: unusedSnapshots.map((snapshot) => snapshot.snapshotHash) } }
+            });
+          }
+        }
+      }
+
+      return icons.map((icon) => icon.iconId);
     });
   }
 

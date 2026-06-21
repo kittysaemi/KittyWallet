@@ -1,7 +1,8 @@
-import { Body, Controller, Get, Param, Post, Put, Query } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Post, Put, Query } from "@nestjs/common";
 import { CurrentUser, JwtPayload } from "../../../common/decorators/current-user.decorator";
 import { IconsService } from "../application/icons.service";
 import { CreateIconRequestDto } from "./dto/request/create-icon-request.dto";
+import { DeleteUnusedIconsRequestDto } from "./dto/request/delete-unused-icons-request.dto";
 import { IconListQueryDto } from "./dto/request/icon-list-query.dto";
 import { IconOptionQueryDto } from "./dto/request/icon-option-query.dto";
 import { UpdateIconRequestDto } from "./dto/request/update-icon-request.dto";
@@ -39,6 +40,14 @@ export class IconsController {
       userId: BigInt(user.sub),
       iconCode: dto.icon_code,
       show: dto.show
+    });
+  }
+
+  @Delete("cleanup")
+  deleteUnusedIcons(@CurrentUser() user: JwtPayload, @Body() dto: DeleteUnusedIconsRequestDto) {
+    return this.iconsService.deleteUnusedIcons({
+      userId: BigInt(user.sub),
+      iconIds: dto.icon_ids.map((iconId) => BigInt(iconId))
     });
   }
 
