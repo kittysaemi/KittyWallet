@@ -96,6 +96,37 @@ describe("offlineTransaction.repository", () => {
 });
 
 describe("syncQueue.repository", () => {
+  it("오프라인 할부 등록 시 installment payload가 client_temp_id와 함께 sync queue에 저장된다", async () => {
+    const tx = await addOfflineTransaction({
+      transaction_type: "EXPENSE" as const,
+      wallet_type: "CARD" as const,
+      wallet_id: 1,
+      category_id: 2,
+      amount: 30000,
+      transaction_date: "2026-06-01"
+    });
+
+    const queueItem = await enqueueSyncItem({
+      local_id: tx.local_id,
+      client_temp_id: tx.client_temp_id,
+      action: "CREATE",
+      payload: {
+        transaction_type: "EXPENSE",
+        wallet_type: "CARD",
+        wallet_id: 1,
+        category_id: 2,
+        amount: 30000,
+        transaction_date: "2026-06-01",
+        installment: { installment_months: 3 }
+      }
+    });
+
+    const waiting = await getWaitingSyncItems();
+    const item = waiting.find((i) => i.queue_id === queueItem.queue_id);
+    expect(item?.client_temp_id).toBe(tx.client_temp_id);
+    expect(item?.payload).toMatchObject({ installment: { installment_months: 3 } });
+  });
+
   it("큐 항목을 enqueue하고 waiting 목록을 조회한다", async () => {
     const item = await enqueueSyncItem({
       local_id: "local-1",
