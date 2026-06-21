@@ -176,7 +176,9 @@ export class TransactionsRepository {
             installmentTotalCount: installmentInput.installmentMonths,
             deletedYn: false,
             syncedAt: now,
-            syncClientId: installmentInput.syncClientId ?? null,
+            ...(installmentInput.syncClientId != null
+              ? { syncClient: { connect: { syncClientId: installmentInput.syncClientId } } }
+              : {}),
             clientTempId: installmentInput.clientTempId ?? null
           }
         });
@@ -306,7 +308,9 @@ export class TransactionsRepository {
         installmentTotalCount: input.installmentTotalCount ?? null,
         deletedYn: false,
         syncedAt: input.syncedAt ?? null,
-        syncClientId: input.syncClientId ?? null,
+        ...(input.syncClientId != null
+          ? { syncClient: { connect: { syncClientId: input.syncClientId } } }
+          : {}),
         clientTempId: input.clientTempId ?? null
       }
     });
@@ -330,7 +334,9 @@ export class TransactionsRepository {
           memo: input.memo ?? null,
           deletedYn: false,
           syncedAt: input.syncedAt ?? null,
-          syncClientId: input.syncClientId ?? null,
+          ...(input.syncClientId != null
+            ? { syncClient: { connect: { syncClientId: input.syncClientId } } }
+            : {}),
           clientTempId: input.clientTempId ?? null
         }
       });
