@@ -64,13 +64,32 @@ export class IconsRepository {
           iconDictionaryId: { in: dictionaryIds },
           icons: { none: {} }
         },
-        select: { iconDictionaryId: true }
+        select: { iconDictionaryId: true, snapshotHash: true }
       });
 
       if (unusedDictionaries.length > 0) {
         await tx.iconDictionary.deleteMany({
           where: { iconDictionaryId: { in: unusedDictionaries.map((dictionary) => dictionary.iconDictionaryId) } }
         });
+
+        const snapshotHashes = unusedDictionaries.flatMap((dictionary) =>
+          dictionary.snapshotHash ? [dictionary.snapshotHash] : []
+        );
+        if (snapshotHashes.length > 0) {
+          const unusedSnapshots = await tx.iconAssetSnapshot.findMany({
+            where: {
+              snapshotHash: { in: snapshotHashes },
+              dictionaries: { none: {} }
+            },
+            select: { snapshotHash: true }
+          });
+
+          if (unusedSnapshots.length > 0) {
+            await tx.iconAssetSnapshot.deleteMany({
+              where: { snapshotHash: { in: unusedSnapshots.map((snapshot) => snapshot.snapshotHash) } }
+            });
+          }
+        }
       }
 
       return icons.map((icon) => icon.iconId);
