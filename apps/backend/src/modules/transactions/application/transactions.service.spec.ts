@@ -2,6 +2,10 @@ import { Decimal } from "@prisma/client/runtime/library";
 import { TransactionsRepository } from "../infrastructure/transactions.repository";
 import { TransactionsService } from "./transactions.service";
 
+jest.mock("../../../common/utils/date.util", () => ({
+  getTodayInTimezone: jest.fn(() => "2026-06-20")
+}));
+
 function makeDecimal(n: number): Decimal {
   return new Decimal(n);
 }
@@ -197,7 +201,8 @@ describe("TransactionsService - 카드할부", () => {
       expect(result.installment_id).toBe(10);
       expect(result.installment_info).toBeDefined();
       expect(result.installment_info!.original_amount).toBe(120000);
-      expect(result.installment_info!.current_total_amount).toBe(120000);
+      // today="2026-06-20" 기준: pastDate(06-20)만 current, future1·2는 remaining
+      expect(result.installment_info!.current_total_amount).toBe(40000);
       expect(result.installment_info!.installment_months).toBe(3);
       expect(result.installment_info!.installment_items).toHaveLength(3);
       expect(result.installment_info!.installment_items[0]).toMatchObject({
@@ -211,11 +216,10 @@ describe("TransactionsService - 카드할부", () => {
       const installment = makeInstallment();
       const tx = makeTx({ transactionId: 101n, installmentId: 10n, installmentSeq: 1, installmentTotalCount: 3, cardInstallment: installment });
 
-      const todayMidnight = new Date();
-      todayMidnight.setHours(0, 0, 0, 0);
-      const yesterday = new Date(todayMidnight.getTime() - 24 * 60 * 60 * 1000);
-      const tomorrow = new Date(todayMidnight.getTime() + 24 * 60 * 60 * 1000);
-      const dayAfterTomorrow = new Date(todayMidnight.getTime() + 2 * 24 * 60 * 60 * 1000);
+      // getTodayInTimezone이 "2026-06-20"으로 고정되므로 하드코딩 날짜 사용 (타임존 오차 방지)
+      const yesterday = new Date("2026-06-19");
+      const tomorrow = new Date("2026-06-21");
+      const dayAfterTomorrow = new Date("2026-06-22");
 
       const installmentTxs = [
         { transactionId: 100n, installmentSeq: 1, amount: makeDecimal(30000), transactionDate: yesterday, deletedYn: false },
@@ -230,7 +234,8 @@ describe("TransactionsService - 카드할부", () => {
 
       const result = await service.getTransaction(101n, 1n);
 
-      expect(result.installment_info!.current_total_amount).toBe(100000);
+      // today="2026-06-20" 기준: yesterday(06-19)만 current, tomorrow·dayAfterTomorrow는 remaining
+      expect(result.installment_info!.current_total_amount).toBe(30000);
       expect(result.installment_info!.remaining_amount).toBe(70000);
     });
 

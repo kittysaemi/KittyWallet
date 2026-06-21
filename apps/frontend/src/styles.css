@@ -105,6 +105,12 @@ body {
 
 html {
   background: var(--color-bg-primary);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html::-webkit-scrollbar {
+  display: none;
 }
 
 .font-gamja {

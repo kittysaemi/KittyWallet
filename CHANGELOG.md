@@ -1,3 +1,16 @@
+# [1.18.0](https://github.com/kittysaemi/KittyWallet/compare/v1.17.0...v1.18.0) (2026-06-20)
+
+
+### Bug Fixes
+
+* **#312:** CI 오류 수정 - 테스트 타임존 고정 및 타입 오류 수정 ([ef8beca](https://github.com/kittysaemi/KittyWallet/commit/ef8becaba2ecea487cded41015a35209fdbf1231)), closes [#312](https://github.com/kittysaemi/KittyWallet/issues/312)
+* **#312:** 지갑 드롭다운 계좌/카드 ID 충돌 수정 및 할부 개월수 범위 조정 ([39ab36c](https://github.com/kittysaemi/KittyWallet/commit/39ab36c30b682efccaf2b0c70d11a265b34f0592)), closes [#312](https://github.com/kittysaemi/KittyWallet/issues/312)
+
+
+### Features
+
+* **#312:** 카드할부 등록/수정/목록/상세 화면 구현 ([d1e915d](https://github.com/kittysaemi/KittyWallet/commit/d1e915d5ff5af6862425c990fc2b87935be71f58)), closes [#312](https://github.com/kittysaemi/KittyWallet/issues/312)
+
 # [1.17.0](https://github.com/kittysaemi/KittyWallet/compare/v1.16.0...v1.17.0) (2026-06-20)
 
 

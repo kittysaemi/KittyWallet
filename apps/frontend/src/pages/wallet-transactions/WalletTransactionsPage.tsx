@@ -138,7 +138,9 @@ const WalletTransactionsPage: React.FC<WalletTransactionsPageProps> = ({ walletT
       return loaded < total ? allPages.length + 1 : undefined;
     },
     staleTime: 30_000,
-    retry: isOffline ? false : 2,
+    gcTime: 10 * 60 * 1000,
+    retry: isOffline ? false : 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10_000),
   });
 
   const items = txQuery.data?.pages.flatMap((p) => p.data?.items ?? []) ?? [];
