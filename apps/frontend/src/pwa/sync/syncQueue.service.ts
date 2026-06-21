@@ -11,6 +11,7 @@ import {
   updateSyncItemStatus
 } from "../indexed-db/repositories/syncQueue.repository";
 import {
+  removeOfflineTransaction,
   updateOfflineSyncStatus
 } from "../indexed-db/repositories/offlineTransaction.repository";
 import { usePwaStore } from "../state/pwa.store";
@@ -41,9 +42,18 @@ export async function runSyncQueue(queryClient?: QueryClient): Promise<void> {
     return;
   }
 
-  const queueItems = (await getProcessableSyncItems()).filter(
-    (item) => item.retry_count < MAX_RETRY_COUNT
+  const processable = await getProcessableSyncItems();
+
+  // 최대 재시도 초과 항목은 복구 불가 → IndexedDB에서 자동 삭제
+  const maxedOut = processable.filter((item) => item.retry_count >= MAX_RETRY_COUNT);
+  await Promise.all(
+    maxedOut.map(async (item) => {
+      await removeOfflineTransaction(item.local_id);
+      await removeSyncItem(item.queue_id);
+    })
   );
+
+  const queueItems = processable.filter((item) => item.retry_count < MAX_RETRY_COUNT);
   if (queueItems.length === 0) {
     usePwaStore.getState().setSyncStatus("synced");
     return;
