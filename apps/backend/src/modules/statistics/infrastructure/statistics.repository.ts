@@ -4,8 +4,8 @@ import { PrismaService } from "../../../database/prisma.service";
 
 export interface StatisticsCondition {
   userId: bigint;
-  startDate: Date;
-  endDate: Date;
+  startDate?: Date;
+  endDate?: Date;
   walletType?: WalletType;
   walletId?: bigint;
   transactionType?: TransactionType;
@@ -51,10 +51,9 @@ export class StatisticsRepository {
     return {
       userId: condition.userId,
       deletedYn: false,
-      transactionDate: {
-        gte: condition.startDate,
-        lte: condition.endDate
-      },
+      ...(condition.startDate && condition.endDate
+        ? { transactionDate: { gte: condition.startDate, lte: condition.endDate } }
+        : {}),
       category: {
         categoryUserSettings: {
           none: {

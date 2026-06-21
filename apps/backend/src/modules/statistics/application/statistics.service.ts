@@ -36,6 +36,15 @@ interface GetVisualizationCommand extends BaseStatisticsCommand {
   transactionType?: string;
 }
 
+interface GetCategoryExpenseStatisticsCommand {
+  userId: bigint;
+  periodType: "all" | "year" | "month";
+  year?: string;
+  month?: string;
+  walletType?: string;
+  walletId?: bigint;
+}
+
 interface AmountSummary {
   incomeAmount: number;
   expenseAmount: number;
@@ -437,6 +446,58 @@ export class StatisticsService {
     ];
 
     return { month, total_income: totalIncome, nodes, links };
+  }
+
+  async getCategoryExpenseStatistics(command: GetCategoryExpenseStatisticsCommand) {
+    const condition = this.buildCategoryExpenseCondition(command);
+    const groups = await this.statisticsRepository.groupAmountsByCategory(condition);
+    const totalAmount = groups.reduce((sum, g) => sum + this.toNumber(g.amount), 0);
+
+    return {
+      period_type: command.periodType,
+      total_amount: totalAmount,
+      items: groups.map((g) => {
+        const amount = this.toNumber(g.amount);
+        return {
+          category_id: Number(g.categoryId),
+          category_name: g.category?.categoryName ?? "",
+          icon_id: g.category ? Number(g.category.iconId) : null,
+          amount,
+          transaction_count: g.transactionCount,
+          ratio: totalAmount > 0 ? Math.round((amount / totalAmount) * 10000) / 100 : 0
+        };
+      })
+    };
+  }
+
+  private buildCategoryExpenseCondition(command: GetCategoryExpenseStatisticsCommand) {
+    const base = {
+      userId: command.userId,
+      transactionType: TransactionType.EXPENSE,
+      walletType: this.toWalletType(command.walletType),
+      walletId: command.walletId
+    };
+    if (command.periodType === "month") {
+      if (!command.month) this.throwInvalidParameter();
+      const { startDate, endDate } = this.parseMonth(command.month);
+      return { ...base, startDate, endDate };
+    }
+    if (command.periodType === "year") {
+      if (!command.year) this.throwInvalidParameter();
+      const { startDate, endDate } = this.parseYear(command.year);
+      return { ...base, startDate, endDate };
+    }
+    return base;
+  }
+
+  private parseYear(year: string): { startDate: Date; endDate: Date } {
+    const match = /^(\d{4})$/.exec(year);
+    if (!match) this.throwInvalidParameter();
+    const y = Number(match[1]);
+    return {
+      startDate: new Date(Date.UTC(y, 0, 1)),
+      endDate: new Date(Date.UTC(y, 11, 31, 23, 59, 59, 999))
+    };
   }
 
   private buildWalletCatLinks(
