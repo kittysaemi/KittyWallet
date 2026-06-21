@@ -130,14 +130,23 @@ export class SyncService {
         ...payload
       });
       const syncedAt = created.synced_at ? new Date(created.synced_at) : new Date();
-      await this.prisma.transaction.update({
-        where: { transactionId: BigInt(created.transaction_id) },
-        data: {
-          syncClientId,
-          clientTempId: item.client_temp_id,
-          syncedAt
-        }
-      });
+
+      if (created.installment_id && created.transactions && created.transactions.length > 0) {
+        // 할부: 모든 월별 거래에 syncClientId/clientTempId 일괄 설정
+        await this.prisma.transaction.updateMany({
+          where: {
+            installmentId: BigInt(created.installment_id),
+            userId
+          },
+          data: { syncClientId, clientTempId: item.client_temp_id, syncedAt }
+        });
+      } else {
+        await this.prisma.transaction.update({
+          where: { transactionId: BigInt(created.transaction_id) },
+          data: { syncClientId, clientTempId: item.client_temp_id, syncedAt }
+        });
+      }
+
       return {
         client_temp_id: item.client_temp_id,
         server_id: created.transaction_id,
@@ -190,6 +199,14 @@ export class SyncService {
   }
 
   private toCreatePayload(payload: Record<string, unknown>) {
+    const raw = payload.installment;
+    const installmentMonths =
+      raw !== null &&
+      typeof raw === "object" &&
+      typeof (raw as Record<string, unknown>).installment_months === "number"
+        ? (raw as { installment_months: number }).installment_months
+        : undefined;
+
     return {
       walletType: this.requiredString(payload, "wallet_type") as "ACCOUNT" | "CARD",
       walletId: BigInt(this.requiredNumber(payload, "wallet_id")),
@@ -197,7 +214,8 @@ export class SyncService {
       transactionType: this.requiredString(payload, "transaction_type") as "INCOME" | "EXPENSE",
       amount: this.requiredNumber(payload, "amount"),
       memo: typeof payload.memo === "string" ? payload.memo : undefined,
-      transactionDate: this.requiredString(payload, "transaction_date")
+      transactionDate: this.requiredString(payload, "transaction_date"),
+      ...(installmentMonths !== undefined && { installmentMonths })
     };
   }
 
