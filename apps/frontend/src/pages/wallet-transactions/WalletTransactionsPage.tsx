@@ -189,12 +189,6 @@ const WalletTransactionsPage: React.FC<WalletTransactionsPageProps> = ({ walletT
     [items, periodType, walletType]
   );
 
-  const isCurrentPeriod = (() => {
-    if (periodType === "week") return weekRange.start === getWeekRange(today).start;
-    if (periodType === "month") return baseDate.getFullYear() === today.getFullYear() && baseDate.getMonth() === today.getMonth();
-    return baseDate.getFullYear() === today.getFullYear();
-  })();
-
   return (
     <div className="min-h-screen bg-[var(--color-bg-primary)]">
       <div className="mx-auto w-full max-w-[480px] px-4 pb-8 pt-6">
