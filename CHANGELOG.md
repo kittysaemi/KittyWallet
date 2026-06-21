@@ -1,3 +1,10 @@
+# [1.21.0](https://github.com/kittysaemi/KittyWallet/compare/v1.20.0...v1.21.0) (2026-06-21)
+
+
+### Features
+
+* **#313:** 카드할부 오프라인 Sync Queue payload 처리 추가 ([7361c79](https://github.com/kittysaemi/KittyWallet/commit/7361c79ee1cee389400ce56283108c410fa8e84f)), closes [#313](https://github.com/kittysaemi/KittyWallet/issues/313)
+
 # [1.20.0](https://github.com/kittysaemi/KittyWallet/compare/v1.19.0...v1.20.0) (2026-06-21)
 
 
