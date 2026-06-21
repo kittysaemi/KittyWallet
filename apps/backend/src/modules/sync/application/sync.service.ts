@@ -127,25 +127,11 @@ export class SyncService {
       const payload = this.toCreatePayload(item.payload);
       const created = await this.transactionsService.createTransaction({
         userId,
+        syncClientId,
+        clientTempId: item.client_temp_id,
         ...payload
       });
       const syncedAt = created.synced_at ? new Date(created.synced_at) : new Date();
-
-      if (created.installment_id && created.transactions && created.transactions.length > 0) {
-        // 할부: 모든 월별 거래에 syncClientId/clientTempId 일괄 설정
-        await this.prisma.transaction.updateMany({
-          where: {
-            installmentId: BigInt(created.installment_id),
-            userId
-          },
-          data: { syncClientId, clientTempId: item.client_temp_id, syncedAt }
-        });
-      } else {
-        await this.prisma.transaction.update({
-          where: { transactionId: BigInt(created.transaction_id) },
-          data: { syncClientId, clientTempId: item.client_temp_id, syncedAt }
-        });
-      }
 
       return {
         client_temp_id: item.client_temp_id,
