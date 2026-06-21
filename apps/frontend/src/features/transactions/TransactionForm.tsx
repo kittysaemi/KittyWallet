@@ -612,7 +612,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           setErrors((err) => ({ ...err, transaction_date: "" }));
         }}
         error={errors.transaction_date}
-        disabled={isSaving || futureInstallment}
+        disabled={isSaving || isInstallmentTx}
       />
 
       {/* 지갑 드롭다운 */}
@@ -702,7 +702,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           }}
           error={errors.category_id}
           iconMap={iconMap}
-          disabled={isSaving || categoriesQuery.isLoading || futureInstallment}
+          disabled={isSaving || categoriesQuery.isLoading || isInstallmentTx}
         />
       </div>
 
@@ -715,7 +715,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         value={memo}
         onChange={(e) => setMemo(e.target.value)}
         error={errors.memo}
-        disabled={isSaving || futureInstallment}
+        disabled={isSaving || isInstallmentTx}
         maxLength={200}
       />
 
