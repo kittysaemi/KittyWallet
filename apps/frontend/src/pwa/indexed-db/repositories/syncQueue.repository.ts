@@ -101,3 +101,11 @@ export async function getAllSyncItems(): Promise<SyncQueueItem[]> {
     store.getAll() as IDBRequest<SyncQueueItem[]>
   );
 }
+
+export async function removeSyncItemByLocalId(localId: string): Promise<void> {
+  const all = await getAllSyncItems();
+  const item = all.find((i) => i.local_id === localId);
+  if (item) {
+    await removeSyncItem(item.queue_id);
+  }
+}

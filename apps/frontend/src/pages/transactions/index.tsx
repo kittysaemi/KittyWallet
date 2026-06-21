@@ -143,7 +143,6 @@ const PendingTransactionCard: React.FC<PendingTransactionCardProps> = ({
     : (cardNameMap.get(tx.wallet_id) ?? "카드");
   const iconId = categoryIconMap.get(tx.category_id);
   const icon = iconId ? iconMap.get(iconId) : undefined;
-  const isFailed = tx.sync_status === "sync_failed";
 
   return (
     <div className={`${cardClass} flex items-center gap-3 p-4 opacity-70`}>
@@ -173,9 +172,9 @@ const PendingTransactionCard: React.FC<PendingTransactionCardProps> = ({
         </p>
         <p className="flex items-center gap-1 text-xs text-[var(--color-text-secondary)]">
           <span className="truncate">{walletName}</span>
-          <span className={`shrink-0 inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-medium leading-none ${isFailed ? "bg-red-100 text-red-600" : "bg-amber-100 text-amber-600"}`}>
+          <span className="shrink-0 inline-flex items-center gap-0.5 rounded bg-amber-100 px-1 py-0.5 text-[10px] font-medium leading-none text-amber-600">
             <Clock size={10} />
-            {isFailed ? "동기화 실패" : "동기화 대기"}
+            동기화 대기
           </span>
         </p>
       </div>
@@ -240,7 +239,9 @@ const TransactionsPage: React.FC = () => {
 
   React.useEffect(() => {
     getAllOfflineTransactions()
-      .then(all => setPendingTxs(all.filter(tx => !tx.deleted_yn && tx.sync_status !== "synced")))
+      .then(all => setPendingTxs(
+        all.filter(tx => !tx.deleted_yn && (tx.sync_status === "pending_sync" || tx.sync_status === "syncing"))
+      ))
       .catch(() => {});
   }, [query.dataUpdatedAt]);
 
@@ -278,6 +279,7 @@ const TransactionsPage: React.FC = () => {
     const prefix = `${year}-${String(month).padStart(2, "0")}`;
     return pendingTxs.filter(tx => tx.transaction_date.startsWith(prefix));
   }, [pendingTxs, year, month]);
+
 
   const items = query.data?.data?.items ?? [];
   const totalCount = query.data?.data?.total_count ?? 0;
