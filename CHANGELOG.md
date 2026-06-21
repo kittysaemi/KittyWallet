@@ -1,3 +1,10 @@
+## [1.22.2](https://github.com/kittysaemi/KittyWallet/compare/v1.22.1...v1.22.2) (2026-06-21)
+
+
+### Bug Fixes
+
+* **#313:** 할부 unique 위반 수정 및 오프라인 거래내역 표시 ([e1bcf11](https://github.com/kittysaemi/KittyWallet/commit/e1bcf116501e8a7f47663d33293d46da5521ae0e)), closes [#313](https://github.com/kittysaemi/KittyWallet/issues/313)
+
 ## [1.22.1](https://github.com/kittysaemi/KittyWallet/compare/v1.22.0...v1.22.1) (2026-06-21)
 
 
