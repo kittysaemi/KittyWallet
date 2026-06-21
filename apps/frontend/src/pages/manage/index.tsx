@@ -1,7 +1,7 @@
 import React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
-import { BadgeMinus, Plus, RotateCw, X } from "lucide-react";
+import { BadgeMinus, Minus, Plus, RotateCw, X } from "lucide-react";
 import { z } from "zod";
 import { accountApi } from "../../entities/account/api/accountApi";
 import type { AccountItem } from "../../entities/account/model/account.types";
@@ -10,7 +10,11 @@ import type { CardItem } from "../../entities/card/model/card.types";
 import { categoryApi } from "../../entities/category/api/categoryApi";
 import type { CategoryItem } from "../../entities/category/model/category.types";
 import { iconApi } from "../../entities/icon/api/iconApi";
-import type { IconItem, IconOptionItem } from "../../entities/icon/model/icon.types";
+import type {
+  IconCleanupCandidateItem,
+  IconItem,
+  IconOptionItem
+} from "../../entities/icon/model/icon.types";
 import { IconPickerSheet } from "../../features/icons/IconPickerSheet";
 import { IconSelect } from "../../features/icons/IconSelect";
 import { StatisticsExcludeSheet } from "../../features/categories/StatisticsExcludeSheet";
@@ -1415,6 +1419,10 @@ const IconsTab: React.FC = () => {
   const [isRegistering, setIsRegistering] = React.useState(false);
   const [searchText, setSearchText] = React.useState("");
   const [selectedOption, setSelectedOption] = React.useState<IconOptionItem | undefined>();
+  const [isCleanupOpen, setIsCleanupOpen] = React.useState(false);
+  const [isCleanupConfirmOpen, setIsCleanupConfirmOpen] = React.useState(false);
+  const [selectedCleanupIds, setSelectedCleanupIds] = React.useState<Set<number>>(new Set());
+  const [cleanupNotice, setCleanupNotice] = React.useState("");
   const queryClient = useQueryClient();
 
   const iconsQuery = useQuery({
@@ -1435,6 +1443,12 @@ const IconsTab: React.FC = () => {
     queryKey: ["icon-options", normalizedSearchText],
     queryFn: () => iconApi.searchIconOptions(normalizedSearchText),
     enabled: isRegistering && normalizedSearchText.length > 0
+  });
+
+  const cleanupCandidatesQuery = useQuery({
+    queryKey: ["icons", "cleanup-candidates"],
+    queryFn: () => iconApi.getCleanupCandidates(),
+    enabled: isCleanupOpen
   });
 
   const refreshIcons = async () => {
@@ -1460,6 +1474,21 @@ const IconsTab: React.FC = () => {
     onSuccess: refreshIcons
   });
 
+  const cleanupMutation = useMutation({
+    mutationFn: (iconIds: number[]) => iconApi.deleteUnusedIcons({ icon_ids: iconIds }),
+    onSuccess: async (response) => {
+      if (!response.success) return;
+      setSelectedCleanupIds(new Set());
+      setIsCleanupConfirmOpen(false);
+      setCleanupNotice(`${response.data?.deleted_count ?? 0}개의 아이콘을 삭제했습니다.`);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["icons", "cleanup-candidates"] }),
+        queryClient.invalidateQueries({ queryKey: ["icons", "manage"] }),
+        queryClient.invalidateQueries({ queryKey: ["icons", "select"] })
+      ]);
+    }
+  });
+
   const icons = iconsQuery.data?.data?.items ?? [];
   const userIcons = icons.filter((icon) => !icon.is_default);
   const existingIconCodes = new Set(icons.map((icon) => icon.icon_code));
@@ -1470,6 +1499,22 @@ const IconsTab: React.FC = () => {
         )
       : [];
   const isError = iconsQuery.isError || (iconsQuery.data && !iconsQuery.data.success);
+  const cleanupCandidates = cleanupCandidatesQuery.data?.data?.items ?? [];
+  const cleanupError =
+    cleanupCandidatesQuery.isError ||
+    (cleanupCandidatesQuery.data && !cleanupCandidatesQuery.data.success) ||
+    cleanupMutation.isError ||
+    (cleanupMutation.data && !cleanupMutation.data.success);
+  const allCleanupCandidatesSelected =
+    cleanupCandidates.length > 0 && cleanupCandidates.every((icon) => selectedCleanupIds.has(icon.icon_id));
+  const toggleCleanupCandidate = (icon: IconCleanupCandidateItem) => {
+    setSelectedCleanupIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(icon.icon_id)) next.delete(icon.icon_id);
+      else next.add(icon.icon_id);
+      return next;
+    });
+  };
 
   return (
     <div className="flex flex-col gap-5">
@@ -1487,18 +1532,32 @@ const IconsTab: React.FC = () => {
           <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
             사용자 아이콘
           </h2>
-          <button
-            type="button"
-            aria-label="아이콘 등록"
-            onClick={() => {
-              setIsRegistering((prev) => !prev);
-              setSearchText("");
-              setSelectedOption(undefined);
-            }}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-primary)] text-[var(--color-text-primary)] transition hover:bg-[var(--color-primary-hover)]"
-          >
-            <Plus size={20} aria-hidden="true" />
-          </button>
+          <div className="flex shrink-0 gap-2">
+            <button
+              type="button"
+              aria-label="사용하지 않는 아이콘 정리"
+              onClick={() => {
+                setCleanupNotice("");
+                setSelectedCleanupIds(new Set());
+                setIsCleanupOpen(true);
+              }}
+              className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-primary)] text-[var(--color-text-primary)] transition hover:bg-[var(--color-primary-hover)]"
+            >
+              <Minus size={20} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              aria-label="아이콘 등록"
+              onClick={() => {
+                setIsRegistering((prev) => !prev);
+                setSearchText("");
+                setSelectedOption(undefined);
+              }}
+              className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-primary)] text-[var(--color-text-primary)] transition hover:bg-[var(--color-primary-hover)]"
+            >
+              <Plus size={20} aria-hidden="true" />
+            </button>
+          </div>
         </div>
 
         {isRegistering && (
@@ -1639,6 +1698,135 @@ const IconsTab: React.FC = () => {
           </div>
         )}
       </section>
+
+      {isCleanupOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="icon-cleanup-title"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 pb-safe sm:items-center"
+        >
+          <div className="w-full max-w-[480px] rounded-t-3xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] p-5 shadow-xl sm:rounded-3xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 id="icon-cleanup-title" className="text-lg font-bold text-[var(--color-text-primary)]">
+                  사용하지 않는 아이콘 정리
+                </h2>
+                <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+                  사용 중이지 않은 사용자 등록 아이콘만 표시됩니다.
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="미사용 아이콘 정리 닫기"
+                onClick={() => setIsCleanupOpen(false)}
+                className="flex h-11 w-11 items-center justify-center rounded-xl text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)]"
+              >
+                <X size={20} aria-hidden="true" />
+              </button>
+            </div>
+
+            {cleanupCandidatesQuery.isLoading && (
+              <p className="mt-5 text-sm text-[var(--color-text-secondary)]">정리할 아이콘을 불러오는 중입니다.</p>
+            )}
+
+            {cleanupError && (
+              <div className="mt-5 rounded-2xl border border-[var(--color-danger)] bg-[var(--color-danger-soft)] p-4">
+                <p className="text-sm text-[var(--color-text-primary)]">아이콘 정리에 실패했습니다.</p>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="mt-3"
+                  onClick={() => void cleanupCandidatesQuery.refetch()}
+                >
+                  다시 시도
+                </Button>
+              </div>
+            )}
+
+            {!cleanupCandidatesQuery.isLoading && !cleanupError && cleanupCandidates.length === 0 && (
+              <p className="mt-5 rounded-2xl bg-[var(--color-bg-secondary)] p-4 text-sm text-[var(--color-text-secondary)]">
+                정리할 아이콘이 없습니다.
+              </p>
+            )}
+
+            {!cleanupCandidatesQuery.isLoading && !cleanupError && cleanupCandidates.length > 0 && (
+              <>
+                <button
+                  type="button"
+                  className="mt-5 text-sm font-semibold text-[var(--color-text-secondary)] underline"
+                  onClick={() =>
+                    setSelectedCleanupIds(
+                      allCleanupCandidatesSelected ? new Set() : new Set(cleanupCandidates.map((icon) => icon.icon_id))
+                    )
+                  }
+                >
+                  {allCleanupCandidatesSelected ? "전체 선택 해제" : "전체 선택"}
+                </button>
+                <div className="mt-3 max-h-[45vh] space-y-2 overflow-y-auto" aria-label="미사용 아이콘 후보 목록">
+                  {cleanupCandidates.map((icon) => {
+                    const selected = selectedCleanupIds.has(icon.icon_id);
+                    return (
+                      <button
+                        key={icon.icon_id}
+                        type="button"
+                        aria-pressed={selected}
+                        aria-label={`${icon.icon_code} ${selected ? "선택 해제" : "선택"}`}
+                        onClick={() => toggleCleanupCandidate(icon)}
+                        className={`flex min-h-14 w-full items-center gap-3 rounded-2xl border px-3 text-left transition ${selected ? "border-[var(--color-primary)] bg-[var(--color-primary-soft)]" : "border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)]"}`}
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={`flex h-5 w-5 items-center justify-center rounded border ${selected ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white" : "border-[var(--color-border-primary)]"}`}
+                        >
+                          {selected ? "✓" : ""}
+                        </span>
+                        <IconRenderer providerType={icon.provider_type} providerKey={icon.provider_key} size={22} />
+                        {!icon.can_register_again && (
+                          <span className="ml-auto text-xs font-medium text-[var(--color-danger)]">
+                            현재 API 미제공 · 재등록 불가
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {cleanupNotice && <p className="mt-4 text-sm text-[var(--color-success)]">{cleanupNotice}</p>}
+
+            <div className="mt-5 flex gap-3">
+              <Button type="button" variant="secondary" fullWidth onClick={() => setIsCleanupOpen(false)}>
+                닫기
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                fullWidth
+                disabled={selectedCleanupIds.size === 0 || cleanupMutation.isPending}
+                onClick={() => setIsCleanupConfirmOpen(true)}
+              >
+                선택 삭제
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isCleanupConfirmOpen && (
+        <div role="dialog" aria-modal="true" aria-labelledby="icon-cleanup-confirm-title" className="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 px-4 pb-safe sm:items-center">
+          <div className="w-full max-w-[400px] rounded-3xl bg-[var(--color-bg-card)] p-6 shadow-xl">
+            <h2 id="icon-cleanup-confirm-title" className="text-lg font-bold text-[var(--color-text-primary)]">선택한 아이콘을 삭제할까요?</h2>
+            <p className="mt-3 text-sm text-[var(--color-text-secondary)]">삭제한 아이콘은 아이콘 목록과 선택 화면에서 사라집니다.</p>
+            <p className="mt-2 text-sm text-[var(--color-text-secondary)]">현재 아이콘 API에서 제공하지 않는 아이콘은 삭제 후 다시 등록할 수 없습니다.</p>
+            <div className="mt-5 flex gap-3">
+              <Button type="button" variant="secondary" fullWidth disabled={cleanupMutation.isPending} onClick={() => setIsCleanupConfirmOpen(false)}>취소</Button>
+              <Button type="button" variant="danger" fullWidth isLoading={cleanupMutation.isPending} onClick={() => cleanupMutation.mutate([...selectedCleanupIds])}>삭제</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

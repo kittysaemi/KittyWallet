@@ -23,6 +23,30 @@ export interface IconOptionListData {
   items: IconOptionItem[];
 }
 
+export interface IconCleanupCandidateItem {
+  icon_id: number;
+  icon_code: string;
+  provider_type: string;
+  provider_key: string;
+  preview: null;
+  is_provider_available: boolean;
+  can_register_again: boolean;
+  created_at: string;
+}
+
+export interface IconCleanupCandidateListData {
+  items: IconCleanupCandidateItem[];
+}
+
+export interface DeleteUnusedIconsRequest {
+  icon_ids: number[];
+}
+
+export interface DeleteUnusedIconsData {
+  deleted_count: number;
+  deleted_icon_ids: number[];
+}
+
 export interface CreateIconRequest {
   icon_code: string;
   show?: boolean;

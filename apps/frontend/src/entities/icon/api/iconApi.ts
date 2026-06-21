@@ -2,6 +2,9 @@ import { apiClient } from "../../../shared/api/apiClient";
 import type {
   ApiResponse,
   CreateIconRequest,
+  DeleteUnusedIconsData,
+  DeleteUnusedIconsRequest,
+  IconCleanupCandidateListData,
   IconItem,
   IconListData,
   IconOptionListData,
@@ -36,6 +39,22 @@ export const iconApi = {
       `/icons/${iconId}`,
       data
     );
+    return res.data;
+  },
+
+  getCleanupCandidates: async (): Promise<ApiResponse<IconCleanupCandidateListData>> => {
+    const res = await apiClient.get<ApiResponse<IconCleanupCandidateListData>>(
+      "/icons/cleanup-candidates"
+    );
+    return res.data;
+  },
+
+  deleteUnusedIcons: async (
+    data: DeleteUnusedIconsRequest
+  ): Promise<ApiResponse<DeleteUnusedIconsData>> => {
+    const res = await apiClient.delete<ApiResponse<DeleteUnusedIconsData>>("/icons/cleanup", {
+      data
+    });
     return res.data;
   }
 };
