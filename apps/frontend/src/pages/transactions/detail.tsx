@@ -428,9 +428,17 @@ const TransactionDetailPage: React.FC = () => {
       <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 pb-8 sm:items-center sm:pb-0">
         <div className="w-full max-w-[400px] rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] p-6 shadow-xl">
           <h2 className="mb-2 text-base font-bold text-[var(--color-text-primary)]">거래 삭제</h2>
-          <p className="mb-4 text-sm text-[var(--color-text-secondary)]">
-            이 거래를 삭제하시겠습니까? 삭제된 거래는 복구할 수 없습니다.
-          </p>
+          {tx?.installment_total_count != null ? (
+            <p className="mb-4 text-sm text-[var(--color-text-secondary)]">
+              할부 거래를 삭제하면{" "}
+              <span className="font-semibold text-[var(--color-danger)]">{tx.installment_total_count}개월 전체 할부 내역</span>
+              이 모두 삭제됩니다. 삭제된 거래는 복구할 수 없습니다.
+            </p>
+          ) : (
+            <p className="mb-4 text-sm text-[var(--color-text-secondary)]">
+              이 거래를 삭제하시겠습니까? 삭제된 거래는 복구할 수 없습니다.
+            </p>
+          )}
           {deleteError && (
             <p className="mb-4 rounded-xl border border-[var(--color-danger)] bg-[var(--color-danger-soft)] px-3 py-2 text-sm text-[var(--color-danger)]">
               {deleteError}

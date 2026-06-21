@@ -395,6 +395,19 @@ export class TransactionsRepository {
     });
   }
 
+  async softDeleteInstallment(installmentId: bigint, userId: bigint): Promise<void> {
+    await this.prisma.$transaction([
+      this.prisma.transaction.updateMany({
+        where: { installmentId, userId, deletedYn: false },
+        data: { deletedYn: true }
+      }),
+      this.prisma.cardInstallment.update({
+        where: { installmentId },
+        data: { deletedYn: true }
+      })
+    ]);
+  }
+
   softDeleteWithBalance(
     transactionId: bigint,
     balanceChange?: { accountId: bigint; delta: number }

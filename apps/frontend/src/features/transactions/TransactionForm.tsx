@@ -21,7 +21,11 @@ import { Input } from "../../shared/ui/Input";
 import { useTimezone } from "../../shared/hooks/useTimezone";
 import { getTodayInTimezone } from "../../shared/utils/date";
 
-function createSchema(today: string) {
+function createSchema(today: string, skipFutureDateCheck = false) {
+  const dateField = skipFutureDateCheck
+    ? z.string().min(1, "날짜를 선택해주세요.")
+    : z.string().min(1, "날짜를 선택해주세요.").refine((v) => v <= today, "미래 날짜는 등록할 수 없습니다.");
+
   return z
     .object({
       transaction_type: z.enum(["INCOME", "EXPENSE"]),
@@ -31,10 +35,7 @@ function createSchema(today: string) {
       amount: z
         .number({ invalid_type_error: "금액을 입력해주세요." })
         .min(1, "금액은 1원 이상이어야 합니다."),
-      transaction_date: z
-        .string()
-        .min(1, "날짜를 선택해주세요.")
-        .refine((v) => v <= today, "미래 날짜는 등록할 수 없습니다."),
+      transaction_date: dateField,
       memo: z.string().max(200, "메모는 200자 이하여야 합니다.").optional()
     })
     .refine((d) => !(d.transaction_type === "INCOME" && d.wallet_type === "CARD"), {
@@ -205,19 +206,21 @@ interface TransactionFormProps {
   initialData?: TransactionItem;
   transactionId?: number;
   readOnly?: boolean;
+  futureInstallment?: boolean;
 }
 
 export const TransactionForm: React.FC<TransactionFormProps> = ({
   onSuccess,
   initialData,
   transactionId,
-  readOnly = false
+  readOnly = false,
+  futureInstallment = false
 }) => {
   const isEditMode = !!transactionId;
   const queryClient = useQueryClient();
   const timezone = useTimezone();
   const today = React.useMemo(() => getTodayInTimezone(timezone), [timezone]);
-  const schema = React.useMemo(() => createSchema(today), [today]);
+  const schema = React.useMemo(() => createSchema(today, futureInstallment), [today, futureInstallment]);
 
   const [txType, setTxType] = React.useState<"INCOME" | "EXPENSE">(
     initialData?.transaction_type ?? "EXPENSE"
@@ -426,7 +429,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             client_temp_id: offline.client_temp_id,
             server_id: isEditMode && transactionId ? String(transactionId) : undefined,
             action: isEditMode ? "UPDATE" : "CREATE",
-            payload: { ...parsed.data, ...installmentPayload }
+            payload: futureInstallment
+              ? { amount: parsed.data.amount }
+              : { ...parsed.data, ...installmentPayload }
           });
           usePwaStore.getState().setSyncStatus("pending_sync");
           void queryClient.invalidateQueries({ queryKey: ["transactions"] });
@@ -442,16 +447,20 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       return;
     }
     if (isEditMode) {
-      updateMutation.mutate({
-        transaction_type: parsed.data.transaction_type,
-        wallet_type: parsed.data.wallet_type,
-        wallet_id: parsed.data.wallet_id,
-        category_id: parsed.data.category_id,
-        amount: parsed.data.amount,
-        memo: parsed.data.memo ?? null,
-        transaction_date: parsed.data.transaction_date,
-        timezone
-      });
+      if (futureInstallment) {
+        updateMutation.mutate({ amount: parsed.data.amount, timezone });
+      } else {
+        updateMutation.mutate({
+          transaction_type: parsed.data.transaction_type,
+          wallet_type: parsed.data.wallet_type,
+          wallet_id: parsed.data.wallet_id,
+          category_id: parsed.data.category_id,
+          amount: parsed.data.amount,
+          memo: parsed.data.memo ?? null,
+          transaction_date: parsed.data.transaction_date,
+          timezone
+        });
+      }
     } else {
       createMutation.mutate({ ...parsed.data, timezone, ...installmentPayload });
       void runSyncQueue(queryClient);
@@ -500,23 +509,32 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
   return (
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
+      {/* 미래 할부 안내 */}
+      {futureInstallment && (
+        <div className="rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] px-4 py-3">
+          <p className="text-xs text-[var(--color-text-secondary)]">
+            미래 예정 할부 항목입니다. <span className="font-medium text-[var(--color-text-primary)]">금액만 수정</span>할 수 있습니다.
+          </p>
+        </div>
+      )}
+
       {/* 거래 유형 */}
       <div className="flex flex-col gap-1.5">
         <p className="text-sm font-medium text-[var(--color-text-secondary)]">거래 유형</p>
         <div className="flex gap-2">
           <button
             type="button"
-            disabled={isSaving}
-            className={`${toggleBase} ${txType === "EXPENSE" ? activeToggle : inactiveToggle}`}
-            onClick={() => handleTxTypeChange("EXPENSE")}
+            disabled={isSaving || futureInstallment}
+            className={`${toggleBase} ${futureInstallment || txType === "EXPENSE" ? activeToggle : inactiveToggle} ${futureInstallment ? "opacity-50 cursor-not-allowed" : ""}`}
+            onClick={() => !futureInstallment && handleTxTypeChange("EXPENSE")}
           >
             지출
           </button>
           <button
             type="button"
-            disabled={isSaving || incomeDisabled}
-            className={`${toggleBase} ${incomeDisabled ? disabledToggle : txType === "INCOME" ? activeToggle : inactiveToggle}`}
-            onClick={() => !incomeDisabled && handleTxTypeChange("INCOME")}
+            disabled={isSaving || incomeDisabled || futureInstallment}
+            className={`${toggleBase} ${incomeDisabled || futureInstallment ? disabledToggle : txType === "INCOME" ? activeToggle : inactiveToggle}`}
+            onClick={() => !incomeDisabled && !futureInstallment && handleTxTypeChange("INCOME")}
           >
             수입
           </button>
@@ -588,13 +606,13 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         name="transaction_date"
         type="date"
         value={date}
-        max={today}
+        {...(!futureInstallment ? { max: today } : {})}
         onChange={(e) => {
           setDate(e.target.value);
           setErrors((err) => ({ ...err, transaction_date: "" }));
         }}
         error={errors.transaction_date}
-        disabled={isSaving}
+        disabled={isSaving || futureInstallment}
       />
 
       {/* 지갑 드롭다운 */}
@@ -684,7 +702,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           }}
           error={errors.category_id}
           iconMap={iconMap}
-          disabled={isSaving || categoriesQuery.isLoading}
+          disabled={isSaving || categoriesQuery.isLoading || futureInstallment}
         />
       </div>
 
@@ -697,7 +715,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         value={memo}
         onChange={(e) => setMemo(e.target.value)}
         error={errors.memo}
-        disabled={isSaving}
+        disabled={isSaving || futureInstallment}
         maxLength={200}
       />
 

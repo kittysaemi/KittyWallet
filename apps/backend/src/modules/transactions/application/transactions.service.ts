@@ -338,6 +338,15 @@ export class TransactionsService {
       throw new AppException("TX_005", "거래 내역을 찾을 수 없습니다.", HttpStatus.NOT_FOUND);
     }
 
+    if (existing.installmentId) {
+      await this.transactionsRepository.softDeleteInstallment(existing.installmentId, userId);
+      return {
+        transaction_id: Number(transactionId),
+        deleted_yn: true,
+        updated_at: new Date().toISOString()
+      };
+    }
+
     let balanceChange: { accountId: bigint; delta: number } | undefined;
     if (existing.walletType === "ACCOUNT") {
       const restoreDelta =

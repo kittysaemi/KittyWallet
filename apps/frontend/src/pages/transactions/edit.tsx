@@ -9,19 +9,30 @@ import { enqueueSyncItem } from "../../pwa/indexed-db/repositories/syncQueue.rep
 import { usePwaStore } from "../../pwa/state/pwa.store";
 import { TransactionForm } from "../../features/transactions/TransactionForm";
 import { invalidateTransactionCaches } from "../../pwa/cache/cacheInvalidation";
+import { useTimezone } from "../../shared/hooks/useTimezone";
+import { getTodayInTimezone } from "../../shared/utils/date";
 
 const DeleteConfirmDialog: React.FC<{
   onConfirm: () => void;
   onCancel: () => void;
   isDeleting: boolean;
   errorMessage?: string;
-}> = ({ onConfirm, onCancel, isDeleting, errorMessage }) => (
+  installmentTotalCount?: number | null;
+}> = ({ onConfirm, onCancel, isDeleting, errorMessage, installmentTotalCount }) => (
   <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 pb-8 sm:items-center sm:pb-0">
     <div className="w-full max-w-[400px] rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] p-6 shadow-xl">
       <h2 className="mb-2 text-base font-bold text-[var(--color-text-primary)]">거래 삭제</h2>
-      <p className="mb-4 text-sm text-[var(--color-text-secondary)]">
-        이 거래를 삭제하시겠습니까? 삭제된 거래는 복구할 수 없습니다.
-      </p>
+      {installmentTotalCount != null ? (
+        <p className="mb-4 text-sm text-[var(--color-text-secondary)]">
+          할부 거래를 삭제하면{" "}
+          <span className="font-semibold text-[var(--color-danger)]">{installmentTotalCount}개월 전체 할부 내역</span>
+          이 모두 삭제됩니다. 삭제된 거래는 복구할 수 없습니다.
+        </p>
+      ) : (
+        <p className="mb-4 text-sm text-[var(--color-text-secondary)]">
+          이 거래를 삭제하시겠습니까? 삭제된 거래는 복구할 수 없습니다.
+        </p>
+      )}
       {errorMessage && (
         <p className="mb-4 rounded-xl border border-[var(--color-danger)] bg-[var(--color-danger-soft)] px-3 py-2 text-sm text-[var(--color-danger)]">
           {errorMessage}
@@ -53,6 +64,7 @@ const TransactionEditPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const timezone = useTimezone();
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
 
   const transactionQuery = useQuery({
@@ -72,7 +84,7 @@ const TransactionEditPage: React.FC = () => {
       void queryClient.invalidateQueries({ queryKey: ["cards"] });
       void queryClient.invalidateQueries({ queryKey: ["statistics"] });
       void invalidateTransactionCaches();
-      navigate("/transactions", { replace: true });
+      navigate("/transactions", { replace: true, state: { reset: true } });
     },
     onError: (err: unknown) => {
       const code =
@@ -90,6 +102,9 @@ const TransactionEditPage: React.FC = () => {
   });
 
   const transaction = transactionQuery.data?.data;
+  const todayStr = getTodayInTimezone(timezone);
+  const isFutureInstallment =
+    !!transaction?.installment_id && transaction.transaction_date > todayStr;
 
   const handleDelete = async () => {
     setDeleteError("");
@@ -123,7 +138,7 @@ const TransactionEditPage: React.FC = () => {
         void queryClient.invalidateQueries({ queryKey: ["cards"] });
         void queryClient.invalidateQueries({ queryKey: ["statistics"] });
         void invalidateTransactionCaches();
-        navigate("/transactions", { replace: true });
+        navigate("/transactions", { replace: true, state: { reset: true } });
       } catch {
         setDeleteError("오프라인 삭제 저장에 실패했습니다. 다시 시도해주세요.");
       }
@@ -214,6 +229,7 @@ const TransactionEditPage: React.FC = () => {
               transactionId={transaction.transaction_id}
               onSuccess={() => navigate("/transactions", { replace: true })}
               readOnly={walletDeleted}
+              futureInstallment={isFutureInstallment}
             />
           </div>
         </div>
@@ -225,6 +241,7 @@ const TransactionEditPage: React.FC = () => {
           onCancel={() => { setShowDeleteDialog(false); setDeleteError(""); }}
           isDeleting={deleteMutation.isPending}
           errorMessage={deleteError}
+          installmentTotalCount={transaction.installment_total_count}
         />
       )}
     </>
