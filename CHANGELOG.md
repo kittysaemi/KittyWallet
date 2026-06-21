@@ -1,3 +1,17 @@
+# [1.23.0](https://github.com/kittysaemi/KittyWallet/compare/v1.22.3...v1.23.0) (2026-06-21)
+
+
+### Bug Fixes
+
+* **#312:** 할부 거래 수정 시 카테고리·날짜·메모 비활성화 ([81b03f4](https://github.com/kittysaemi/KittyWallet/commit/81b03f4bc753bf248d2747cad34cf530dd2c5e43)), closes [#312](https://github.com/kittysaemi/KittyWallet/issues/312)
+* **lint:** WalletTransactionsPage unused isCurrentPeriod 변수 제거 ([e1b9463](https://github.com/kittysaemi/KittyWallet/commit/e1b9463d1dac572adc5bda8334627d0db93657c1))
+
+
+### Features
+
+* **#312:** 할부 이자 통합, 할부 전환, 대시보드 최근 거래 개선 ([dca6570](https://github.com/kittysaemi/KittyWallet/commit/dca657078606eec384eb741409b0f2f91128ed54)), closes [#312](https://github.com/kittysaemi/KittyWallet/issues/312)
+* **#312:** 할부 전체 삭제, 미래 할부 금액 수정, 지갑 거래내역 미래 달 네비게이션 ([7d21fa5](https://github.com/kittysaemi/KittyWallet/commit/7d21fa5db9c8bb9782d76d9b4e5e6221802cd54a)), closes [#312](https://github.com/kittysaemi/KittyWallet/issues/312)
+
 ## [1.22.3](https://github.com/kittysaemi/KittyWallet/compare/v1.22.2...v1.22.3) (2026-06-21)
 
 
