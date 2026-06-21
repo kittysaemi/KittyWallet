@@ -65,6 +65,8 @@ interface CreateTransactionCommand {
   transactionDate: string;
   timezone?: string;
   installmentMonths?: number;
+  syncClientId?: bigint;
+  clientTempId?: string;
 }
 
 interface BalanceCandidate {
@@ -593,7 +595,9 @@ export class TransactionsService {
             amount: command.amount,
             transactionDate,
             memo: command.memo,
-            syncedAt: now
+            syncedAt: now,
+            syncClientId: command.syncClientId ?? null,
+            clientTempId: command.clientTempId ?? null
           },
           account.accountId,
           balanceDelta
@@ -625,7 +629,9 @@ export class TransactionsService {
         originalAmount: command.amount,
         installmentMonths: command.installmentMonths,
         purchaseDate: transactionDate,
-        memo: command.memo
+        memo: command.memo,
+        syncClientId: command.syncClientId ?? null,
+        clientTempId: command.clientTempId ?? null
       };
 
       const { installment, transactions } =
@@ -657,7 +663,9 @@ export class TransactionsService {
       amount: command.amount,
       transactionDate,
       memo: command.memo,
-      syncedAt: now
+      syncedAt: now,
+      syncClientId: command.syncClientId ?? null,
+      clientTempId: command.clientTempId ?? null
     });
 
     return {

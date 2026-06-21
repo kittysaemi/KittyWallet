@@ -434,7 +434,6 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           void queryClient.invalidateQueries({ queryKey: ["accounts"] });
           void queryClient.invalidateQueries({ queryKey: ["cards"] });
           void queryClient.invalidateQueries({ queryKey: ["statistics"] });
-          void invalidateTransactionCaches();
           onSuccess();
         } catch {
           setApiError("오프라인 거래 저장에 실패했습니다. 다시 시도해주세요.");

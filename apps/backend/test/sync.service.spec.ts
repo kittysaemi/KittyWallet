@@ -13,8 +13,7 @@ const mockPrisma = {
   },
   transaction: {
     findFirst: jest.fn(),
-    update: jest.fn(),
-    updateMany: jest.fn()
+    update: jest.fn()
   },
   syncHistory: {
     create: jest.fn()
@@ -51,7 +50,6 @@ describe("SyncService - 카드할부 동기화", () => {
     (mockPrisma.syncHistory.create as jest.Mock).mockResolvedValue({});
     (mockPrisma.transaction.findFirst as jest.Mock).mockResolvedValue(null);
     (mockPrisma.transaction.update as jest.Mock).mockResolvedValue({});
-    (mockPrisma.transaction.updateMany as jest.Mock).mockResolvedValue({ count: 3 });
   });
 
   describe("CREATE - 카드할부 payload 처리", () => {
@@ -95,7 +93,7 @@ describe("SyncService - 카드할부 동기화", () => {
       );
     });
 
-    it("할부 CREATE 성공 시 모든 월별 거래에 syncClientId/clientTempId를 일괄 설정한다", async () => {
+    it("할부 CREATE 성공 시 syncClientId/clientTempId를 createTransaction에 직접 전달해 원자적으로 설정한다", async () => {
       (mockTransactionsService.createTransaction as jest.Mock).mockResolvedValue({
         transaction_id: 101,
         updated_at: NOW_ISO,
@@ -129,13 +127,14 @@ describe("SyncService - 카드할부 동기화", () => {
         ]
       });
 
-      // 단건 update 대신 updateMany 사용
-      expect(mockPrisma.transaction.updateMany).toHaveBeenCalledWith(
+      // 원자적 설정: createTransaction에 syncClientId/clientTempId 직접 전달
+      expect(mockTransactionsService.createTransaction).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ installmentId: 10n, userId: 1n }),
-          data: expect.objectContaining({ clientTempId: "temp-001" })
+          syncClientId: BASE_CLIENT.syncClientId,
+          clientTempId: "temp-001"
         })
       );
+      // 별도 update/updateMany 호출 없음
       expect(mockPrisma.transaction.update).not.toHaveBeenCalled();
       expect(result.items[0].sync_result).toBe("SUCCESS");
       expect(result.items[0].server_id).toBe(101);
@@ -174,7 +173,7 @@ describe("SyncService - 카드할부 동기화", () => {
       expect(result.items[0].server_id).toBe(101);
     });
 
-    it("installment 없는 일반 거래 CREATE는 단건 update를 사용한다", async () => {
+    it("installment 없는 일반 거래 CREATE는 syncClientId/clientTempId를 createTransaction에 직접 전달한다", async () => {
       (mockTransactionsService.createTransaction as jest.Mock).mockResolvedValue({
         transaction_id: 200,
         updated_at: NOW_ISO,
@@ -202,10 +201,16 @@ describe("SyncService - 카드할부 동기화", () => {
       });
 
       expect(mockTransactionsService.createTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          syncClientId: BASE_CLIENT.syncClientId,
+          clientTempId: "temp-002"
+        })
+      );
+      expect(mockTransactionsService.createTransaction).toHaveBeenCalledWith(
         expect.not.objectContaining({ installmentMonths: expect.anything() })
       );
-      expect(mockPrisma.transaction.update).toHaveBeenCalled();
-      expect(mockPrisma.transaction.updateMany).not.toHaveBeenCalled();
+      // CREATE는 별도 update 없음 (원자적으로 처리됨)
+      expect(mockPrisma.transaction.update).not.toHaveBeenCalled();
       expect(result.items[0].sync_result).toBe("SUCCESS");
     });
   });

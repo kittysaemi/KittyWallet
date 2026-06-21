@@ -39,6 +39,8 @@ export interface CreateTransactionInput {
   transactionDate: Date;
   memo?: string | null;
   syncedAt?: Date | null;
+  syncClientId?: bigint | null;
+  clientTempId?: string | null;
   installmentId?: bigint | null;
   installmentSeq?: number | null;
   installmentTotalCount?: number | null;
@@ -52,6 +54,8 @@ export interface CreateInstallmentInput {
   installmentMonths: number;
   purchaseDate: Date;
   memo?: string | null;
+  syncClientId?: bigint | null;
+  clientTempId?: string | null;
 }
 
 export type AccountBalanceTransaction = Pick<
@@ -171,7 +175,11 @@ export class TransactionsRepository {
             installmentSeq: seq,
             installmentTotalCount: installmentInput.installmentMonths,
             deletedYn: false,
-            syncedAt: now
+            syncedAt: now,
+            ...(installmentInput.syncClientId != null
+              ? { syncClient: { connect: { syncClientId: installmentInput.syncClientId } } }
+              : {}),
+            clientTempId: installmentInput.clientTempId ?? null
           }
         });
         transactions.push(transaction);
@@ -299,7 +307,11 @@ export class TransactionsRepository {
         installmentSeq: input.installmentSeq ?? null,
         installmentTotalCount: input.installmentTotalCount ?? null,
         deletedYn: false,
-        syncedAt: input.syncedAt ?? null
+        syncedAt: input.syncedAt ?? null,
+        ...(input.syncClientId != null
+          ? { syncClient: { connect: { syncClientId: input.syncClientId } } }
+          : {}),
+        clientTempId: input.clientTempId ?? null
       }
     });
   }
@@ -321,7 +333,11 @@ export class TransactionsRepository {
           transactionDate: input.transactionDate,
           memo: input.memo ?? null,
           deletedYn: false,
-          syncedAt: input.syncedAt ?? null
+          syncedAt: input.syncedAt ?? null,
+          ...(input.syncClientId != null
+            ? { syncClient: { connect: { syncClientId: input.syncClientId } } }
+            : {}),
+          clientTempId: input.clientTempId ?? null
         }
       });
       if (balanceDelta < 0) {
