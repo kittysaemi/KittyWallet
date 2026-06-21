@@ -1,3 +1,10 @@
+## [1.22.3](https://github.com/kittysaemi/KittyWallet/compare/v1.22.2...v1.22.3) (2026-06-21)
+
+
+### Bug Fixes
+
+* **#313:** sync_failed 항목 자동 정리 및 거래내역 목록 표시 제외 ([7ca03e3](https://github.com/kittysaemi/KittyWallet/commit/7ca03e3ab4f4d69e1bff79a1a8078f9539499a6f)), closes [#313](https://github.com/kittysaemi/KittyWallet/issues/313)
+
 ## [1.22.2](https://github.com/kittysaemi/KittyWallet/compare/v1.22.1...v1.22.2) (2026-06-21)
 
 
