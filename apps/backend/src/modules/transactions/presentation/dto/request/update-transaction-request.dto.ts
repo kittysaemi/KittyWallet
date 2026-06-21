@@ -36,6 +36,11 @@ export class UpdateTransactionRequestDto {
   transaction_date?: string;
 
   @IsOptional()
+  @IsInt()
+  @Min(0)
+  interest?: number;
+
+  @IsOptional()
   @IsIn(SUPPORTED_TIMEZONES)
   timezone?: string;
 }

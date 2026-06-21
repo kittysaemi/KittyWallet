@@ -75,15 +75,18 @@ export class StatisticsRepository {
     const rows = await this.prisma.transaction.groupBy({
       by: ["transactionType"],
       where: this.buildWhere(condition),
-      _sum: { amount: true },
+      _sum: { amount: true, interest: true },
       _count: { _all: true }
     });
 
-    return rows.map((row) => ({
-      transactionType: row.transactionType,
-      amount: row._sum.amount,
-      transactionCount: row._count._all
-    }));
+    return rows.map((row) => {
+      const combined = (row._sum.amount?.toNumber() ?? 0) + Number(row._sum.interest ?? 0);
+      return {
+        transactionType: row.transactionType,
+        amount: new Prisma.Decimal(combined),
+        transactionCount: row._count._all
+      };
+    });
   }
 
   async groupDailyAmountsByTransactionType(
@@ -92,17 +95,20 @@ export class StatisticsRepository {
     const rows = await this.prisma.transaction.groupBy({
       by: ["transactionDate", "transactionType"],
       where: this.buildWhere(condition),
-      _sum: { amount: true },
+      _sum: { amount: true, interest: true },
       _count: { _all: true },
       orderBy: [{ transactionDate: "asc" }, { transactionType: "asc" }]
     });
 
-    return rows.map((row) => ({
-      transactionDate: row.transactionDate,
-      transactionType: row.transactionType,
-      amount: row._sum.amount,
-      transactionCount: row._count._all
-    }));
+    return rows.map((row) => {
+      const combined = (row._sum.amount?.toNumber() ?? 0) + Number(row._sum.interest ?? 0);
+      return {
+        transactionDate: row.transactionDate,
+        transactionType: row.transactionType,
+        amount: new Prisma.Decimal(combined),
+        transactionCount: row._count._all
+      };
+    });
   }
 
   async groupExpensesByWalletAndCategory(
@@ -114,11 +120,20 @@ export class StatisticsRepository {
         ...this.buildWhere(condition),
         transactionType: "EXPENSE"
       },
-      _sum: { amount: true },
+      _sum: { amount: true, interest: true },
       orderBy: { _sum: { amount: "desc" } }
     });
 
-    return this.attachWalletAndCategoryNames(rows);
+    return this.attachWalletAndCategoryNames(
+      rows.map((r) => ({
+        ...r,
+        _sum: {
+          amount: new Prisma.Decimal(
+            (r._sum.amount?.toNumber() ?? 0) + Number(r._sum.interest ?? 0)
+          )
+        }
+      }))
+    );
   }
 
   async groupIncomesByWalletAndCategory(
@@ -189,7 +204,7 @@ export class StatisticsRepository {
     const rows = await this.prisma.transaction.groupBy({
       by: ["categoryId"],
       where: this.buildWhere(condition),
-      _sum: { amount: true },
+      _sum: { amount: true, interest: true },
       _count: { _all: true },
       orderBy: { _sum: { amount: "desc" } }
     });
@@ -209,11 +224,14 @@ export class StatisticsRepository {
       categories.map((category) => [String(category.categoryId), category])
     );
 
-    return rows.map((row) => ({
-      categoryId: row.categoryId,
-      amount: row._sum.amount,
-      transactionCount: row._count._all,
-      category: categoryMap.get(String(row.categoryId)) ?? null
-    }));
+    return rows.map((row) => {
+      const combined = (row._sum.amount?.toNumber() ?? 0) + Number(row._sum.interest ?? 0);
+      return {
+        categoryId: row.categoryId,
+        amount: new Prisma.Decimal(combined),
+        transactionCount: row._count._all,
+        category: categoryMap.get(String(row.categoryId)) ?? null
+      };
+    });
   }
 }

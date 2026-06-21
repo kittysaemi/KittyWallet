@@ -166,12 +166,28 @@ const WalletTransactionsPage: React.FC<WalletTransactionsPageProps> = ({ walletT
     setPeriodType(type);
   }
 
-  // 통계 페이지와 동일: 현재 기간이면 미래 이동 방지
-  const isCurrentPeriod = (() => {
-    if (periodType === "week") return weekRange.start === getWeekRange(today).start;
-    if (periodType === "month") return baseDate.getFullYear() === today.getFullYear() && baseDate.getMonth() === today.getMonth();
-    return baseDate.getFullYear() === today.getFullYear();
+  // 현재 기간 이상(현재 포함 미래)인지 여부
+  const isCurrentOrFuturePeriod = (() => {
+    if (periodType === "week") return weekRange.start >= getWeekRange(today).start;
+    if (periodType === "month")
+      return baseDate.getFullYear() > today.getFullYear() ||
+        (baseDate.getFullYear() === today.getFullYear() && baseDate.getMonth() >= today.getMonth());
+    return baseDate.getFullYear() >= today.getFullYear();
   })();
+
+  // 월별 + 카드 지갑일 때, 다음 달에 할부 잔여 회차가 있으면 오른쪽 버튼 활성화
+  const hasRemainingInstallments = React.useMemo(
+    () =>
+      periodType === "month" &&
+      walletType === "CARD" &&
+      items.some(
+        (item) =>
+          item.installment_seq != null &&
+          item.installment_total_count != null &&
+          item.installment_seq < item.installment_total_count
+      ),
+    [items, periodType, walletType]
+  );
 
   return (
     <div className="min-h-screen bg-[var(--color-bg-primary)]">
@@ -238,7 +254,7 @@ const WalletTransactionsPage: React.FC<WalletTransactionsPageProps> = ({ walletT
           <button
             type="button"
             onClick={() => movePeriod(1)}
-            disabled={isCurrentPeriod}
+            disabled={isCurrentOrFuturePeriod && (!hasRemainingInstallments || txQuery.isFetching)}
             aria-label="다음 기간"
             className="flex h-9 w-9 items-center justify-center rounded-xl text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)] disabled:opacity-30"
           >

@@ -158,8 +158,13 @@ export class TransactionsRepository {
       const transactions: Transaction[] = [];
       for (let seq = 1; seq <= installmentInput.installmentMonths; seq++) {
         const amount = seq === 1 ? baseAmount + remainder : baseAmount;
-        const txDate = new Date(installmentInput.purchaseDate);
-        txDate.setMonth(txDate.getMonth() + seq - 1);
+        const base = installmentInput.purchaseDate;
+        const originalDay = base.getDate();
+        const targetMonthOffset = base.getMonth() + seq - 1;
+        const targetYear = base.getFullYear() + Math.floor(targetMonthOffset / 12);
+        const targetMonth = ((targetMonthOffset % 12) + 12) % 12;
+        const lastDayOfMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+        const txDate = new Date(targetYear, targetMonth, Math.min(originalDay, lastDayOfMonth));
 
         const transaction = await tx.transaction.create({
           data: {
@@ -393,6 +398,19 @@ export class TransactionsRepository {
       }
       return transaction;
     });
+  }
+
+  async softDeleteInstallment(installmentId: bigint, userId: bigint): Promise<void> {
+    await this.prisma.$transaction([
+      this.prisma.transaction.updateMany({
+        where: { installmentId, userId, deletedYn: false },
+        data: { deletedYn: true }
+      }),
+      this.prisma.cardInstallment.update({
+        where: { installmentId },
+        data: { deletedYn: true }
+      })
+    ]);
   }
 
   softDeleteWithBalance(

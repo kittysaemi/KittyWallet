@@ -75,31 +75,36 @@ const InstallmentSection: React.FC<{
   seq: number;
   totalCount: number;
   info: InstallmentInfo;
-}> = ({ seq, totalCount, info }) => (
-  <div className="mt-4 rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] shadow-[0_4px_16px_var(--color-card-shadow)]">
-    <div className="px-5 py-4 border-b border-[var(--color-border-secondary)]">
-      <p className="text-sm font-semibold text-[var(--color-text-primary)]">
-        할부 정보 ({seq}/{totalCount}회차)
-      </p>
-    </div>
-    <div className="divide-y divide-[var(--color-border-secondary)]">
-      <div className="flex justify-between px-5 py-3 text-sm">
-        <span className="text-[var(--color-text-secondary)]">최초 구매금액</span>
-        <span className="font-medium text-[var(--color-text-primary)]">{fmt(info.original_amount)}원</span>
+}> = ({ seq, totalCount, info }) => {
+  const totalInterest = info.total_interest ?? info.installment_items?.reduce((s, i) => s + (i.interest ?? 0), 0) ?? 0;
+  return (
+    <div className="mt-4 rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] shadow-[0_4px_16px_var(--color-card-shadow)]">
+      <div className="px-5 py-4 border-b border-[var(--color-border-secondary)]">
+        <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+          할부 정보 ({seq}/{totalCount}회차)
+        </p>
       </div>
-      <div className="flex justify-between px-5 py-3 text-sm">
-        <span className="text-[var(--color-text-secondary)]">현재 총 청구금액</span>
-        <span className="font-medium text-[var(--color-text-primary)]">{fmt(info.current_total_amount)}원</span>
-      </div>
-      {info.remaining_amount != null && (
+      <div className="divide-y divide-[var(--color-border-secondary)]">
         <div className="flex justify-between px-5 py-3 text-sm">
-          <span className="text-[var(--color-text-secondary)]">남은 청구금액</span>
-          <span className="font-medium text-[var(--color-text-primary)]">{fmt(info.remaining_amount)}원</span>
+          <span className="text-[var(--color-text-secondary)]">원금</span>
+          <span className="font-medium text-[var(--color-text-primary)]">{fmt(info.original_amount)}원</span>
         </div>
-      )}
+        {info.remaining_amount != null && (
+          <div className="flex justify-between px-5 py-3 text-sm">
+            <span className="text-[var(--color-text-secondary)]">남은 청구금액</span>
+            <span className="font-medium text-[var(--color-text-primary)]">{fmt(info.remaining_amount)}원</span>
+          </div>
+        )}
+        {totalInterest > 0 && (
+          <div className="flex justify-between px-5 py-3 text-sm">
+            <span className="text-[var(--color-text-secondary)]">총 이자</span>
+            <span className="font-medium text-[var(--color-text-primary)]">{fmt(totalInterest)}원</span>
+          </div>
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const TransactionDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -334,7 +339,7 @@ const TransactionDetailPage: React.FC = () => {
 
               {/* 금액 */}
               <p className="mt-2 text-4xl font-bold tracking-tight text-white">
-                {formatAmount(tx.amount, tx.transaction_type)}
+                {formatAmount(tx.amount + (tx.interest ?? 0), tx.transaction_type)}
               </p>
 
               {/* 날짜 */}
@@ -409,7 +414,10 @@ const TransactionDetailPage: React.FC = () => {
                         >
                           <span className="w-20 shrink-0 whitespace-nowrap">{item.installment_seq}/{tx.installment_total_count}회차</span>
                           <span className="flex-1">{item.transaction_date}</span>
-                          <span className="shrink-0">{fmt(item.amount)}원</span>
+                          <div className="shrink-0 text-right">
+                            <p>원금 {fmt(item.amount)}원</p>
+                            <p className="text-[10px]">이자 {fmt(item.interest ?? 0)}원</p>
+                          </div>
                         </div>
                       );
                     })}
@@ -428,9 +436,17 @@ const TransactionDetailPage: React.FC = () => {
       <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 pb-8 sm:items-center sm:pb-0">
         <div className="w-full max-w-[400px] rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] p-6 shadow-xl">
           <h2 className="mb-2 text-base font-bold text-[var(--color-text-primary)]">거래 삭제</h2>
-          <p className="mb-4 text-sm text-[var(--color-text-secondary)]">
-            이 거래를 삭제하시겠습니까? 삭제된 거래는 복구할 수 없습니다.
-          </p>
+          {tx?.installment_total_count != null ? (
+            <p className="mb-4 text-sm text-[var(--color-text-secondary)]">
+              할부 거래를 삭제하면{" "}
+              <span className="font-semibold text-[var(--color-danger)]">{tx.installment_total_count}개월 전체 할부 내역</span>
+              이 모두 삭제됩니다. 삭제된 거래는 복구할 수 없습니다.
+            </p>
+          ) : (
+            <p className="mb-4 text-sm text-[var(--color-text-secondary)]">
+              이 거래를 삭제하시겠습니까? 삭제된 거래는 복구할 수 없습니다.
+            </p>
+          )}
           {deleteError && (
             <p className="mb-4 rounded-xl border border-[var(--color-danger)] bg-[var(--color-danger-soft)] px-3 py-2 text-sm text-[var(--color-danger)]">
               {deleteError}

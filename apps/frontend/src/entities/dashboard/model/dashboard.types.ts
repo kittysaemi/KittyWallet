@@ -32,10 +32,14 @@ export interface DashboardTransaction {
   category_name: string;
   transaction_type: "INCOME" | "EXPENSE";
   amount: number;
+  interest?: number;
   memo: string | null;
   transaction_date: string;
   created_at: string;
   updated_at: string;
+  installment_seq?: number | null;
+  installment_total_count?: number | null;
+  installment_original_amount?: number | null;
 }
 
 export interface SyncSummary {

@@ -266,6 +266,7 @@ model Transaction {
   installmentId        BigInt?         @map("installment_id")
   installmentSeq       Int?            @map("installment_seq")
   installmentTotalCount Int?           @map("installment_total_count")
+  interest             Int             @default(0)
   deletedYn            Boolean         @default(false) @map("deleted_yn")
   syncedAt             DateTime?       @map("synced_at")
   createdAt            DateTime        @default(now()) @map("created_at")
