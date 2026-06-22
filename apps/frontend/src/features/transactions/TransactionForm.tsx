@@ -207,6 +207,7 @@ interface TransactionFormProps {
   transactionId?: number;
   readOnly?: boolean;
   futureInstallment?: boolean;
+  receiptDraft?: { transactionDate?: string; totalAmount?: number; memoItems: string[] };
 }
 
 export const TransactionForm: React.FC<TransactionFormProps> = ({
@@ -214,7 +215,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   initialData,
   transactionId,
   readOnly = false,
-  futureInstallment = false
+  futureInstallment = false,
+  receiptDraft
 }) => {
   const isEditMode = !!transactionId;
   const queryClient = useQueryClient();
@@ -246,6 +248,13 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const [installmentMonthsStr, setInstallmentMonthsStr] = React.useState<string>("");
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [apiError, setApiError] = React.useState<string>("");
+
+  React.useEffect(() => {
+    if (!receiptDraft || isEditMode) return;
+    if (receiptDraft.transactionDate) setDate(receiptDraft.transactionDate);
+    if (receiptDraft.totalAmount) setAmountStr(receiptDraft.totalAmount.toLocaleString("ko-KR"));
+    if (receiptDraft.memoItems.length) setMemo(receiptDraft.memoItems.join(", "));
+  }, [receiptDraft, isEditMode]);
 
   const isInstallmentTx = !!initialData?.installment_id;
 
