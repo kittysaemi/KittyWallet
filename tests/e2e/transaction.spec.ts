@@ -15,7 +15,8 @@ test("E2E-CORE-002 API mock: login and register account transaction", async ({ p
 
   await page.getByRole("link", { name: /전체 보기/ }).click();
   await expect(page).toHaveURL(/\/kittywallet\/transactions$/);
-  await page.getByRole("link", { name: "거래 등록" }).click();
+  await page.getByRole("button", { name: "거래 등록 방식 선택" }).click();
+  await page.getByRole("button", { name: "직접 입력" }).click();
 
   await expect(page).toHaveURL(/\/kittywallet\/transactions\/new$/);
   await page.getByLabel("금액").fill("15000");
