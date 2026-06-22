@@ -1,11 +1,18 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { BarChart2, Camera, FileImage, Home, PenLine, Plus, Search, Settings2, X } from "lucide-react";
+import { BarChart2, Camera, ClipboardPaste, FileImage, Home, PenLine, Plus, Search, Settings2, X } from "lucide-react";
 
 export const BottomNav: React.FC = () => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const [isEntrySheetOpen, setIsEntrySheetOpen] = React.useState(false);
+  const [isMobileDevice, setIsMobileDevice] = React.useState(false);
+  const cameraInputRef = React.useRef<HTMLInputElement>(null);
+  const galleryInputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    setIsMobileDevice(/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent));
+  }, []);
 
   const isHome = pathname === "/dashboard";
   const isSearch = pathname === "/transactions/search";
@@ -16,9 +23,15 @@ export const BottomNav: React.FC = () => {
 
   const activeText = "text-[var(--color-primary)]";
   const inactiveText = "text-[var(--color-text-secondary)]";
-  const startTransaction = (source?: "camera" | "gallery") => {
+  const startTransaction = (source?: "text") => {
     setIsEntrySheetOpen(false);
     navigate(source ? `/transactions/new?receiptSource=${source}` : "/transactions/new");
+  };
+  const selectImage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.currentTarget.value = "";
+    setIsEntrySheetOpen(false);
+    if (file) navigate("/transactions/new", { state: { receiptFile: file } });
   };
 
   return (
@@ -62,13 +75,16 @@ export const BottomNav: React.FC = () => {
             </div>
             <div className="space-y-2">
               <button type="button" onClick={() => startTransaction()} className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-[var(--color-border-primary)] px-4 text-left hover:bg-[var(--color-bg-secondary)]"><PenLine size={20} className="text-[var(--color-primary)]" /><span className="text-sm font-semibold text-[var(--color-text-primary)]">직접 입력</span></button>
-              <button type="button" onClick={() => startTransaction("camera")} className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-[var(--color-border-primary)] px-4 text-left hover:bg-[var(--color-bg-secondary)]"><Camera size={20} className="text-[var(--color-primary)]" /><span className="text-sm font-semibold text-[var(--color-text-primary)]">카메라로 영수증 촬영</span></button>
-              <button type="button" onClick={() => startTransaction("gallery")} className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-[var(--color-border-primary)] px-4 text-left hover:bg-[var(--color-bg-secondary)]"><FileImage size={20} className="text-[var(--color-primary)]" /><span className="text-sm font-semibold text-[var(--color-text-primary)]">사진첩에서 영수증 선택</span></button>
+              {isMobileDevice && <button type="button" onClick={() => cameraInputRef.current?.click()} className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-[var(--color-border-primary)] px-4 text-left hover:bg-[var(--color-bg-secondary)]"><Camera size={20} className="text-[var(--color-primary)]" /><span className="text-sm font-semibold text-[var(--color-text-primary)]">카메라 입력</span></button>}
+              <button type="button" onClick={() => galleryInputRef.current?.click()} className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-[var(--color-border-primary)] px-4 text-left hover:bg-[var(--color-bg-secondary)]"><FileImage size={20} className="text-[var(--color-primary)]" /><span className="text-sm font-semibold text-[var(--color-text-primary)]">사진 입력</span></button>
+              <button type="button" onClick={() => startTransaction("text")} className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-[var(--color-border-primary)] px-4 text-left hover:bg-[var(--color-bg-secondary)]"><ClipboardPaste size={20} className="text-[var(--color-primary)]" /><span className="text-sm font-semibold text-[var(--color-text-primary)]">텍스트 입력</span></button>
             </div>
             <button type="button" onClick={() => setIsEntrySheetOpen(false)} className="mt-3 min-h-11 w-full rounded-xl text-sm font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)]">취소</button>
           </section>
         </div>
       )}
+      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={selectImage} />
+      <input ref={galleryInputRef} type="file" accept="image/*" className="hidden" onChange={selectImage} />
     </div>
   );
 };

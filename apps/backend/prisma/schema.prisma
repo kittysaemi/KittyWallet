@@ -28,6 +28,7 @@ model User {
   syncHistories        SyncHistory[]
   settings             UserSetting[]
   cardInstallments     CardInstallment[]
+  textParseTrainingSamples TextParseTrainingSample[]
 
   @@map("USER")
 }
@@ -342,4 +343,21 @@ model CardInstallment {
   @@index([purchaseDate])
   @@index([deletedYn])
   @@map("CARD_INSTALLMENT")
+}
+
+model TextParseTrainingSample {
+  textParseTrainingSampleId BigInt   @id @default(autoincrement()) @map("text_parse_training_sample_id")
+  userId                    BigInt   @map("user_id")
+  profile                   String   @db.VarChar(50)
+  sourceType                String   @map("source_type") @db.VarChar(30)
+  sourceText                String   @map("source_text")
+  finalDraft                Json     @map("final_draft")
+  parserVersion             String   @map("parser_version") @db.VarChar(100)
+  createdAt                 DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [userId])
+
+  @@index([userId, profile])
+  @@index([createdAt])
+  @@map("TEXT_PARSE_TRAINING_SAMPLE")
 }

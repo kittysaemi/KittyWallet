@@ -1,7 +1,7 @@
 import { Injectable, Logger, UnprocessableEntityException } from "@nestjs/common";
 import { SharpReceiptImageNormalizer } from "../infrastructure/sharp-receipt-image.normalizer";
 import { ReceiptOcrProviderFactory } from "./receipt-ocr-provider.factory";
-import { KoreanReceiptParser } from "./receipt-parser";
+import { TextParsingService } from "../../text-parsing/application/text-parsing.service";
 
 @Injectable()
 export class ReceiptAnalysisService {
@@ -9,7 +9,7 @@ export class ReceiptAnalysisService {
   constructor(
     private readonly normalizer: SharpReceiptImageNormalizer,
     private readonly providerFactory: ReceiptOcrProviderFactory,
-    private readonly parser: KoreanReceiptParser
+    private readonly textParsingService: TextParsingService
   ) {}
 
   async analyze(image: Buffer) {
@@ -19,7 +19,11 @@ export class ReceiptAnalysisService {
       if (!ocr.text) {
         throw new UnprocessableEntityException({ code: "RECEIPT_ANALYSIS_FAILED", message: "영수증 내용을 읽을 수 없습니다." });
       }
-      return this.parser.parse(ocr);
+      return {
+        ...this.textParsingService.parse("receipt-transaction", ocr.text),
+        sourceText: ocr.text,
+        sourceType: "OCR_IMAGE" as const
+      };
     } catch (error) {
       this.logger.error(error instanceof Error ? error.message : "receipt analysis failed");
       throw error;

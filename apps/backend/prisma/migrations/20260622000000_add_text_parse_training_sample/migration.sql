@@ -1,0 +1,18 @@
+CREATE TABLE "TEXT_PARSE_TRAINING_SAMPLE" (
+    "text_parse_training_sample_id" BIGSERIAL NOT NULL,
+    "user_id" BIGINT NOT NULL,
+    "profile" VARCHAR(50) NOT NULL,
+    "source_type" VARCHAR(30) NOT NULL,
+    "source_text" TEXT NOT NULL,
+    "final_draft" JSONB NOT NULL,
+    "parser_version" VARCHAR(100) NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "TEXT_PARSE_TRAINING_SAMPLE_pkey" PRIMARY KEY ("text_parse_training_sample_id")
+);
+
+CREATE INDEX "TEXT_PARSE_TRAINING_SAMPLE_user_id_profile_idx" ON "TEXT_PARSE_TRAINING_SAMPLE"("user_id", "profile");
+CREATE INDEX "TEXT_PARSE_TRAINING_SAMPLE_created_at_idx" ON "TEXT_PARSE_TRAINING_SAMPLE"("created_at");
+
+ALTER TABLE "TEXT_PARSE_TRAINING_SAMPLE" ADD CONSTRAINT "TEXT_PARSE_TRAINING_SAMPLE_user_id_fkey"
+  FOREIGN KEY ("user_id") REFERENCES "USER"("user_id") ON DELETE RESTRICT ON UPDATE CASCADE;
