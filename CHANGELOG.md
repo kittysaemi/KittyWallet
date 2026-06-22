@@ -1,3 +1,16 @@
+# [1.25.0](https://github.com/kittysaemi/KittyWallet/compare/v1.24.0...v1.25.0) (2026-06-22)
+
+
+### Features
+
+* add configurable receipt OCR provider ([2ef91c2](https://github.com/kittysaemi/KittyWallet/commit/2ef91c2d1376d967b94a7dc1b1ab9d11a97cf31c))
+* add receipt analysis endpoint ([101e25b](https://github.com/kittysaemi/KittyWallet/commit/101e25bb9f79493ba793b0a2c63ef732420f844a))
+* add reusable receipt text parsing ([f310a3d](https://github.com/kittysaemi/KittyWallet/commit/f310a3d083ec31680bbe4f935812aa6ba3234b75))
+* add transaction entry options ([5daf151](https://github.com/kittysaemi/KittyWallet/commit/5daf1517810d14ddbcb017a44434d240ad004397))
+* normalize receipt images in memory ([0ef9e04](https://github.com/kittysaemi/KittyWallet/commit/0ef9e044092a36cb39c85739dff04e23b28a6e62))
+* parse receipt transaction drafts ([1f50b5a](https://github.com/kittysaemi/KittyWallet/commit/1f50b5a39905a7e13dbab5248e04aaedc7c0f09e))
+* refine receipt analysis registration flow ([fe0c2a2](https://github.com/kittysaemi/KittyWallet/commit/fe0c2a203ad3baefedf0766f5bdd80569f50b46f))
+
 # [1.24.0](https://github.com/kittysaemi/KittyWallet/compare/v1.23.0...v1.24.0) (2026-06-21)
 
 
