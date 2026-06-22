@@ -1,3 +1,12 @@
+# [1.24.0](https://github.com/kittysaemi/KittyWallet/compare/v1.23.0...v1.24.0) (2026-06-21)
+
+
+### Features
+
+* **api/#276:** 카테고리별 지출합계 통계 API 추가 ([5ff4de3](https://github.com/kittysaemi/KittyWallet/commit/5ff4de3cc5ac512ee6ee47acafb0699a49bfbe7f)), closes [api/#276](https://github.com/kittysaemi/KittyWallet/issues/276)
+* **frontend-data/#277:** 카테고리별 지출합계 통계 프론트 API 타입/호출 추가 ([55d8c22](https://github.com/kittysaemi/KittyWallet/commit/55d8c22bdb782d4307553affc1f651d7385b0bd8)), closes [frontend-data/#277](https://github.com/kittysaemi/KittyWallet/issues/277)
+* **ui/#278:** 통계 화면 카테고리별 지출합계 UI 추가 ([de000bb](https://github.com/kittysaemi/KittyWallet/commit/de000bbde9c820f5c6fd96743fb42663b5705440)), closes [ui/#278](https://github.com/kittysaemi/KittyWallet/issues/278)
+
 # [1.23.0](https://github.com/kittysaemi/KittyWallet/compare/v1.22.3...v1.23.0) (2026-06-21)
 
 

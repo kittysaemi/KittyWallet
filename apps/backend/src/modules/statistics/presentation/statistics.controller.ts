@@ -1,6 +1,7 @@
 import { Controller, Get, Query } from "@nestjs/common";
 import { CurrentUser, JwtPayload } from "../../../common/decorators/current-user.decorator";
 import { StatisticsService } from "../application/statistics.service";
+import { CategoryExpenseQueryDto } from "./dto/request/category-expense-query.dto";
 import { CategoryStatisticsQueryDto } from "./dto/request/category-statistics-query.dto";
 import { MonthlyStatisticsQueryDto } from "./dto/request/monthly-statistics-query.dto";
 import { PeriodStatisticsQueryDto } from "./dto/request/period-statistics-query.dto";
@@ -100,6 +101,21 @@ export class StatisticsController {
   getSankeyIncomeStatistics(@CurrentUser() user: JwtPayload, @Query() query: VisualizationQueryDto) {
     return this.statisticsService.getSankeyIncomeStatistics({
       userId: BigInt(user.sub),
+      month: query.month,
+      walletType: query.wallet_type,
+      walletId: query.wallet_id ? BigInt(query.wallet_id) : undefined
+    });
+  }
+
+  @Get("category-expenses")
+  getCategoryExpenseStatistics(
+    @CurrentUser() user: JwtPayload,
+    @Query() query: CategoryExpenseQueryDto
+  ) {
+    return this.statisticsService.getCategoryExpenseStatistics({
+      userId: BigInt(user.sub),
+      periodType: query.period_type ?? "all",
+      year: query.year,
       month: query.month,
       walletType: query.wallet_type,
       walletId: query.wallet_id ? BigInt(query.wallet_id) : undefined

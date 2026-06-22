@@ -18,6 +18,9 @@ import { statisticsApi } from "../../entities/statistics/api/statisticsApi";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import type {
   CalendarStatisticsData,
+  CategoryExpenseData,
+  CategoryExpenseParams,
+  CategoryExpensePeriodType,
   CategoryTopStatisticsData,
   MonthlyDailyItem,
   PeriodStatisticsItem,
@@ -1234,6 +1237,162 @@ const FlowContent: React.FC<{
   </div>
 );
 
+// category-expense 탭
+const CategoryExpenseContent: React.FC<{
+  iconMap: Map<number, IconItem>;
+  todayStr: string;
+  isOffline: boolean;
+}> = ({ iconMap, todayStr, isOffline }) => {
+  const [periodType, setPeriodType] = React.useState<CategoryExpensePeriodType>("all");
+  const currentYear = parseInt(todayStr.slice(0, 4), 10);
+  const currentMonth = todayStr.slice(0, 7);
+  const [selectedYear, setSelectedYear] = React.useState(currentYear);
+  const [selectedMonth, setSelectedMonth] = React.useState(currentMonth);
+
+  const queryParams: CategoryExpenseParams = React.useMemo(() => {
+    if (periodType === "year") return { period_type: "year", year: String(selectedYear) };
+    if (periodType === "month") return { period_type: "month", month: selectedMonth };
+    return { period_type: "all" };
+  }, [periodType, selectedYear, selectedMonth]);
+
+  const query = useQuery({
+    queryKey: ["statistics", "category-expenses", queryParams],
+    queryFn: () => statisticsApi.getCategoryExpenseStatistics(queryParams),
+    staleTime: 30 * 1000,
+    retry: isOffline ? false : 2
+  });
+
+  const data: CategoryExpenseData | null = query.data?.data ?? null;
+  const isCurrentYear = selectedYear === currentYear;
+  const isCurrentMonth = selectedMonth === currentMonth;
+
+  function moveYear(dir: -1 | 1) {
+    setSelectedYear((prev) => {
+      const next = prev + dir;
+      return next > currentYear ? prev : next;
+    });
+  }
+
+  function moveMonth(dir: -1 | 1) {
+    setSelectedMonth((prev) => {
+      const [y, m] = prev.split("-").map(Number);
+      const date = new Date(y, m - 1 + dir);
+      const next = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      return next > currentMonth ? prev : next;
+    });
+  }
+
+  const periodLabel =
+    periodType === "year"
+      ? `${selectedYear}년`
+      : periodType === "month"
+        ? `${selectedYear}년 ${parseInt(selectedMonth.slice(5), 10)}월`
+        : "전체";
+
+  if (query.isLoading) return <TabSkeleton />;
+  if (query.isError) return <ErrorCard onRetry={() => void query.refetch()} />;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-3 rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] p-1">
+        {(["all", "year", "month"] as CategoryExpensePeriodType[]).map((type) => (
+          <button
+            key={type}
+            type="button"
+            onClick={() => setPeriodType(type)}
+            className={`min-h-10 rounded-xl text-sm font-semibold transition ${
+              periodType === type
+                ? "bg-[var(--color-primary)] text-[var(--color-text-primary)]"
+                : "text-[var(--color-text-secondary)]"
+            }`}
+          >
+            {type === "all" ? "전체" : type === "year" ? "년별" : "월별"}
+          </button>
+        ))}
+      </div>
+
+      {periodType !== "all" && (
+        <div className="flex items-center justify-between rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] px-4 py-3 shadow-[0_4px_16px_var(--color-card-shadow)]">
+          <button
+            type="button"
+            onClick={() => (periodType === "year" ? moveYear(-1) : moveMonth(-1))}
+            className="flex h-9 w-9 items-center justify-center rounded-xl text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-secondary)]"
+            aria-label="이전 기간"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <span className="text-base font-semibold text-[var(--color-text-primary)]">
+            {periodLabel}
+          </span>
+          <button
+            type="button"
+            onClick={() => (periodType === "year" ? moveYear(1) : moveMonth(1))}
+            disabled={periodType === "year" ? isCurrentYear : isCurrentMonth}
+            className="flex h-9 w-9 items-center justify-center rounded-xl text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-secondary)] disabled:opacity-30"
+            aria-label="다음 기간"
+          >
+            <ChevronRight size={20} />
+          </button>
+        </div>
+      )}
+
+      {!data || data.items.length === 0 ? (
+        <EmptyCard message="해당 기간에 기록된 지출이 없습니다." />
+      ) : (
+        <section className={`${cardClass} p-4`} aria-label="카테고리별 지출 통계">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-base font-bold text-[var(--color-text-primary)]">카테고리별 지출</h2>
+            <span className="text-xs font-semibold text-[var(--color-text-secondary)]">
+              {formatAmount(data.total_amount)}
+            </span>
+          </div>
+          <div className="flex flex-col gap-3">
+            {data.items.map((item) => {
+              const icon = item.icon_id != null ? iconMap.get(item.icon_id) : undefined;
+              return (
+                <div key={item.category_id}>
+                  <div className="mb-1 flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--color-bg-secondary)]">
+                        {icon && (
+                          <IconRenderer
+                            providerType={icon.provider_type}
+                            providerKey={icon.provider_key}
+                            size={15}
+                            className="text-[var(--color-text-secondary)]"
+                          />
+                        )}
+                      </div>
+                      <span className="truncate text-sm font-medium text-[var(--color-text-primary)]">
+                        {item.category_name}
+                      </span>
+                    </div>
+                    <span className="shrink-0 text-sm font-semibold text-[var(--color-text-primary)]">
+                      {formatAmount(item.amount)}
+                    </span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-[var(--color-bg-secondary)]">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${Math.min(100, item.ratio)}%`,
+                        backgroundColor: "var(--color-primary)"
+                      }}
+                    />
+                  </div>
+                  <p className="mt-1 text-right text-xs text-[var(--color-text-secondary)]">
+                    {item.ratio.toFixed(2)}%
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+};
+
 /* ── 메인 페이지 ───────────────────────────────────────── */
 
 const StatisticsPage: React.FC = () => {
@@ -1698,10 +1857,11 @@ const StatisticsPage: React.FC = () => {
         )}
 
         {activeTab === "category-expense" && (
-          <div className={`${cardClass} flex flex-col items-center gap-2 px-6 py-12 text-center`}>
-            <p className="text-base font-medium text-[var(--color-text-primary)]">카테고리 통계</p>
-            <p className="text-sm text-[var(--color-text-secondary)]">준비 중입니다.</p>
-          </div>
+          <CategoryExpenseContent
+            iconMap={iconMap}
+            todayStr={todayStr}
+            isOffline={isOffline}
+          />
         )}
       </div>
     </div>

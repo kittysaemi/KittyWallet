@@ -150,4 +150,29 @@ export interface SankeyIncomeStatisticsData {
   links: SankeyLink[];
 }
 
+export type CategoryExpensePeriodType = "all" | "year" | "month";
+
+export interface CategoryExpenseParams {
+  period_type?: CategoryExpensePeriodType;
+  year?: string;
+  month?: string;
+  wallet_type?: "ACCOUNT" | "CARD";
+  wallet_id?: number;
+}
+
+export interface CategoryExpenseItem {
+  category_id: number;
+  category_name: string;
+  icon_id: number | null;
+  amount: number;
+  transaction_count: number;
+  ratio: number;
+}
+
+export interface CategoryExpenseData {
+  period_type: CategoryExpensePeriodType;
+  total_amount: number;
+  items: CategoryExpenseItem[];
+}
+
 export type { ApiResponse };
