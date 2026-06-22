@@ -47,11 +47,12 @@
 - 계좌 거래와 카드 거래는 `wallet_type` 기준으로 독립 집계 가능
 - 카드 거래는 지출만 집계 대상이며 수입 통계에는 포함되지 않음
 - 현재 사용자 기준 `include_in_statistics=false`인 카테고리의 거래는 모든 통계 집계에서 제외
-- 카테고리 통계 제외는 월별, 기간별, 카테고리별, 요약, Top 5, 히트맵, 지출 Sankey, 수입 Sankey에 동일하게 적용
+- 카테고리 통계 제외는 월별, 기간별, 카테고리별, 요약, Top 5, 히트맵, 지출 Sankey, 수입 Sankey, 카테고리별 지출합계에 동일하게 적용
 - 카테고리 통계 제외는 거래내역, 최근 거래, 거래 상세, 거래 검색, 계좌 잔액에는 영향을 주지 않음
 - Top 5 카테고리 산출 시 카테고리가 5개를 초과하면 6번째 이후는 `기타`로 합산한다
 - Sankey와 Top 5는 지출 거래 중심으로 산출한다. 수입 흐름 Sankey와 수입 Top 5는 수입 거래 중심으로 별도 산출한다
 - Top 5 API는 6번째 이후 카테고리를 `기타`로 합산하지만, Sankey API는 카테고리를 `기타`로 합산하지 않고 전체 카테고리를 노드/링크로 반환한다
+- 카테고리별 지출합계(category-expenses) API는 지출 거래만 집계하며 기간 선택(전체/년별/월별)을 지원한다
 - 기본 조회 기간은 현재 월이다
 
 # 월별 통계 API
@@ -689,3 +690,104 @@
 - `nodes`가 빈 배열이거나 `total_income`이 0이면 empty UI를 표시한다.
 - 노드 색상은 파란색 계열(`#38BDF8` 기준)로 지출 흐름과 시각적으로 구분한다.
 - 카드 지갑은 수입 거래 특성상 표시되지 않는다.
+
+# 카테고리별 지출합계 통계 API
+
+## Endpoint
+
+`GET /api/v1/statistics/category-expenses`
+
+---
+
+## Query Parameters
+
+| 이름 | 타입 | 필수 | 기본값 | 설명 |
+|---|---|---|---|---|
+| period_type | string | N | `all` | `all`, `year`, `month`. 기간 유형 선택 |
+| year | string | N | - | `period_type=year` 또는 `period_type=month` 시 사용. `YYYY` 형식 |
+| month | string | N | - | `period_type=month` 시 필수. 사용자 로컬 캘린더 기준 `YYYY-MM` |
+| wallet_type | string | N | 전체 | `ACCOUNT`, `CARD`. 특정 결제수단 유형만 집계 |
+| wallet_id | number | N | 전체 | 특정 계좌 또는 카드 ID. `wallet_type`과 함께 사용 |
+
+### 파라미터 조합 규칙
+
+| period_type | year | month | 설명 |
+|---|---|---|---|
+| `all` (또는 미입력) | 무시 | 무시 | 전체 기간 지출 집계 (날짜 범위 없음) |
+| `year` | 필수 | 무시 | 해당 연도 1월 1일 ~ 12월 31일 |
+| `month` | 자동추출 | 필수 | 해당 월 1일 ~ 말일 |
+
+---
+
+## Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "period_type": "month",
+    "total_amount": 820000,
+    "items": [
+      {
+        "category_id": 1,
+        "category_name": "식비",
+        "icon_id": 3,
+        "amount": 320000,
+        "transaction_count": 12,
+        "ratio": 39.02
+      },
+      {
+        "category_id": 2,
+        "category_name": "교통",
+        "icon_id": 5,
+        "amount": 150000,
+        "transaction_count": 8,
+        "ratio": 18.29
+      }
+    ]
+  },
+  "error": null
+}
+```
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| period_type | string | 요청한 기간 유형 (`all`, `year`, `month`) |
+| total_amount | number | 기간 내 지출 합계 (통계 포함 카테고리, 삭제되지 않은 거래 기준) |
+| items | array | 카테고리별 지출 목록. 금액 내림차순 정렬. 데이터가 없으면 빈 배열 |
+| items[].category_id | number | 카테고리 ID |
+| items[].category_name | string | 카테고리명 |
+| items[].icon_id | number/null | 아이콘 ID |
+| items[].amount | number | 해당 카테고리 지출 합계 (카드 할부 포함: `amount + interest`) |
+| items[].transaction_count | number | 해당 카테고리 거래 건수 |
+| items[].ratio | number | `total_amount` 대비 비율. 소수점 둘째 자리까지 반올림 |
+
+### 집계 정책
+
+- 지출(`EXPENSE`) 거래만 집계한다. 수입 거래는 제외한다.
+- `include_in_statistics=false`인 카테고리의 거래는 제외한다.
+- `deleted_yn=true`인 거래는 제외한다.
+- 카드 할부 거래는 `amount + interest`를 합산하여 집계한다.
+- 결과는 `amount` 내림차순으로 정렬된다.
+- `Top 5` 제한 없이 모든 카테고리를 반환한다.
+
+---
+
+## 오류 처리
+
+| HTTP Status | 코드 | 설명 |
+|---|---|---|
+| 400 | STAT_002 | `period_type=month` 시 `month` 미입력, `period_type=year` 시 `year` 미입력, 잘못된 날짜 포맷 |
+| 401 | AUTH_002 | 인증 토큰 없음 또는 유효하지 않음 |
+| 401 | AUTH_004 | 토큰 만료 |
+| 500 | STAT_001 | 통계 조회 실패 |
+
+---
+
+## 프론트 처리 주의사항
+
+- `items`가 빈 배열이면 empty UI를 표시한다.
+- `period_type=all`이면 기간 네비게이터를 숨긴다.
+- `period_type=year`이면 연도 네비게이터만 표시한다 (미래 연도 이동 불가).
+- `period_type=month`이면 월 네비게이터를 표시한다 (미래 월 이동 불가).
+- 기간 상태는 공통 `baseDate`, `viewMode`와 독립적으로 관리한다.

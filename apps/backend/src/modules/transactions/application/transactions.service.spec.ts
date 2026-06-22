@@ -151,6 +151,26 @@ describe("TransactionsService - 카드할부", () => {
       await expect(service.createTransaction(baseCommand)).rejects.toMatchObject({ code: "TX_004" });
     });
 
+    it("10000원 3개월 할부 생성 시 1회차 3334원, 2·3회차 3333원으로 분배한다", async () => {
+      const installment = makeInstallment({ originalAmount: makeDecimal(10000) });
+      const txs = [
+        makeTx({ transactionId: 101n, amount: makeDecimal(3334), installmentSeq: 1, installmentTotalCount: 3, installmentId: 10n }),
+        makeTx({ transactionId: 102n, amount: makeDecimal(3333), transactionDate: new Date("2026-07-20"), installmentSeq: 2, installmentTotalCount: 3, installmentId: 10n }),
+        makeTx({ transactionId: 103n, amount: makeDecimal(3333), transactionDate: new Date("2026-08-20"), installmentSeq: 3, installmentTotalCount: 3, installmentId: 10n })
+      ];
+
+      (mockRepo.findCategory as jest.Mock).mockResolvedValue({ categoryId: 1n });
+      (mockRepo.findCard as jest.Mock).mockResolvedValue({ cardId: 1n, useYn: true, deletedYn: false });
+      (mockRepo.createInstallmentWithTransactions as jest.Mock).mockResolvedValue({ installment, transactions: txs });
+
+      const result = await service.createTransaction({ ...baseCommand, amount: 10000 });
+
+      expect(result.transactions).toHaveLength(3);
+      expect(result.transactions![0].amount).toBe(3334);
+      expect(result.transactions![1].amount).toBe(3333);
+      expect(result.transactions![2].amount).toBe(3333);
+    });
+
     it("금액이 3개월 할부일 때 나머지는 1회차에 합산한다", async () => {
       const installment = makeInstallment({ originalAmount: makeDecimal(100001) });
       const txs = [
