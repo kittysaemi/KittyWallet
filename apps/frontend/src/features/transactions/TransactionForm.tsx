@@ -203,10 +203,12 @@ const IconDropdown: React.FC<IconDropdownProps> = ({
 // 메인 폼
 interface TransactionFormProps {
   onSuccess: () => void;
+  onCreated?: (draft: { transaction_date: string; amount: number; memo?: string }) => void;
   initialData?: TransactionItem;
   transactionId?: number;
   readOnly?: boolean;
   futureInstallment?: boolean;
+  receiptDraft?: { fields: { transactionDate?: { value: string }; totalAmount?: { value: number } }; items: Array<{ value: string }> };
 }
 
 export const TransactionForm: React.FC<TransactionFormProps> = ({
@@ -214,7 +216,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   initialData,
   transactionId,
   readOnly = false,
-  futureInstallment = false
+  futureInstallment = false,
+  receiptDraft,
+  onCreated
 }) => {
   const isEditMode = !!transactionId;
   const queryClient = useQueryClient();
@@ -246,6 +250,13 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const [installmentMonthsStr, setInstallmentMonthsStr] = React.useState<string>("");
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [apiError, setApiError] = React.useState<string>("");
+
+  React.useEffect(() => {
+    if (!receiptDraft || isEditMode) return;
+    if (receiptDraft.fields.transactionDate?.value) setDate(receiptDraft.fields.transactionDate.value);
+    if (receiptDraft.fields.totalAmount?.value) setAmountStr(receiptDraft.fields.totalAmount.value.toLocaleString("ko-KR"));
+    if (receiptDraft.items.length) setMemo(receiptDraft.items.map((item) => item.value).join(", "));
+  }, [receiptDraft, isEditMode]);
 
   const isInstallmentTx = !!initialData?.installment_id;
 
@@ -308,13 +319,14 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
   const createMutation = useMutation({
     mutationFn: transactionApi.createTransaction,
-    onSuccess: () => {
+    onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: ["transactions"] });
       void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       void queryClient.invalidateQueries({ queryKey: ["accounts"] });
       void queryClient.invalidateQueries({ queryKey: ["cards"] });
       void queryClient.invalidateQueries({ queryKey: ["statistics"] });
       void invalidateTransactionCaches();
+      onCreated?.({ transaction_date: variables.transaction_date, amount: variables.amount, ...(variables.memo ? { memo: variables.memo } : {}) });
       onSuccess();
     },
     onError: (err: unknown) => {

@@ -39,6 +39,7 @@ erDiagram
     USER ||--o{ SYNC_CLIENT : owns
     USER ||--o{ SYNC_HISTORY : owns
     USER ||--o{ REFRESH_TOKEN : owns
+    USER ||--o{ TEXT_PARSE_TRAINING_SAMPLE : owns
 
     CATEGORY ||--o{ TRANSACTION : classifies
     CATEGORY ||--o{ CATEGORY_USER_SETTING : configured_by
@@ -50,6 +51,16 @@ erDiagram
     TRANSACTION ||--o{ SYNC_HISTORY : logged_by
 
     CARD_INSTALLMENT ||--o{ TRANSACTION : generates
+    TEXT_PARSE_TRAINING_SAMPLE {
+        BIGINT text_parse_training_sample_id PK "학습 표본 ID"
+        BIGINT user_id FK "사용자 ID"
+        VARCHAR profile "파서 profile"
+        VARCHAR source_type "OCR_IMAGE, PASTED_TEXT"
+        TEXT source_text "학습용 원문"
+        JSON final_draft "사용자 확정 초안"
+        VARCHAR parser_version "파서/모델 버전"
+        DATETIME created_at "생성일시"
+    }
     USER ||--o{ CARD_INSTALLMENT : owns
     CARD ||--o{ CARD_INSTALLMENT : linked_to
     CATEGORY ||--o{ CARD_INSTALLMENT : classifies
