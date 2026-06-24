@@ -11,6 +11,7 @@ describe("StatisticsService", () => {
     groupAmountsByTransactionType: jest.fn(),
     groupDailyAmountsByTransactionType: jest.fn(),
     groupAmountsByCategory: jest.fn(),
+    groupCategoryAmountsByInstallmentOrigin: jest.fn(),
     groupExpensesByWalletAndCategory: jest.fn(),
     groupIncomesByWalletAndCategory: jest.fn()
   } as unknown as jest.Mocked<StatisticsRepository>;
@@ -82,7 +83,7 @@ describe("StatisticsService", () => {
   });
 
   it("returns category statistics with rounded ratios and limit", async () => {
-    statisticsRepository.groupAmountsByCategory.mockResolvedValue([
+    statisticsRepository.groupCategoryAmountsByInstallmentOrigin.mockResolvedValue([
       {
         categoryId: BigInt(1),
         amount: decimal(20000),
@@ -119,7 +120,7 @@ describe("StatisticsService", () => {
         }
       ]
     });
-    expect(statisticsRepository.groupAmountsByCategory).toHaveBeenCalledWith(
+    expect(statisticsRepository.groupCategoryAmountsByInstallmentOrigin).toHaveBeenCalledWith(
       expect.objectContaining({ transactionType: "EXPENSE" })
     );
   });
@@ -429,7 +430,7 @@ describe("StatisticsService", () => {
   });
 
   it("passes userId to repository for category exclusion in category statistics", async () => {
-    statisticsRepository.groupAmountsByCategory.mockResolvedValue([]);
+    statisticsRepository.groupCategoryAmountsByInstallmentOrigin.mockResolvedValue([]);
 
     await service.getCategoryStatistics({
       userId: BigInt(42),
@@ -438,7 +439,7 @@ describe("StatisticsService", () => {
       limit: 10
     });
 
-    expect(statisticsRepository.groupAmountsByCategory).toHaveBeenCalledWith(
+    expect(statisticsRepository.groupCategoryAmountsByInstallmentOrigin).toHaveBeenCalledWith(
       expect.objectContaining({ userId: BigInt(42) })
     );
   });
