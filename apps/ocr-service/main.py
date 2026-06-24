@@ -1,0 +1,97 @@
+import asyncio
+import os
+import tempfile
+from pathlib import Path
+
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
+from paddleocr import PaddleOCR
+from PIL import Image, ImageEnhance, ImageStat
+
+app = FastAPI()
+ocr = None
+ocr_inference_lock = asyncio.Lock()
+
+
+def env_flag(name: str, default: bool) -> bool:
+    return os.getenv(name, str(default)).lower() in {"1", "true", "yes", "on"}
+
+
+def get_ocr():
+    global ocr
+    if ocr is None:
+        ocr = PaddleOCR(
+            device="cpu",
+            enable_mkldnn=False,
+            use_doc_orientation_classify=env_flag("PADDLE_OCR_USE_DOC_ORIENTATION", True),
+            use_doc_unwarping=env_flag("PADDLE_OCR_USE_DOC_UNWARPING", False),
+            use_textline_orientation=env_flag("PADDLE_OCR_USE_TEXTLINE_ORIENTATION", False),
+            text_detection_model_name=os.getenv("PADDLE_OCR_DETECTION_MODEL", "PP-OCRv5_mobile_det"),
+            text_recognition_model_name=os.getenv("PADDLE_OCR_RECOGNITION_MODEL", "korean_PP-OCRv5_mobile_rec"),
+        )
+    return ocr
+
+
+def recognize_path(image_path: str) -> list[dict[str, float | str]]:
+    """Map PaddleOCR 3.x pipeline output to the provider-neutral response contract."""
+    lines: list[dict[str, float | str]] = []
+    for result in get_ocr().predict(image_path):
+        payload = getattr(result, "json", result)
+        if isinstance(payload, str):
+            import json
+
+            payload = json.loads(payload)
+        data = payload.get("res", payload) if isinstance(payload, dict) else {}
+        texts = data.get("rec_texts", [])
+        scores = data.get("rec_scores", [])
+        for text, score in zip(texts, scores):
+            normalized = str(text).strip()
+            if normalized:
+                lines.append({"text": normalized, "confidence": round(float(score) * 100, 2)})
+    return lines
+
+
+def create_bottom_sheet_candidate(image_path: str) -> str | None:
+    """Extract a bright full-width bottom sheet from a dimmed mobile screenshot."""
+    image = Image.open(image_path).convert("L")
+    width, height = image.size
+    if height < width * 1.2:
+        return None
+    split_y = int(height * 0.38)
+    top_brightness = ImageStat.Stat(image.crop((0, 0, width, split_y))).mean[0]
+    bottom_brightness = ImageStat.Stat(image.crop((0, split_y, width, height))).mean[0]
+    if bottom_brightness < 180 or bottom_brightness < top_brightness * 1.7:
+        return None
+    candidate_path = f"{image_path}-bottom-sheet.jpg"
+    candidate = image.crop((0, split_y, width, height)).resize((width * 2, (height - split_y) * 2))
+    ImageEnhance.Contrast(candidate).enhance(1.4).save(candidate_path)
+    return candidate_path
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok", "engine": "paddleocr-3"}
+
+
+@app.post("/v1/ocr")
+async def recognize(image: UploadFile = File(...)):
+    suffix = Path(image.filename or "receipt.jpg").suffix or ".jpg"
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as temp:
+        temp.write(await image.read())
+        image_path = temp.name
+    try:
+        # PaddleOCR CPU inference is blocking and uses multiple native threads.
+        # Serialize it to prevent competing inference jobs from starving the
+        # container, while keeping the ASGI event loop free for health checks.
+        async with ocr_inference_lock:
+            lines = await run_in_threadpool(recognize_path, image_path)
+            bottom_sheet_path = await run_in_threadpool(create_bottom_sheet_candidate, image_path)
+            if bottom_sheet_path:
+                lines = await run_in_threadpool(recognize_path, bottom_sheet_path)
+        if not lines:
+            raise HTTPException(status_code=422, detail="No text recognized")
+        return {"text": "\n".join(line["text"] for line in lines), "confidence": round(sum(line["confidence"] for line in lines) / len(lines), 2), "lines": lines}
+    finally:
+        for path in [image_path, f"{image_path}-bottom-sheet.jpg"]:
+            if os.path.exists(path):
+                os.unlink(path)

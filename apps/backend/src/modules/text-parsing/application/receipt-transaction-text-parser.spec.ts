@@ -9,7 +9,7 @@ describe("ReceiptTransactionTextParser", () => {
     expect(result.profile).toBe("receipt-transaction");
     expect(result.fields.transactionDate?.value).toBe("2026-06-22");
     expect(result.fields.totalAmount?.value).toBe(12800);
-    expect(result.items.map((item) => item.value)).toContain("참치캔");
+    expect(result.items).toEqual([]);
   });
 
   it("keeps an ambiguous total unset and returns a warning", () => {
@@ -50,6 +50,55 @@ NAVER FINANCIAL
 
     expect(result.fields.transactionDate?.value).toBe("2026-03-02");
     expect(result.fields.totalAmount?.value).toBe(1530000);
+  });
+
+  it("parses a labeled date when OCR joins the date and time", () => {
+    const result = parser.parse("서현365의원\n거래일시:2026/06/2305:13:20\n합계: 680,000원");
+
+    expect(result.fields.transactionDate?.value).toBe("2026-06-23");
+  });
+
+  it("keeps the existing transaction date label support", () => {
+    const result = parser.parse("거래 날짜 2026-06-22\n합계 12,800원");
+
+    expect(result.fields.transactionDate?.value).toBe("2026-06-22");
+  });
+
+  it("recovers an OCR date with damaged separators and a joined time", () => {
+    const result = parser.parse("결제일시1;2026.06.2209;18\n결제금액 990원");
+
+    expect(result.fields.transactionDate?.value).toBe("2026-06-22");
+  });
+
+  it("recovers a short OCR date with a joined time", () => {
+    const result = parser.parse("거래일시:26/06/2316:19:53\n총 합 계 220,000원");
+
+    expect(result.fields.transactionDate?.value).toBe("2026-06-23");
+  });
+
+  it("uses a fuzzy sales amount label and the largest amount on its value line", () => {
+    const result = parser.parse("승인일시 20260302172443\n판미금액\n11 1,000,000원");
+
+    expect(result.fields.totalAmount?.value).toBe(1000000);
+  });
+
+  it("uses a repeated comma-formatted amount on a card approval receipt", () => {
+    const result = parser.parse("매출표\n220,000\n220,000");
+
+    expect(result.fields.totalAmount?.value).toBe(220000);
+  });
+
+  it("uses the one currency amount on a credit card approval receipt", () => {
+    const result = parser.parse("서울정정신건강의학과\n신음 카드 승민\n35,600원");
+
+    expect(result.fields.totalAmount?.value).toBe(35600);
+    expect(result.items.map((item) => item.value)).toEqual(["서울정정신건강의학과"]);
+  });
+
+  it("keeps a numeric merchant name as a memo candidate", () => {
+    const result = parser.parse("서현365의원\n카드종류:신한프리미엄카드\n합계 680,000원");
+
+    expect(result.items.map((item) => item.value)).toEqual(["서현365의원"]);
   });
 
   it("extracts the first product table column and the sales amount", () => {

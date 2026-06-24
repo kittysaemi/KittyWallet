@@ -5,11 +5,12 @@ import { TesseractJsReceiptOcrProvider } from "./infrastructure/tesseract-js-rec
 import { ReceiptAnalysisService } from "./application/receipt-analysis.service";
 import { ReceiptAnalysisController } from "./presentation/receipt-analysis.controller";
 import { TextParsingModule } from "../text-parsing/text-parsing.module";
+import { PaddleOcrReceiptOcrProvider } from "./infrastructure/paddle-ocr-receipt-ocr.provider";
 
 @Module({
   controllers: [ReceiptAnalysisController],
   imports: [TextParsingModule],
-  providers: [SharpReceiptImageNormalizer, TesseractJsReceiptOcrProvider, ReceiptOcrProviderFactory, ReceiptAnalysisService],
+  providers: [SharpReceiptImageNormalizer, TesseractJsReceiptOcrProvider, PaddleOcrReceiptOcrProvider, ReceiptOcrProviderFactory, ReceiptAnalysisService],
   exports: [SharpReceiptImageNormalizer, ReceiptOcrProviderFactory]
 })
 export class ReceiptAnalysisModule {}
