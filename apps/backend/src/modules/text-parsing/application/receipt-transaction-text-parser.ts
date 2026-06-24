@@ -7,9 +7,10 @@ const SHORT_DATE_PATTERN = /\b(\d{2})[.\-/\s]+(0?[1-9]|1[0-2])[.\-/\s]+(0?[1-9]|
 // longer numeric identifiers such as order numbers from being parsed as dates.
 const COMPACT_DATE_PATTERN = /\b(20\d{2})(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])(?:(?:[01]\d|2[0-3])(?:[0-5]\d)(?:[0-5]\d)?)?\b/;
 const AMOUNT_PATTERN = /(?:₩|KRW)?\s*([0-9]{1,3}(?:[,\s][0-9]{3})+|[0-9]+)\s*(?:원|KRW)?/i;
-const OCR_LABEL_SEPARATOR = "[\\s'\":;,\\-\\]】）)〉》>]*";
+const OCR_LABEL_SEPARATOR = "[\\s_'＿\":;,\\-\\]】）)〉》>]*";
+const SALES_AMOUNT_LABEL = new RegExp(`(판[매미]${OCR_LABEL_SEPARATOR}금${OCR_LABEL_SEPARATOR}액)`);
 const TOTAL_LABELS = [
-  new RegExp(`(총${OCR_LABEL_SEPARATOR}합${OCR_LABEL_SEPARATOR}계|결${OCR_LABEL_SEPARATOR}제${OCR_LABEL_SEPARATOR}금${OCR_LABEL_SEPARATOR}액|판[매미]${OCR_LABEL_SEPARATOR}금${OCR_LABEL_SEPARATOR}액|매출${OCR_LABEL_SEPARATOR}액)`),
+  new RegExp(`(총${OCR_LABEL_SEPARATOR}합${OCR_LABEL_SEPARATOR}계|결${OCR_LABEL_SEPARATOR}제${OCR_LABEL_SEPARATOR}금${OCR_LABEL_SEPARATOR}액|매출${OCR_LABEL_SEPARATOR}액)`),
   new RegExp(`(합${OCR_LABEL_SEPARATOR}계|총${OCR_LABEL_SEPARATOR}액|결제${OCR_LABEL_SEPARATOR}금액|받을${OCR_LABEL_SEPARATOR}금액|지불${OCR_LABEL_SEPARATOR}금액)`)
 ];
 const DATE_LABELS = [/(거래\s*일시|결제\s*일시|승인\s*일시)/, /(거래\s*일|거래\s*날짜|주문\s*날짜|결제\s*날짜)/];
@@ -29,8 +30,9 @@ export class ReceiptTransactionTextParser implements TextParserProfileHandler {
     const excludedIndexes = this.getExcludedIndexes(lines);
     const labeledDate = this.findFirstLabeledValue(lines, DATE_LABELS);
     const date = (labeledDate ? this.toDate(labeledDate) : undefined) ?? lines.map((line) => this.toDate(line)).find(Boolean);
-    const labeledAmounts = this.findFirstLabeledValues(lines, TOTAL_LABELS, true);
-    const totalCandidates = labeledAmounts.map((value) => this.toAmount(value)).filter((value): value is number => value !== undefined);
+    const salesAmounts = this.findLabeledValues(lines, SALES_AMOUNT_LABEL, true);
+    const labeledAmounts = salesAmounts.length ? salesAmounts : this.findFirstLabeledValues(lines, TOTAL_LABELS, true);
+    const totalCandidates = [...new Set(labeledAmounts.map((value) => this.toAmount(value)).filter((value): value is number => value !== undefined))];
     if (!totalCandidates.length) {
       const cardApprovalAmounts = this.findCardApprovalAmounts(lines);
       if (cardApprovalAmounts.length === 1) totalCandidates.push(cardApprovalAmounts[0]);
