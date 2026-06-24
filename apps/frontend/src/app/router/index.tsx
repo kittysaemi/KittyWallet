@@ -47,14 +47,23 @@ const RootRedirect: React.FC = () => {
   return <Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />;
 };
 
-const NavLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="flex h-[100dvh] flex-col overflow-hidden bg-[var(--color-bg-primary)]">
-    <div className="scrollbar-hide flex-1 overflow-y-auto">
-      {children}
+const NavLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const location = useLocation();
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+  React.useLayoutEffect(() => {
+    // /transactions manages its own scroll restoration
+    if (location.pathname === "/transactions") return;
+    if (scrollRef.current) scrollRef.current.scrollTop = 0;
+  }, [location.pathname]);
+  return (
+    <div className="flex h-[100dvh] flex-col overflow-hidden bg-[var(--color-bg-primary)]">
+      <div ref={scrollRef} className="scrollbar-hide flex-1 overflow-y-auto">
+        {children}
+      </div>
+      <BottomNav />
     </div>
-    <BottomNav />
-  </div>
-);
+  );
+};
 
 export const AppRouter: React.FC = () => (
   <Routes>

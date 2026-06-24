@@ -84,7 +84,7 @@ const TransactionEditPage: React.FC = () => {
       void queryClient.invalidateQueries({ queryKey: ["cards"] });
       void queryClient.invalidateQueries({ queryKey: ["statistics"] });
       void invalidateTransactionCaches();
-      navigate("/transactions", { replace: true, state: { reset: true } });
+      navigate("/transactions", { replace: true });
     },
     onError: (err: unknown) => {
       const code =
@@ -138,7 +138,7 @@ const TransactionEditPage: React.FC = () => {
         void queryClient.invalidateQueries({ queryKey: ["cards"] });
         void queryClient.invalidateQueries({ queryKey: ["statistics"] });
         void invalidateTransactionCaches();
-        navigate("/transactions", { replace: true, state: { reset: true } });
+        navigate("/transactions", { replace: true });
       } catch {
         setDeleteError("오프라인 삭제 저장에 실패했습니다. 다시 시도해주세요.");
       }
