@@ -1,4 +1,4 @@
-import { AxiosError } from "axios";
+import { AxiosError, AxiosHeaders } from "axios";
 import { describe, expect, it } from "vitest";
 import { formatSupportError, toSupportErrorMessage } from "./apiError";
 
@@ -14,7 +14,7 @@ describe("api error display", () => {
         status: 503,
         statusText: "Service Unavailable",
         headers: {},
-        config: { headers: {} }
+        config: { headers: new AxiosHeaders() }
       }
     );
 
