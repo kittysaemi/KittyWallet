@@ -1,5 +1,5 @@
 import { isAxiosError } from "axios";
-import { PUBLIC_ERROR_CODES, isPublicErrorCode } from "@kittywallet/shared-types";
+import { PUBLIC_ERROR_CODES, isPublicErrorCode } from "../../../../../packages/shared-types/src/errorCodes";
 
 interface ApiErrorResponse {
   error?: { code?: string };
