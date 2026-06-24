@@ -344,6 +344,7 @@ const BrowseTab: React.FC<BrowseTabProps> = ({
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
+    (document.activeElement as HTMLElement)?.blur();
     const walletType = walletOpt
       ? walletOptions.find((w) => w.id === walletOpt.id && w.group === "계좌")
         ? "ACCOUNT"
@@ -497,6 +498,7 @@ const KeywordTab: React.FC<{ iconMap: Map<number, IconItem>; categoryIconMap: Ma
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
+    (document.activeElement as HTMLElement)?.blur();
     if (!keyword.trim()) return;
     setSubmittedKeyword(keyword.trim());
     setTriggered(true);

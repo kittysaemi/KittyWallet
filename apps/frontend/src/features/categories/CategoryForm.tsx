@@ -72,6 +72,7 @@ export const CategoryForm: React.FC = () => {
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
+    (document.activeElement as HTMLElement)?.blur();
     setServerError(null);
     setFieldErrors({});
 

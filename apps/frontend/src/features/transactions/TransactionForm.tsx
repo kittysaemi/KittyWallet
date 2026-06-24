@@ -380,6 +380,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    (document.activeElement as HTMLElement)?.blur();
     setApiError("");
     mutation.reset();
 
