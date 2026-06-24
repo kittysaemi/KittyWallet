@@ -1,7 +1,7 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, Circle, Search, X } from "lucide-react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useNavigationType, useSearchParams } from "react-router-dom";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import type { TransactionItem } from "../../entities/transaction/model/transaction.types";
 import { accountApi } from "../../entities/account/api/accountApi";
@@ -42,11 +42,13 @@ interface SearchPageCache {
   tab: "browse" | "keyword";
   browse: BrowseCacheState;
   keyword: KeywordCacheState;
+  scrollTop: number;
 }
 const _sc: SearchPageCache = {
   tab: "browse",
   browse: { startDate: "", endDate: "", walletOpt: undefined, categoryOpt: undefined, searched: false, params: null },
-  keyword: { keyword: "", submittedKeyword: "", triggered: false, searched: false }
+  keyword: { keyword: "", submittedKeyword: "", triggered: false, searched: false },
+  scrollTop: 0
 };
 
 function formatAmount(amount: number, type: "INCOME" | "EXPENSE"): string {
@@ -648,6 +650,21 @@ const TransactionSearchPage: React.FC = () => {
     _sc.tab = next;
     setSearchParams({ tab: next }, { replace: true });
   };
+  const navigationType = useNavigationType();
+  const pageRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    return () => {
+      const scrollEl = pageRef.current?.parentElement as HTMLElement | null;
+      if (scrollEl) _sc.scrollTop = scrollEl.scrollTop;
+    };
+  }, []);
+
+  React.useLayoutEffect(() => {
+    if (navigationType !== "POP") return;
+    const scrollEl = pageRef.current?.parentElement as HTMLElement | null;
+    if (scrollEl) scrollEl.scrollTop = _sc.scrollTop;
+  }, [navigationType]);
 
   const accountsQuery = useQuery({
     queryKey: ["accounts"],
@@ -719,7 +736,7 @@ const TransactionSearchPage: React.FC = () => {
     }`;
 
   return (
-    <div className="bg-[var(--color-bg-primary)]">
+    <div ref={pageRef} className="bg-[var(--color-bg-primary)]">
       <div className="mx-auto max-w-[480px] px-4 pb-6 pt-6">
         {/* 헤더 */}
         <div className="mb-4 flex items-center">
