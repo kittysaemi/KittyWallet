@@ -146,7 +146,7 @@ const TransactionRow: React.FC<TransactionRowProps> = ({ item, iconMap, category
         className={`shrink-0 text-sm font-semibold ${
           item.transaction_type === "INCOME"
             ? "text-blue-500"
-            : "text-[var(--color-text-primary)]"
+            : "text-[var(--color-danger)]"
         }`}
       >
         {formatAmount(item.amount + (item.interest ?? 0), item.transaction_type)}
