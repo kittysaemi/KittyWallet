@@ -34,8 +34,7 @@ const isOfflineRefreshFailure = (error: unknown): boolean =>
 
 export const apiClient = axios.create({
   baseURL: "/kittywallet/api/v1",
-  withCredentials: true,
-  headers: { "Content-Type": "application/json" }
+  withCredentials: true
 });
 
 apiClient.interceptors.request.use(
