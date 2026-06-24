@@ -16,6 +16,7 @@ const TransactionNewPage: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
   const [analysisError, setAnalysisError] = React.useState("");
   const [receiptDraft, setReceiptDraft] = React.useState<ReceiptAnalysisDraft>();
+  const [receiptPreviewUrl, setReceiptPreviewUrl] = React.useState<string>();
   const [pastedText, setPastedText] = React.useState("");
   const source = searchParams.get("receiptSource");
   const receiptFile = (location.state as NavigationState | null)?.receiptFile;
@@ -35,9 +36,15 @@ const TransactionNewPage: React.FC = () => {
 
   React.useEffect(() => {
     if (!receiptFile) return;
+    const previewUrl = URL.createObjectURL(receiptFile);
+    setReceiptPreviewUrl(previewUrl);
     void analyzeImage(receiptFile);
     navigate(location.pathname, { replace: true, state: null });
   }, [analyzeImage, location.pathname, navigate, receiptFile]);
+
+  React.useEffect(() => () => {
+    if (receiptPreviewUrl) URL.revokeObjectURL(receiptPreviewUrl);
+  }, [receiptPreviewUrl]);
 
   const parsePastedText = async () => {
     if (!pastedText.trim()) return;
@@ -62,7 +69,13 @@ const TransactionNewPage: React.FC = () => {
           <h1 className="font-gamja text-2xl">거래 등록</h1>
         </div>
         <div className="rounded-2xl border p-5">
-          {isAnalyzing && <p className="mb-3 text-sm text-[var(--color-text-secondary)]">텍스트를 분석하고 있습니다…</p>}
+          {receiptPreviewUrl && (
+            <figure className="mb-4 overflow-hidden rounded-xl border bg-[var(--color-bg-secondary)]">
+              <img src={receiptPreviewUrl} alt="촬영한 영수증" className="max-h-64 w-full object-contain" />
+              {isAnalyzing && <figcaption className="border-t px-3 py-2 text-sm text-[var(--color-text-secondary)]">서버로 전송하고 영수증을 분석하고 있습니다…</figcaption>}
+            </figure>
+          )}
+          {isAnalyzing && !receiptPreviewUrl && <p className="mb-3 text-sm text-[var(--color-text-secondary)]">텍스트를 분석하고 있습니다…</p>}
           {analysisError && <p className="mb-3 text-sm text-[var(--color-danger)]">{analysisError}</p>}
           <TransactionForm
             receiptDraft={receiptDraft}
