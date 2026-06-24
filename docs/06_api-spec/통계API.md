@@ -191,6 +191,12 @@
 
 ---
 
+## 집계 정책 (EXPENSE 기준)
+
+- 카드 할부 거래는 회차별 분할 금액이 아닌 원래 결제일(`purchase_date`) 기준 원금(`original_amount`)으로 집계한다.
+- 비할부 거래는 `amount + interest`를 합산한다.
+- `transaction_type=INCOME` 조건에서는 일반 거래 합산을 사용한다.
+
 ## 프론트 처리 주의사항
 
 - `transaction_type=INCOME`인 경우 카드 선택값을 전송하지 않는다.
@@ -767,7 +773,7 @@
 - 지출(`EXPENSE`) 거래만 집계한다. 수입 거래는 제외한다.
 - `include_in_statistics=false`인 카테고리의 거래는 제외한다.
 - `deleted_yn=true`인 거래는 제외한다.
-- 카드 할부 거래는 `amount + interest`를 합산하여 집계한다.
+- 카드 할부 거래는 회차별 분할 금액이 아닌 원래 결제일(`purchase_date`) 기준 원금(`original_amount`)으로 집계한다. 비할부 거래는 `amount + interest`를 합산한다.
 - 결과는 `amount` 내림차순으로 정렬된다.
 - `Top 5` 제한 없이 모든 카테고리를 반환한다.
 

@@ -324,7 +324,7 @@ erDiagram
 | 월간 수입     | TRANSACTION            | `transaction_type = INCOME`인 거래 금액 합산            |
 | 월간 지출     | TRANSACTION            | `transaction_type = EXPENSE`인 거래 금액 합산 |
 | 최근 내역     | TRANSACTION            | `transaction_date DESC`, `created_at DESC` 기준 정렬 |
-| 카테고리별 소비  | TRANSACTION + CATEGORY | `transaction_type = EXPENSE` 기준 소비 금액 합산 |
+| 카테고리별 소비  | TRANSACTION + CARD_INSTALLMENT + CATEGORY | 비할부: `transaction_type = EXPENSE` 거래의 `amount + interest` 합산. 할부: 기간 내 `purchase_date` 기준 `CARD_INSTALLMENT.original_amount` 합산 (회차 분할 금액 미사용) |
 | 카드별 사용 금액 | TRANSACTION + CARD     | `wallet_type = CARD`이고 `transaction_type = EXPENSE`인 거래 합산 |
 | 계좌별 거래 금액 | TRANSACTION + ACCOUNT  | `wallet_type = ACCOUNT` 기준 수입/지출 거래 합산 |
 | 계좌 잔액     | ACCOUNT + TRANSACTION  | `wallet_type = ACCOUNT` 거래만 기준으로 초기 잔액 + 수입 - 지출 계산 |
