@@ -1,3 +1,10 @@
+# [1.26.0](https://github.com/kittysaemi/KittyWallet/compare/v1.25.0...v1.26.0) (2026-06-24)
+
+
+### Features
+
+* improve receipt OCR quality ([6ba3d86](https://github.com/kittysaemi/KittyWallet/commit/6ba3d860a00d5b74ecbd245d2cf3d675359be4b4))
+
 # [1.25.0](https://github.com/kittysaemi/KittyWallet/compare/v1.24.0...v1.25.0) (2026-06-22)
 
 
