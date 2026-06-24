@@ -1,3 +1,10 @@
+## [1.26.3](https://github.com/kittysaemi/KittyWallet/compare/v1.26.2...v1.26.3) (2026-06-24)
+
+
+### Bug Fixes
+
+* **ui:** iOS Safari 입력 포커스 시 자동 확대 방지 ([7a1161f](https://github.com/kittysaemi/KittyWallet/commit/7a1161f2c98cf493ffc40c9e0dd4f09f92f7b658)), closes [#353](https://github.com/kittysaemi/KittyWallet/issues/353)
+
 ## [1.26.2](https://github.com/kittysaemi/KittyWallet/compare/v1.26.1...v1.26.2) (2026-06-24)
 
 
