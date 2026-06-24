@@ -1,6 +1,5 @@
 import React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AxiosError } from "axios";
 import { ChevronDown, Circle } from "lucide-react";
 import { z } from "zod";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
@@ -21,6 +20,7 @@ import { Input } from "../../shared/ui/Input";
 import { useTimezone } from "../../shared/hooks/useTimezone";
 import { getTodayInTimezone } from "../../shared/utils/date";
 import { STALE_TIME } from "../../shared/constants/queryConfig";
+import { formatSupportError, toSupportErrorMessage } from "../../shared/api/apiError";
 
 function createSchema(today: string, skipFutureDateCheck = false) {
   const dateField = skipFutureDateCheck
@@ -44,16 +44,6 @@ function createSchema(today: string, skipFutureDateCheck = false) {
       path: ["wallet_type"]
     });
 }
-
-const API_ERRORS: Record<string, string> = {
-  TX_001: "미래 날짜는 등록할 수 없습니다.",
-  TX_002: "금액을 확인해주세요.",
-  TX_003: "존재하지 않는 계좌입니다.",
-  TX_004: "존재하지 않는 카드입니다.",
-  TX_007: "카드로 수입 거래를 저장할 수 없습니다.",
-  ACCOUNT_004: "잔액이 부족하거나 마이너스 한도를 초과했습니다.",
-  CATEGORY_002: "카테고리를 찾을 수 없습니다."
-};
 
 // 아이콘 포함 드롭다운 컴포넌트
 interface DropdownOption {
@@ -330,13 +320,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       onCreated?.({ transaction_date: variables.transaction_date, amount: variables.amount, ...(variables.memo ? { memo: variables.memo } : {}) });
       onSuccess();
     },
-    onError: (err: unknown) => {
-      const code =
-        err instanceof AxiosError
-          ? (err.response?.data as { error?: { code?: string } })?.error?.code
-          : undefined;
-      setApiError(code && API_ERRORS[code] ? API_ERRORS[code] : "거래 등록에 실패했습니다.");
-    }
+    onError: (error: unknown) => setApiError(toSupportErrorMessage(error))
   });
 
   const updateMutation = useMutation({
@@ -351,24 +335,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       void invalidateTransactionCaches();
       onSuccess();
     },
-    onError: (err: unknown, variables) => {
-      const code =
-        err instanceof AxiosError
-          ? (err.response?.data as { error?: { code?: string } })?.error?.code
-          : undefined;
-      const dateChanged =
-        variables.transaction_date !== undefined &&
-        variables.transaction_date !== initialData?.transaction_date;
-      if (code === "ACCOUNT_004" && dateChanged) {
-        setErrors((prev) => ({
-          ...prev,
-          transaction_date:
-            "이 날짜로 변경하면 해당 시점의 계좌 잔액이 부족합니다. 날짜를 다시 확인해주세요."
-        }));
-      } else {
-        setApiError(code && API_ERRORS[code] ? API_ERRORS[code] : "거래 수정에 실패했습니다.");
-      }
-    }
+    onError: (error: unknown) => setApiError(toSupportErrorMessage(error))
   });
 
   const convertMutation = useMutation({
@@ -382,9 +349,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       void invalidateTransactionCaches();
       onSuccess();
     },
-    onError: () => {
-      setApiError("할부 전환에 실패했습니다. 다시 시도해주세요.");
-    }
+    onError: (error: unknown) => setApiError(toSupportErrorMessage(error))
   });
 
   const mutation = isEditMode ? updateMutation : createMutation;
@@ -449,7 +414,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             void queryClient.invalidateQueries({ queryKey: ["transactions"] });
             onSuccess();
           } catch {
-            setApiError("오프라인 거래 저장에 실패했습니다. 다시 시도해주세요.");
+            setApiError(formatSupportError("OFFLINE_001"));
           }
         })();
         return;
@@ -512,7 +477,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           void queryClient.invalidateQueries({ queryKey: ["statistics"] });
           onSuccess();
         } catch {
-          setApiError("오프라인 거래 저장에 실패했습니다. 다시 시도해주세요.");
+          setApiError(formatSupportError("OFFLINE_001"));
         }
       })();
       return;

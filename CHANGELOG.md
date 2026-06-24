@@ -1,3 +1,10 @@
+## [1.26.12](https://github.com/kittysaemi/KittyWallet/compare/v1.26.11...v1.26.12) (2026-06-24)
+
+
+### Bug Fixes
+
+* warm OCR inference before serving ([97f33f7](https://github.com/kittysaemi/KittyWallet/commit/97f33f7b75a160ce03ef99f012d424ef6b832c49))
+
 ## [1.26.11](https://github.com/kittysaemi/KittyWallet/compare/v1.26.10...v1.26.11) (2026-06-24)
 
 

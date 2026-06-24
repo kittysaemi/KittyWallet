@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { AxiosError } from "axios";
 import { z } from "zod";
 import { accountApi } from "../../entities/account/api/accountApi";
 import { invalidateAccountCaches } from "../../pwa/cache/cacheInvalidation";
@@ -10,6 +9,7 @@ import type { IconItem } from "../../entities/icon/model/icon.types";
 import { IconSelect } from "../icons/IconSelect";
 import { Button } from "../../shared/ui/Button";
 import { Input } from "../../shared/ui/Input";
+import { toSupportErrorMessage } from "../../shared/api/apiError";
 
 const createSchema = z.object({
   account_name: z
@@ -37,13 +37,6 @@ interface AccountFormProps {
   account?: AccountItem;
 }
 
-const ERROR_MESSAGES: Record<string, string> = {
-  ACCOUNT_001: "이미 사용 중인 계좌명입니다.",
-  ACCOUNT_002: "계좌를 찾을 수 없습니다.",
-  ICON_002: "선택한 아이콘을 찾을 수 없습니다.",
-  VALIDATION_001: "입력값을 확인해주세요."
-};
-
 export const AccountForm: React.FC<AccountFormProps> = ({ mode, account }) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -63,14 +56,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({ mode, account }) => {
       await queryClient.invalidateQueries({ queryKey: ["accounts"] });
       navigate("/accounts", { replace: true });
     },
-    onError: (error: AxiosError<{ error: { code: string; message: string } }>) => {
-      const code = error.response?.data?.error?.code;
-      setServerError(
-        (code && ERROR_MESSAGES[code]) ??
-          error.response?.data?.error?.message ??
-          "계좌 등록에 실패했습니다."
-      );
-    }
+    onError: (error: unknown) => setServerError(toSupportErrorMessage(error))
   });
 
   const updateMutation = useMutation({
@@ -86,14 +72,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({ mode, account }) => {
       void invalidateAccountCaches();
       navigate("/accounts", { replace: true });
     },
-    onError: (error: AxiosError<{ error: { code: string; message: string } }>) => {
-      const code = error.response?.data?.error?.code;
-      setServerError(
-        (code && ERROR_MESSAGES[code]) ??
-          error.response?.data?.error?.message ??
-          "계좌 수정에 실패했습니다."
-      );
-    }
+    onError: (error: unknown) => setServerError(toSupportErrorMessage(error))
   });
 
   const isPending = createMutation.isPending || updateMutation.isPending;
