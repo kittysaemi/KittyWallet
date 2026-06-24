@@ -52,7 +52,7 @@ PADDLE_OCR_RECOGNITION_MODEL=korean_PP-OCRv5_mobile_rec
 
 `paddle`은 제공자 식별자이며 OCR 서비스의 내부 모델 버전과 분리한다. 따라서 향후 다른 OCR 서비스로 교체할 때는 `PADDLE_OCR_URL` 또는 `OCR_PROVIDER`만 변경하고, 거래 등록 화면과 OCR API 호출 코드는 변경하지 않는다.
 
-PaddleOCR CPU 추론은 한 번에 하나의 작업만 처리한다. 분석 요청이 겹치면 뒤 요청은 순서대로 대기하며, 서비스 health check는 OCR 추론과 분리되어 계속 응답한다. 기본 시간 제한은 180초이고 운영 환경에서는 `OCR_TIMEOUT_MS`로 조정한다.
+PaddleOCR CPU 추론은 한 번에 하나의 작업만 처리한다. 분석 요청이 겹치면 뒤 요청은 순서대로 대기하며, 서비스 health check는 OCR 추론과 분리되어 계속 응답한다. 기본 시간 제한은 180초이고 운영 환경에서는 `OCR_TIMEOUT_MS`로 조정한다. 운영 Nginx API 프록시 제한은 OCR 제한보다 길어야 하며, 이미지 업로드 허용 크기(25MB)와 동일한 `client_max_body_size`를 사용한다.
 
 ## 4. 문자 파싱 API
 

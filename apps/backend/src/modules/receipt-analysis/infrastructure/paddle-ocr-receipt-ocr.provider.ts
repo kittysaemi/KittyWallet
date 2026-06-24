@@ -1,4 +1,4 @@
-import { Injectable, ServiceUnavailableException } from "@nestjs/common";
+import { Injectable, Logger, ServiceUnavailableException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { NormalizedReceiptImage } from "../application/receipt-image.types";
 import type { ReceiptOcrProvider, ReceiptOcrResult } from "../application/receipt-ocr.types";
@@ -6,6 +6,7 @@ import type { ReceiptOcrProvider, ReceiptOcrResult } from "../application/receip
 @Injectable()
 export class PaddleOcrReceiptOcrProvider implements ReceiptOcrProvider {
   readonly id = "paddle";
+  private readonly logger = new Logger(PaddleOcrReceiptOcrProvider.name);
 
   constructor(private readonly configService: ConfigService) {}
 
@@ -21,6 +22,8 @@ export class PaddleOcrReceiptOcrProvider implements ReceiptOcrProvider {
       throw new ServiceUnavailableException({ code: "RECEIPT_OCR_PROVIDER_UNAVAILABLE", message: "PaddleOCR 서비스를 사용할 수 없습니다." });
     }
     if (!response.ok) {
+      const detail = (await response.text()).replace(/\s+/g, " ").slice(0, 500);
+      this.logger.error(`PaddleOCR request failed: status=${response.status}, detail=${detail || "(empty response)"}`);
       throw new ServiceUnavailableException({ code: "RECEIPT_ANALYSIS_FAILED", message: "PaddleOCR 분석에 실패했습니다." });
     }
     return response.json() as Promise<ReceiptOcrResult>;
