@@ -198,12 +198,18 @@ const TransactionsPage: React.FC = () => {
   const timezone = useTimezone();
   const todayStr = getTodayInTimezone(timezone);
   const location = useLocation();
+  const highlightDate = (location.state as { highlightDate?: string; reset?: boolean } | null)?.highlightDate;
 
   const [year, setYear] = React.useState(() => {
-    if ((location.state as { reset?: boolean } | null)?.reset) _savedTxState = null;
+    const state = location.state as { reset?: boolean; highlightDate?: string } | null;
+    if (state?.reset) _savedTxState = null;
+    if (state?.highlightDate) { _savedTxState = null; return parseInt(state.highlightDate.slice(0, 4), 10); }
     return _savedTxState?.year ?? parseInt(todayStr.slice(0, 4), 10);
   });
-  const [month, setMonth] = React.useState(_savedTxState?.month ?? parseInt(todayStr.slice(5, 7), 10));
+  const [month, setMonth] = React.useState(() => {
+    if (highlightDate) return parseInt(highlightDate.slice(5, 7), 10);
+    return _savedTxState?.month ?? parseInt(todayStr.slice(5, 7), 10);
+  });
   const [page, setPage] = React.useState(_savedTxState?.page ?? 1);
   const pageRef = React.useRef<HTMLDivElement>(null);
   const isOffline = !navigator.onLine;
@@ -309,9 +315,13 @@ const TransactionsPage: React.FC = () => {
 
   React.useLayoutEffect(() => {
     if (!query.isSuccess) return;
+    if (highlightDate) {
+      const el = pageRef.current?.querySelector(`[data-date="${highlightDate}"]`);
+      if (el) { el.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
+    }
     const scrollEl = pageRef.current?.parentElement as HTMLElement | null;
     if (scrollEl) scrollEl.scrollTop = _savedTxState?.scrollTop ?? 0;
-  }, [query.isSuccess]);
+  }, [query.isSuccess, highlightDate]);
 
   function prevMonth() {
     if (month === 1) { setYear(y => y - 1); setMonth(12); }
@@ -430,7 +440,7 @@ const TransactionsPage: React.FC = () => {
               const income = txList.filter((t) => t.transaction_type === "INCOME").reduce((s, t) => s + t.amount, 0);
               const expense = txList.filter((t) => t.transaction_type === "EXPENSE").reduce((s, t) => s + t.amount, 0);
               return (
-                <div key={date}>
+                <div key={date} data-date={date}>
                   <div className="mb-2 flex items-center justify-between px-1">
                     <p className="text-xs font-medium text-[var(--color-text-secondary)]">
                       {formatDate(date)}

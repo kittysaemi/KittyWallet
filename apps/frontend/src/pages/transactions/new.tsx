@@ -13,6 +13,7 @@ const TransactionNewPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const lastCreatedDateRef = React.useRef<string>();
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
   const [analysisError, setAnalysisError] = React.useState("");
   const [receiptDraft, setReceiptDraft] = React.useState<ReceiptAnalysisDraft>();
@@ -78,8 +79,11 @@ const TransactionNewPage: React.FC = () => {
           {analysisError && <p className="mb-3 text-sm text-[var(--color-danger)]">{analysisError}</p>}
           <TransactionForm
             receiptDraft={receiptDraft}
-            onCreated={(finalDraft) => { if (receiptDraft) void receiptAnalysisApi.saveTrainingSample(receiptDraft, finalDraft); }}
-            onSuccess={() => navigate(-1)}
+            onCreated={(finalDraft) => {
+              lastCreatedDateRef.current = finalDraft.transaction_date;
+              if (receiptDraft) void receiptAnalysisApi.saveTrainingSample(receiptDraft, finalDraft);
+            }}
+            onSuccess={() => navigate("/transactions", { state: { highlightDate: lastCreatedDateRef.current } })}
           />
         </div>
       </div>
