@@ -67,6 +67,28 @@ function groupByDate(items: TransactionItem[]): Map<string, TransactionItem[]> {
   return map;
 }
 
+// 할부 거래는 installment_id당 가장 낮은 seq(1회차 우선) 하나만 유지
+function deduplicateInstallments(items: TransactionItem[]): TransactionItem[] {
+  const best = new Map<number, TransactionItem>();
+  for (const item of items) {
+    if (!item.installment_id) continue;
+    const prev = best.get(item.installment_id);
+    if (!prev || (item.installment_seq ?? Infinity) < (prev.installment_seq ?? Infinity)) {
+      best.set(item.installment_id, item);
+    }
+  }
+  const seen = new Set<number>();
+  return items.filter((item) => {
+    if (!item.installment_id) return true;
+    if (seen.has(item.installment_id)) return false;
+    if (best.get(item.installment_id)?.transaction_id === item.transaction_id) {
+      seen.add(item.installment_id);
+      return true;
+    }
+    return false;
+  });
+}
+
 
 interface TransactionRowProps {
   item: TransactionItem;
@@ -346,7 +368,7 @@ const BrowseTab: React.FC<BrowseTabProps> = ({
     setSearched(false);
   }
 
-  const items = query.data?.data?.items ?? [];
+  const items = deduplicateInstallments(query.data?.data?.items ?? []);
 
   const inputClass =
     "w-full rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-caption)] focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary-soft)]";
@@ -458,14 +480,17 @@ const KeywordTab: React.FC<{ iconMap: Map<number, IconItem>; categoryIconMap: Ma
   });
 
   const filtered = React.useMemo(() => {
-    if (!submittedKeyword || !query.data?.data?.items) return query.data?.data?.items ?? [];
+    const all = query.data?.data?.items ?? [];
     const kw = submittedKeyword.toLowerCase();
-    return query.data.data.items.filter(
-      (tx) =>
-        (tx.memo ?? "").toLowerCase().includes(kw) ||
-        tx.wallet_name.toLowerCase().includes(kw) ||
-        tx.category_name.toLowerCase().includes(kw)
-    );
+    const matched = submittedKeyword
+      ? all.filter(
+          (tx) =>
+            (tx.memo ?? "").toLowerCase().includes(kw) ||
+            tx.wallet_name.toLowerCase().includes(kw) ||
+            tx.category_name.toLowerCase().includes(kw)
+        )
+      : all;
+    return deduplicateInstallments(matched);
   }, [query.data, submittedKeyword]);
 
   function handleSearch(e: React.FormEvent) {
