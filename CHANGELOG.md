@@ -1,3 +1,15 @@
+## [1.26.11](https://github.com/kittysaemi/KittyWallet/compare/v1.26.10...v1.26.11) (2026-06-24)
+
+
+### Bug Fixes
+
+* keep receipt OCR requests available ([be1ed1f](https://github.com/kittysaemi/KittyWallet/commit/be1ed1f0b4f46b00515435cb2f57732d78065d66))
+
+
+### Performance Improvements
+
+* reduce receipt OCR upload latency ([ece77a3](https://github.com/kittysaemi/KittyWallet/commit/ece77a3fd7c2c0813a79a9191dbb4b28208dceee))
+
 ## [1.26.10](https://github.com/kittysaemi/KittyWallet/compare/v1.26.9...v1.26.10) (2026-06-24)
 
 
