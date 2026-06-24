@@ -114,4 +114,13 @@ K2\t\t\t430,000\t\t 1\t\t430,000
     expect(result.fields.totalAmount?.value).toBe(430100);
     expect(result.items.map((item) => item.value)).toEqual(["K2"]);
   });
+
+  it("parses a compact approval date and sales amount without mistaking an order number for a date", () => {
+    const result = parser.parse(`주문번호 2026062122759161
+승인일시 202606231404
+판매 금액 1,530,000원`);
+
+    expect(result.fields.transactionDate?.value).toBe("2026-06-23");
+    expect(result.fields.totalAmount?.value).toBe(1530000);
+  });
 });
