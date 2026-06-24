@@ -1,3 +1,10 @@
+## [1.26.2](https://github.com/kittysaemi/KittyWallet/compare/v1.26.1...v1.26.2) (2026-06-24)
+
+
+### Bug Fixes
+
+* configure production receipt OCR ([e17dc04](https://github.com/kittysaemi/KittyWallet/commit/e17dc043f2fa86e01a4c4d8200fab7c9c77b82c3))
+
 ## [1.26.1](https://github.com/kittysaemi/KittyWallet/compare/v1.26.0...v1.26.1) (2026-06-24)
 
 
