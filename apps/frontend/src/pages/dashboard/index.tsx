@@ -9,7 +9,7 @@ import {
   WifiOff
 } from "lucide-react";
 
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useNavigationType } from "react-router-dom";
 import { dashboardApi } from "../../entities/dashboard/api/dashboardApi";
 import { useAuthStore } from "../../entities/auth/store/authStore";
 import { authApi } from "../../entities/auth/api/authApi";
@@ -54,11 +54,15 @@ const SumCard: React.FC<SumCardProps> = ({ label, amount, sign = "+", labelColor
   </div>
 );
 
+let _savedDashboardScrollTop: number | null = null;
+
 // ─── 메인 페이지 ─────────────────────────────────────────────
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const isOffline = !navigator.onLine;
+  const navigationType = useNavigationType();
+  const pageRef = React.useRef<HTMLDivElement>(null);
 
   const query = useQuery({
     queryKey: ["dashboard"],
@@ -78,6 +82,20 @@ const DashboardPage: React.FC = () => {
     queryFn: () => iconApi.getIcons(true),
     staleTime: STALE_TIME.LONG
   });
+
+  React.useEffect(() => {
+    return () => {
+      const scrollEl = pageRef.current?.parentElement as HTMLElement | null;
+      if (scrollEl) _savedDashboardScrollTop = scrollEl.scrollTop;
+    };
+  }, []);
+
+  React.useLayoutEffect(() => {
+    if (!query.isSuccess) return;
+    const scrollEl = pageRef.current?.parentElement as HTMLElement | null;
+    if (!scrollEl) return;
+    scrollEl.scrollTop = navigationType === "POP" ? (_savedDashboardScrollTop ?? 0) : 0;
+  }, [query.isSuccess, navigationType]);
 
   const iconMap = React.useMemo(() => {
     const map = new Map<number, IconItem>();
@@ -103,7 +121,7 @@ const DashboardPage: React.FC = () => {
     (data?.spending_summary.card_expense_amount ?? 0);
 
   return (
-    <div className="bg-[var(--color-bg-primary)]">
+    <div ref={pageRef} className="bg-[var(--color-bg-primary)]">
       <div className="mx-auto max-w-[480px] px-4 pb-6 pt-6">
 
         {/* PWA 설치 배너 */}

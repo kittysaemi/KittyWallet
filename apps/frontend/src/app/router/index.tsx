@@ -51,8 +51,8 @@ const NavLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const scrollRef = React.useRef<HTMLDivElement>(null);
   React.useLayoutEffect(() => {
-    // /transactions manages its own scroll restoration
-    if (location.pathname === "/transactions") return;
+    // these pages manage their own scroll restoration
+    if (location.pathname === "/transactions" || location.pathname === "/dashboard") return;
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
   }, [location.pathname]);
   return (
