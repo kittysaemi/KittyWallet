@@ -1,3 +1,22 @@
+# [1.27.0](https://github.com/kittysaemi/KittyWallet/compare/v1.26.12...v1.27.0) (2026-06-24)
+
+
+### Bug Fixes
+
+* **backend:** TransactionItem 타입에 없는 installment_id 필드 제거 ([9103320](https://github.com/kittysaemi/KittyWallet/commit/910332029f92d7cdcab2157a52cb286690d930c6))
+* **dashboard:** 상세화면 뒤로가기 시 스크롤 위치 복원 ([#353](https://github.com/kittysaemi/KittyWallet/issues/353)) ([cb9fa4b](https://github.com/kittysaemi/KittyWallet/commit/cb9fa4b7e70ab17e1200728559fb4071efc7e6cc))
+* **search:** 상세화면 뒤로가기 시 스크롤 위치 복원 ([#353](https://github.com/kittysaemi/KittyWallet/issues/353)) ([f567754](https://github.com/kittysaemi/KittyWallet/commit/f567754b797832b6cd25973db4c109ef2ae5c1ff))
+* **ui:** 검색 결과 날짜에 년도 표시 추가 ([#353](https://github.com/kittysaemi/KittyWallet/issues/353)) ([4f04e49](https://github.com/kittysaemi/KittyWallet/commit/4f04e496eca721eb6da097bbb8c7220567b9847a))
+* **ui:** 검색 결과 지출 금액 색상 적용 ([#353](https://github.com/kittysaemi/KittyWallet/issues/353)) ([c06fb65](https://github.com/kittysaemi/KittyWallet/commit/c06fb6523414f8e795253fcb4c3ccaeafac1b7d7))
+* **ui:** 검색 조회 미래 날짜 허용 및 할부 중복 제거 수정 ([#353](https://github.com/kittysaemi/KittyWallet/issues/353)) ([e79d6fd](https://github.com/kittysaemi/KittyWallet/commit/e79d6fd87c37ecb1b06379b5e6d92836d0c9d69f))
+* **ui:** 검색 화면 입력 필드 자동 확대 방지 ([#353](https://github.com/kittysaemi/KittyWallet/issues/353)) ([0b0ea2d](https://github.com/kittysaemi/KittyWallet/commit/0b0ea2defdea4cfbe23f99df155ec1a39308e496))
+* **ui:** 하드코딩 색상 CSS 변수로 교체 ([#353](https://github.com/kittysaemi/KittyWallet/issues/353)) ([360ab65](https://github.com/kittysaemi/KittyWallet/commit/360ab6549650c86b67cf9ec9b29ad030ac33660e))
+
+
+### Features
+
+* **ui:** --color-income CSS 변수 추가 및 전체 적용 ([#353](https://github.com/kittysaemi/KittyWallet/issues/353)) ([0c86405](https://github.com/kittysaemi/KittyWallet/commit/0c86405177160afc5fa71aaaf1c917c484e14cf1)), closes [#3B82F6](https://github.com/kittysaemi/KittyWallet/issues/3B82F6)
+
 ## [1.26.12](https://github.com/kittysaemi/KittyWallet/compare/v1.26.11...v1.26.12) (2026-06-24)
 
 
