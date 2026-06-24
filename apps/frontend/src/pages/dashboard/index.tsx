@@ -1,5 +1,6 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
+import { STALE_TIME, RETRY, QUERY_LIMIT } from "../../shared/constants/queryConfig";
 import {
   LogOut,
   PawPrint,
@@ -61,21 +62,21 @@ const DashboardPage: React.FC = () => {
 
   const query = useQuery({
     queryKey: ["dashboard"],
-    queryFn: () => dashboardApi.getDashboard({ recent_limit: 5, summary_period: "MONTH" }),
-    staleTime: 0,
-    retry: isOffline ? false : 2
+    queryFn: () => dashboardApi.getDashboard({ recent_limit: QUERY_LIMIT.TOP5, summary_period: "MONTH" }),
+    staleTime: STALE_TIME.REALTIME,
+    retry: isOffline ? false : RETRY.STANDARD
   });
 
   const categoriesQuery = useQuery({
     queryKey: ["categories", "active"],
     queryFn: () => categoryApi.getCategories(true),
-    staleTime: 5 * 60 * 1000
+    staleTime: STALE_TIME.MEDIUM
   });
 
   const iconsQuery = useQuery({
     queryKey: ["icons", "select"],
     queryFn: () => iconApi.getIcons(true),
-    staleTime: 10 * 60 * 1000
+    staleTime: STALE_TIME.LONG
   });
 
   const iconMap = React.useMemo(() => {

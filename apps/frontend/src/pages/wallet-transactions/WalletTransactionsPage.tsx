@@ -1,4 +1,5 @@
 import React from "react";
+import { STALE_TIME, GC_TIME, RETRY, QUERY_LIMIT } from "../../shared/constants/queryConfig";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Loader2, RefreshCw, WifiOff } from "lucide-react";
@@ -76,15 +77,15 @@ const WalletTransactionsPage: React.FC<WalletTransactionsPageProps> = ({ walletT
   const accountQuery = useQuery({
     queryKey: ["accounts"],
     queryFn: () => accountApi.getAccounts(),
-    staleTime: 60_000,
-    retry: isOffline ? false : 2,
+    staleTime: STALE_TIME.MINUTE,
+    retry: isOffline ? false : RETRY.STANDARD,
     enabled: walletType === "ACCOUNT",
   });
   const cardsQuery = useQuery({
     queryKey: ["cards"],
     queryFn: () => cardApi.getCards(),
-    staleTime: 60_000,
-    retry: isOffline ? false : 2,
+    staleTime: STALE_TIME.MINUTE,
+    retry: isOffline ? false : RETRY.STANDARD,
     enabled: walletType === "CARD",
   });
 
@@ -101,13 +102,13 @@ const WalletTransactionsPage: React.FC<WalletTransactionsPageProps> = ({ walletT
   const categoriesQuery = useQuery({
     queryKey: ["categories", "active"],
     queryFn: () => categoryApi.getCategories(true),
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME.MEDIUM,
   });
 
   const iconsQuery = useQuery({
     queryKey: ["icons", "select"],
     queryFn: () => iconApi.getIcons(true),
-    staleTime: 10 * 60 * 1000,
+    staleTime: STALE_TIME.LONG,
   });
 
   const iconMap = React.useMemo(() => {
@@ -131,7 +132,7 @@ const WalletTransactionsPage: React.FC<WalletTransactionsPageProps> = ({ walletT
         start_date: start,
         end_date: end,
         page: pageParam as number,
-        limit: 20,
+        limit: QUERY_LIMIT.PAGE,
       }),
     initialPageParam: 1,
     getNextPageParam: (lastPage, allPages) => {
@@ -139,9 +140,9 @@ const WalletTransactionsPage: React.FC<WalletTransactionsPageProps> = ({ walletT
       const total = lastPage.data?.total_count ?? 0;
       return loaded < total ? allPages.length + 1 : undefined;
     },
-    staleTime: 30_000,
-    gcTime: 10 * 60 * 1000,
-    retry: isOffline ? false : 3,
+    staleTime: STALE_TIME.SHORT,
+    gcTime: GC_TIME.DEFAULT,
+    retry: isOffline ? false : RETRY.AGGRESSIVE,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10_000),
   });
 

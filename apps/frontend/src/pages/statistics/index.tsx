@@ -1,5 +1,6 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
+import { STALE_TIME, RETRY, QUERY_LIMIT } from "../../shared/constants/queryConfig";
 import {
   CategoryScale,
   Chart,
@@ -459,10 +460,10 @@ const HeatmapContent: React.FC<{
         end_date: selectedDate!,
         transaction_type: "EXPENSE",
         page: 1,
-        limit: 100
+        limit: QUERY_LIMIT.DATE_RANGE
       }),
     enabled: selectedDate != null,
-    staleTime: 30 * 1000
+    staleTime: STALE_TIME.SHORT
   });
   const selectedTransactions = selectedTransactionsQuery.data?.data?.items ?? [];
 
@@ -1258,8 +1259,8 @@ const CategoryExpenseContent: React.FC<{
   const query = useQuery({
     queryKey: ["statistics", "category-expenses", queryParams],
     queryFn: () => statisticsApi.getCategoryExpenseStatistics(queryParams),
-    staleTime: 30 * 1000,
-    retry: isOffline ? false : 2
+    staleTime: STALE_TIME.SHORT,
+    retry: isOffline ? false : RETRY.STANDARD
   });
 
   const data: CategoryExpenseData | null = query.data?.data ?? null;
@@ -1433,8 +1434,8 @@ const StatisticsPage: React.FC = () => {
   const monthlyQuery = useQuery({
     queryKey: ["statistics", "monthly", monthValue],
     queryFn: () => statisticsApi.getMonthlyStatistics({ month: monthValue }),
-    staleTime: 30 * 1000,
-    retry: isOffline ? false : 2,
+    staleTime: STALE_TIME.SHORT,
+    retry: isOffline ? false : RETRY.STANDARD,
     enabled: activeTab === "spending" && viewMode === "MONTH"
   });
 
@@ -1446,16 +1447,16 @@ const StatisticsPage: React.FC = () => {
         end_date: weekRange.end,
         group_by: "DAY"
       }),
-    staleTime: 30 * 1000,
-    retry: isOffline ? false : 2,
+    staleTime: STALE_TIME.SHORT,
+    retry: isOffline ? false : RETRY.STANDARD,
     enabled: activeTab === "spending" && viewMode === "WEEK"
   });
 
   const summaryQuery = useQuery({
     queryKey: ["statistics", "summary", monthValue],
     queryFn: () => statisticsApi.getSummaryStatistics({ month: monthValue }),
-    staleTime: 30 * 1000,
-    retry: isOffline ? false : 2,
+    staleTime: STALE_TIME.SHORT,
+    retry: isOffline ? false : RETRY.STANDARD,
     enabled: activeTab === "summary"
   });
 
@@ -1463,8 +1464,8 @@ const StatisticsPage: React.FC = () => {
   const categoryTopMonthQuery = useQuery({
     queryKey: ["statistics", "category-top", monthValue],
     queryFn: () => statisticsApi.getCategoryTopStatistics({ month: monthValue }),
-    staleTime: 30 * 1000,
-    retry: isOffline ? false : 2,
+    staleTime: STALE_TIME.SHORT,
+    retry: isOffline ? false : RETRY.STANDARD,
     enabled: activeTab === "top5" && viewMode === "MONTH"
   });
 
@@ -1475,10 +1476,10 @@ const StatisticsPage: React.FC = () => {
         start_date: weekRange.start,
         end_date: weekRange.end,
         transaction_type: "EXPENSE",
-        limit: 5
+        limit: QUERY_LIMIT.TOP5
       }),
-    staleTime: 30 * 1000,
-    retry: isOffline ? false : 2,
+    staleTime: STALE_TIME.SHORT,
+    retry: isOffline ? false : RETRY.STANDARD,
     enabled: activeTab === "top5" && viewMode === "WEEK"
   });
 
@@ -1489,34 +1490,34 @@ const StatisticsPage: React.FC = () => {
         start_date: weekRange.start,
         end_date: weekRange.end,
         transaction_type: "INCOME",
-        limit: 5
+        limit: QUERY_LIMIT.TOP5
       }),
-    staleTime: 30 * 1000,
-    retry: isOffline ? false : 2,
+    staleTime: STALE_TIME.SHORT,
+    retry: isOffline ? false : RETRY.STANDARD,
     enabled: activeTab === "top5" && viewMode === "WEEK"
   });
 
   const calendarQuery = useQuery({
     queryKey: ["statistics", "calendar", monthValue],
     queryFn: () => statisticsApi.getCalendarStatistics({ month: monthValue }),
-    staleTime: 30 * 1000,
-    retry: isOffline ? false : 2,
+    staleTime: STALE_TIME.SHORT,
+    retry: isOffline ? false : RETRY.STANDARD,
     enabled: activeTab === "heatmap"
   });
 
   const sankeyQuery = useQuery({
     queryKey: ["statistics", "sankey", monthValue],
     queryFn: () => statisticsApi.getSankeyStatistics({ month: monthValue }),
-    staleTime: 30 * 1000,
-    retry: isOffline ? false : 2,
+    staleTime: STALE_TIME.SHORT,
+    retry: isOffline ? false : RETRY.STANDARD,
     enabled: activeTab === "flow" && flowMode === "expense"
   });
 
   const sankeyIncomeQuery = useQuery({
     queryKey: ["statistics", "sankey-income", monthValue],
     queryFn: () => statisticsApi.getSankeyIncomeStatistics({ month: monthValue }),
-    staleTime: 30 * 1000,
-    retry: isOffline ? false : 2,
+    staleTime: STALE_TIME.SHORT,
+    retry: isOffline ? false : RETRY.STANDARD,
     enabled: activeTab === "flow" && flowMode === "income"
   });
 
@@ -1524,15 +1525,15 @@ const StatisticsPage: React.FC = () => {
     queryKey: ["statistics", "category-top-income", monthValue],
     queryFn: () =>
       statisticsApi.getCategoryTopStatistics({ month: monthValue, transaction_type: "INCOME" }),
-    staleTime: 30 * 1000,
-    retry: isOffline ? false : 2,
+    staleTime: STALE_TIME.SHORT,
+    retry: isOffline ? false : RETRY.STANDARD,
     enabled: activeTab === "top5" && viewMode === "MONTH"
   });
 
   const iconsQuery = useQuery({
     queryKey: ["icons", "select"],
     queryFn: () => iconApi.getIcons(true),
-    staleTime: 10 * 60 * 1000
+    staleTime: STALE_TIME.LONG
   });
 
   const iconMap = React.useMemo(() => {

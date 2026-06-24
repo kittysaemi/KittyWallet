@@ -10,6 +10,7 @@ import type { IconItem } from "../../entities/icon/model/icon.types";
 import { IconRenderer } from "../../shared/ui/IconRenderer";
 import { useTimezone } from "../../shared/hooks/useTimezone";
 import { getTodayInTimezone } from "../../shared/utils/date";
+import { STALE_TIME, RETRY, QUERY_LIMIT } from "../../shared/constants/queryConfig";
 import { accountApi } from "../../entities/account/api/accountApi";
 import { cardApi } from "../../entities/card/api/cardApi";
 import { getAllOfflineTransactions } from "../../pwa/indexed-db/repositories/offlineTransaction.repository";
@@ -212,33 +213,33 @@ const TransactionsPage: React.FC = () => {
   const query = useQuery({
     queryKey: ["transactions", year, month, page],
     queryFn: () =>
-      transactionApi.getTransactions({ start_date: start, end_date: end, page, limit: 20 }),
-    staleTime: 30 * 1000,
-    retry: isOffline ? false : 2
+      transactionApi.getTransactions({ start_date: start, end_date: end, page, limit: QUERY_LIMIT.PAGE }),
+    staleTime: STALE_TIME.SHORT,
+    retry: isOffline ? false : RETRY.STANDARD
   });
 
   const categoriesQuery = useQuery({
     queryKey: ["categories", "active"],
     queryFn: () => categoryApi.getCategories(true),
-    staleTime: 5 * 60 * 1000
+    staleTime: STALE_TIME.MEDIUM
   });
 
   const iconsQuery = useQuery({
     queryKey: ["icons", "select"],
     queryFn: () => iconApi.getIcons(true),
-    staleTime: 10 * 60 * 1000
+    staleTime: STALE_TIME.LONG
   });
 
   const accountsQuery = useQuery({
     queryKey: ["accounts"],
     queryFn: () => accountApi.getAccounts({ include_balance: true }),
-    staleTime: 5 * 60 * 1000
+    staleTime: STALE_TIME.MEDIUM
   });
 
   const cardsQuery = useQuery({
     queryKey: ["cards"],
     queryFn: () => cardApi.getCards(),
-    staleTime: 5 * 60 * 1000
+    staleTime: STALE_TIME.MEDIUM
   });
 
   const [pendingTxs, setPendingTxs] = React.useState<OfflineTransaction[]>([]);

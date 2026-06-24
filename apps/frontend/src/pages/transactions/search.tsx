@@ -12,6 +12,7 @@ import type { IconItem } from "../../entities/icon/model/icon.types";
 import { IconRenderer } from "../../shared/ui/IconRenderer";
 import { useTimezone } from "../../shared/hooks/useTimezone";
 import { getTodayInTimezone } from "../../shared/utils/date";
+import { STALE_TIME, QUERY_LIMIT } from "../../shared/constants/queryConfig";
 
 const cardClass =
   "rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] shadow-[0_4px_16px_var(--color-card-shadow)]";
@@ -325,10 +326,10 @@ const BrowseTab: React.FC<BrowseTabProps> = ({
         wallet_type: params?.walletType,
         wallet_id: params?.walletId,
         category_id: params?.catId,
-        limit: 200
+        limit: QUERY_LIMIT.DATE_RANGE
       }),
     enabled: !!params,
-    staleTime: 30 * 1000
+    staleTime: STALE_TIME.SHORT
   });
 
   const iconsForBrowse = iconMap;
@@ -473,9 +474,9 @@ const KeywordTab: React.FC<{ iconMap: Map<number, IconItem>; categoryIconMap: Ma
   const query = useQuery({
     queryKey: ["transactions", "keyword-all"],
     queryFn: () =>
-      transactionApi.getTransactions({ limit: 500 }),
+      transactionApi.getTransactions({ limit: QUERY_LIMIT.KEYWORD_SEARCH }),
     enabled: triggered,
-    staleTime: 60 * 1000
+    staleTime: STALE_TIME.MINUTE
   });
 
   const filtered = React.useMemo(() => {
@@ -651,22 +652,22 @@ const TransactionSearchPage: React.FC = () => {
   const accountsQuery = useQuery({
     queryKey: ["accounts"],
     queryFn: () => accountApi.getAccounts(),
-    staleTime: 5 * 60 * 1000
+    staleTime: STALE_TIME.MEDIUM
   });
   const cardsQuery = useQuery({
     queryKey: ["cards"],
     queryFn: () => cardApi.getCards(),
-    staleTime: 5 * 60 * 1000
+    staleTime: STALE_TIME.MEDIUM
   });
   const categoriesQuery = useQuery({
     queryKey: ["categories", "active"],
     queryFn: () => categoryApi.getCategories(true),
-    staleTime: 5 * 60 * 1000
+    staleTime: STALE_TIME.MEDIUM
   });
   const iconsQuery = useQuery({
     queryKey: ["icons", "select"],
     queryFn: () => iconApi.getIcons(true),
-    staleTime: 10 * 60 * 1000
+    staleTime: STALE_TIME.LONG
   });
 
   const iconMap = React.useMemo(() => {
