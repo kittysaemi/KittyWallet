@@ -4,7 +4,7 @@ import axios, {
   type AxiosRequestConfig,
   type InternalAxiosRequestConfig
 } from "axios";
-import type { ApiErrorResponse, ApiResponse, HealthStatus } from "@kittywallet/shared-types";
+import { toPublicErrorCode, type ApiErrorResponse, type ApiResponse, type HealthStatus } from "@kittywallet/shared-types";
 
 export const API_V1_PREFIX = "/api/v1";
 
@@ -45,7 +45,7 @@ export function createErrorResponse(code: string, message: string): ApiErrorResp
     success: false,
     data: null,
     error: {
-      code,
+      code: toPublicErrorCode(code),
       message
     }
   };

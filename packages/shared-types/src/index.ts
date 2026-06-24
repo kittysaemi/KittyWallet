@@ -19,3 +19,5 @@ export type HealthStatus = {
   status: "ok" | "error";
   timestamp: string;
 };
+
+export { PUBLIC_ERROR_CODES, isPublicErrorCode, toPublicErrorCode } from "./errorCodes";

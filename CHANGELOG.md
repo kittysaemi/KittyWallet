@@ -1,3 +1,11 @@
+## [1.27.1](https://github.com/kittysaemi/KittyWallet/compare/v1.27.0...v1.27.1) (2026-06-24)
+
+
+### Bug Fixes
+
+* improve receipt amount and date parsing ([65288de](https://github.com/kittysaemi/KittyWallet/commit/65288ded5758547577c3610e81dd2e4fcd8cba9d))
+* support OCR amount labels and frontend build ([e482685](https://github.com/kittysaemi/KittyWallet/commit/e4826855ed6d8a96a3cf973a00624c187938802a))
+
 # [1.27.0](https://github.com/kittysaemi/KittyWallet/compare/v1.26.12...v1.27.0) (2026-06-24)
 
 
