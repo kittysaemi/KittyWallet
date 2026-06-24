@@ -1,13 +1,16 @@
 import { Injectable } from "@nestjs/common";
 import type { TextParserProfileHandler, TextParseResult } from "./text-parser.types";
 
-const DATE_PATTERN = /\b(20\d{2})[.\-/\s]+(0?[1-9]|1[0-2])[.\-/\s]+(0?[1-9]|[12]\d|3[01])\b/;
+const DATE_PATTERN = /\b(20\d{2})[.\-/\s]+(0?[1-9]|1[0-2])[.\-/\s]+(0?[1-9]|[12]\d|3[01])(?:\s*[-.:;]?\s*(?:[01]\d|2[0-3])(?:[:;.]?[0-5]\d){1,2})?(?!\d)/;
+const SHORT_DATE_PATTERN = /\b(\d{2})[.\-/\s]+(0?[1-9]|1[0-2])[.\-/\s]+(0?[1-9]|[12]\d|3[01])(?:\s*[-.:;]?\s*(?:[01]\d|2[0-3])(?:[:;.]?[0-5]\d){1,2})?(?!\d)/;
 const COMPACT_DATETIME_PATTERN = /\b(20\d{2})(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])(?:[01]\d|2[0-3])(?:[0-5]\d){2}\b/;
 const AMOUNT_PATTERN = /(?:₩|KRW)?\s*([0-9]{1,3}(?:[,\s][0-9]{3})+|[0-9]+)\s*(?:원|KRW)?/i;
-const TOTAL_LABEL = /(합계|총액|결제\s*금액|판매\s*금액|매출액|받을\s*금액|지불\s*금액)/;
-const DATE_LABEL = /(주문\s*날짜|거래\s*날짜|결제\s*날짜|승인\s*일시)/;
-const ITEM_LABEL = /(상품명|품목|상품\s*내역)/;
+const TOTAL_LABELS = [/(총[\s'":;,\-]*합[\s'":;,\-]*계|결[\s'":;,\-]*제[\s'":;,\-]*금[\s'":;,\-]*액|판[매미][\s'":;,\-]*금액|매출액)/, /(합계|총액|결제\s*금액|받을\s*금액|지불\s*금액)/];
+const DATE_LABELS = [/(거래\s*일시|결제\s*일시|승인\s*일시)/, /(거래\s*일|거래\s*날짜|주문\s*날짜|결제\s*날짜)/];
+const PRODUCT_LABEL = /(상품명|품목|상품\s*내역|구매처)/;
+const MERCHANT_LABEL = /(공급자명|상호|가맹점명)/;
 const EXCLUDED_LABEL = /(주문\s*번호|회사명|서명)/;
+const NON_MEMO_PATTERN = /(사업자|대표자|주소|전화|tel|카드|승인|번호|금액|부가세|공급|결제|거래|일시|합계|매출|주문)/i;
 
 @Injectable()
 export class ReceiptTransactionTextParser implements TextParserProfileHandler {
@@ -18,13 +21,19 @@ export class ReceiptTransactionTextParser implements TextParserProfileHandler {
     const lines = rawLines.map((line) => line.replace(/\s+/g, " ").trim());
     const warnings: string[] = [];
     const excludedIndexes = this.getExcludedIndexes(lines);
-    const labeledDate = this.findLabeledValues(lines, DATE_LABEL)[0];
+    const labeledDate = this.findFirstLabeledValue(lines, DATE_LABELS);
     const date = (labeledDate ? this.toDate(labeledDate) : undefined) ?? lines.map((line) => this.toDate(line)).find(Boolean);
-    const labeledAmounts = this.findLabeledValues(lines, TOTAL_LABEL);
-    const totalCandidates = (labeledAmounts.length ? labeledAmounts.map((value) => this.toAmount(value)) : lines.filter((line) => TOTAL_LABEL.test(line)).map((line) => this.toAmount(line))).filter((value): value is number => value !== undefined);
+    const labeledAmounts = this.findFirstLabeledValues(lines, TOTAL_LABELS, true);
+    const totalCandidates = labeledAmounts.map((value) => this.toAmount(value)).filter((value): value is number => value !== undefined);
+    if (!totalCandidates.length) {
+      const cardApprovalAmounts = this.findCardApprovalAmounts(lines);
+      if (cardApprovalAmounts.length === 1) totalCandidates.push(cardApprovalAmounts[0]);
+    }
     const merchant = lines.find((line, index) => this.isTextCandidate(line, excludedIndexes.has(index)));
     const labeledItems = this.findProductItems(lines, rawLines);
-    const itemValues = labeledItems.length ? labeledItems : lines.filter((line, index) => this.isTextCandidate(line, excludedIndexes.has(index))).slice(1, 9);
+    const merchantItems = this.findLabeledValues(lines, MERCHANT_LABEL);
+    const fallbackItem = this.findTopMemoCandidate(lines, excludedIndexes);
+    const itemValues = labeledItems.length ? labeledItems : merchantItems.length ? merchantItems : fallbackItem ? [fallbackItem] : [];
     const items = [...new Set(itemValues)].map((value) => ({ value, confidence: labeledItems.length ? 0.7 : 0.4 }));
 
     if (!date) warnings.push("거래 날짜를 확인해 주세요.");
@@ -48,31 +57,64 @@ export class ReceiptTransactionTextParser implements TextParserProfileHandler {
     const match = line.match(DATE_PATTERN);
     if (match) return `${match[1]}-${match[2].padStart(2, "0")}-${match[3].padStart(2, "0")}`;
     const compactMatch = line.match(COMPACT_DATETIME_PATTERN);
-    return compactMatch ? `${compactMatch[1]}-${compactMatch[2]}-${compactMatch[3]}` : undefined;
+    if (compactMatch) return `${compactMatch[1]}-${compactMatch[2]}-${compactMatch[3]}`;
+    const shortMatch = line.match(SHORT_DATE_PATTERN);
+    return shortMatch ? `20${shortMatch[1]}-${shortMatch[2].padStart(2, "0")}-${shortMatch[3].padStart(2, "0")}` : undefined;
   }
 
   private toAmount(line: string): number | undefined {
-    const match = line.match(AMOUNT_PATTERN);
-    const value = match ? Number(match[1].replace(/[\s,]/g, "")) : NaN;
-    return Number.isSafeInteger(value) && value > 0 ? value : undefined;
+    const values = [...line.matchAll(new RegExp(AMOUNT_PATTERN.source, "gi"))]
+      .map((match) => Number(match[1].replace(/[\s,]/g, "")))
+      .filter((value) => Number.isSafeInteger(value) && value > 0);
+    return values.length ? Math.max(...values) : undefined;
   }
 
-  private findLabeledValues(lines: string[], label: RegExp): string[] {
+  private findLabeledValues(lines: string[], label: RegExp, joinFollowingLines = false): string[] {
     const values: string[] = [];
     for (let index = 0; index < lines.length; index += 1) {
-      if (!label.test(lines[index])) continue;
-      const valueOnSameLine = lines[index].replace(label, "").replace(/^[:：\s]+/, "").trim();
-      const value = valueOnSameLine || lines[index + 1];
+      const currentLine = lines[index];
+      if (label.test(currentLine)) {
+        const valueOnSameLine = currentLine.replace(label, "").replace(/^[:：\s]+/, "").trim();
+        const value = valueOnSameLine || (joinFollowingLines ? lines.slice(index + 1, index + 3).join(" ") : lines[index + 1]);
+        if (value) values.push(value);
+        continue;
+      }
+      const combined = lines.slice(index, index + 3).join(" ");
+      const combinedMatch = combined.match(label);
+      if (!combinedMatch || (combinedMatch.index ?? 0) > currentLine.length) continue;
+      const value = combined.replace(label, "").replace(/^[:：\s]+/, "").trim();
       if (value) values.push(value);
     }
     return values;
   }
 
+  private findCardApprovalAmounts(lines: string[]): number[] {
+    const isCardApproval = lines.some((line) => /(신[용음]\s*카드\s*(승인|승민)|매출\s*(전표|표))/.test(line));
+    if (!isCardApproval) return [];
+    return [...new Set(lines.filter((line) => /(?:₩\s*\d|\d[\d,\s]*\s*(?:원|KRW)|\b\d{1,3}(?:,\d{3})+\b)/i.test(line)).map((line) => this.toAmount(line)).filter((value): value is number => value !== undefined))];
+  }
+
+  private findFirstLabeledValue(lines: string[], labels: RegExp[]): string | undefined {
+    for (const label of labels) {
+      const value = this.findLabeledValues(lines, label)[0];
+      if (value) return value;
+    }
+    return undefined;
+  }
+
+  private findFirstLabeledValues(lines: string[], labels: RegExp[], joinFollowingLines = false): string[] {
+    for (const label of labels) {
+      const values = this.findLabeledValues(lines, label, joinFollowingLines);
+      if (values.length) return values;
+    }
+    return [];
+  }
+
   private findProductItems(lines: string[], rawLines: string[]): string[] {
     const items: string[] = [];
     for (let index = 0; index < lines.length; index += 1) {
-      if (!ITEM_LABEL.test(lines[index])) continue;
-      const valueOnSameLine = lines[index].replace(ITEM_LABEL, "").replace(/^[:：\s]+/, "").trim();
+      if (!PRODUCT_LABEL.test(lines[index])) continue;
+      const valueOnSameLine = lines[index].replace(PRODUCT_LABEL, "").replace(/^[:：\s]+/, "").trim();
       if (/(단가|수량|금액)/.test(valueOnSameLine)) {
         const productName = this.extractProductName(rawLines[index + 1]);
         if (productName) items.push(productName);
@@ -82,6 +124,13 @@ export class ReceiptTransactionTextParser implements TextParserProfileHandler {
       else if (lines[index + 1]) items.push(lines[index + 1]);
     }
     return items;
+  }
+
+  private findTopMemoCandidate(lines: string[], excludedIndexes: Set<number>): string | undefined {
+    const isSpecialReceipt = lines.some((line) => /(상세 이용내역|신[용음]\s*카드\s*(승인|승민)|매출전표|카드\s*종류)/.test(line));
+    const hasOcrCardApproval = lines.some((line) => /(신[용음]\s*카드\s*(승인|승민)|매출\s*(전표|표))/.test(line));
+    if (!isSpecialReceipt && !hasOcrCardApproval) return undefined;
+    return lines.find((line, index) => !excludedIndexes.has(index) && this.isTextCandidate(line, false) && !NON_MEMO_PATTERN.test(line) && !/(상세 이용내역|신용카드 승인|매출전표|이용내역|결제정보)/.test(line));
   }
 
   private extractProductName(rawLine: string | undefined): string | undefined {
@@ -105,6 +154,6 @@ export class ReceiptTransactionTextParser implements TextParserProfileHandler {
   }
 
   private isTextCandidate(line: string, isExcluded = false): boolean {
-    return !isExcluded && !TOTAL_LABEL.test(line) && !DATE_LABEL.test(line) && !ITEM_LABEL.test(line) && !EXCLUDED_LABEL.test(line) && !DATE_PATTERN.test(line) && !COMPACT_DATETIME_PATTERN.test(line) && !AMOUNT_PATTERN.test(line) && line.length >= 2 && line.length <= 80;
+    return !isExcluded && !/(상세\s*이용내역)/.test(line) && !TOTAL_LABELS.some((label) => label.test(line)) && !DATE_LABELS.some((label) => label.test(line)) && !PRODUCT_LABEL.test(line) && !MERCHANT_LABEL.test(line) && !EXCLUDED_LABEL.test(line) && !NON_MEMO_PATTERN.test(line) && !DATE_PATTERN.test(line) && !COMPACT_DATETIME_PATTERN.test(line) && !SHORT_DATE_PATTERN.test(line) && !/(?:₩\s*\d|\d[\d,\s]*\s*(?:원|KRW))/i.test(line) && line.length >= 2 && line.length <= 80;
   }
 }

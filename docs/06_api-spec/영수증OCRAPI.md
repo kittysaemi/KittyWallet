@@ -36,13 +36,23 @@ interface ReceiptOcrProvider {
 }
 ```
 
-초기 provider는 `TesseractJsReceiptOcrProvider(kor+eng)`다. 유료 외부 OCR·AI API는 사용하지 않는다. 이후 자체 실행하는 오픈소스 OCR 또는 문자 해석 모델로 변경하더라도 프론트엔드와 문자 파싱 API의 계약은 바꾸지 않는다. provider 선택은 환경변수와 백엔드 구현체 등록으로 처리한다.
+기본 provider는 Docker 내부에서 실행하는 `PaddleOCR 3.x(korean)`이며, 유료 외부 OCR·AI API는 사용하지 않는다. 기본값은 한국어 모바일 탐지·인식 모델과 문서 방향 보정만 사용해 모바일 CPU에서도 빠르게 분석한다. 세로 화면에서 하단 전체가 상단보다 현저히 밝은 오버레이 상세 패널을 감지하면, 해당 하단 패널을 확대해 한 번 더 OCR 한다. 문서 왜곡 보정과 텍스트 줄 방향 보정은 느린 사진에서만 환경변수로 켠다. 대비·이진화 이미지 중 하나를 임의로 선택하는 방식은 사용하지 않는다. CPU 환경에서 최신 PaddleOCR의 oneDNN 최적화는 호환성 문제를 피하기 위해 비활성화한다. 모델 파일은 Docker 볼륨에 보존해 컨테이너 재시작 때 다시 내려받지 않는다. `TesseractJsReceiptOcrProvider(kor+eng)`는 fallback provider로 유지한다. 이후 자체 실행하는 오픈소스 OCR 또는 문자 해석 모델로 변경하더라도 프론트엔드와 문자 파싱 API의 계약은 바꾸지 않는다. provider 선택은 환경변수와 백엔드 구현체 등록으로 처리한다.
 
 ```env
-OCR_PROVIDER=tesseract
+OCR_PROVIDER=paddle
+PADDLE_OCR_URL=http://ocr:8000
 OCR_LANGUAGES=kor+eng
-OCR_TIMEOUT_MS=15000
+OCR_TIMEOUT_MS=180000
+PADDLE_OCR_USE_DOC_ORIENTATION=true
+PADDLE_OCR_USE_DOC_UNWARPING=false
+PADDLE_OCR_USE_TEXTLINE_ORIENTATION=false
+PADDLE_OCR_DETECTION_MODEL=PP-OCRv5_mobile_det
+PADDLE_OCR_RECOGNITION_MODEL=korean_PP-OCRv5_mobile_rec
 ```
+
+`paddle`은 제공자 식별자이며 OCR 서비스의 내부 모델 버전과 분리한다. 따라서 향후 다른 OCR 서비스로 교체할 때는 `PADDLE_OCR_URL` 또는 `OCR_PROVIDER`만 변경하고, 거래 등록 화면과 OCR API 호출 코드는 변경하지 않는다.
+
+PaddleOCR CPU 추론은 한 번에 하나의 작업만 처리한다. 분석 요청이 겹치면 뒤 요청은 순서대로 대기하며, 서비스 health check는 OCR 추론과 분리되어 계속 응답한다. 기본 시간 제한은 180초이고 운영 환경에서는 `OCR_TIMEOUT_MS`로 조정한다.
 
 ## 4. 문자 파싱 API
 
