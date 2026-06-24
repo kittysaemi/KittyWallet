@@ -1,3 +1,10 @@
+## [1.26.5](https://github.com/kittysaemi/KittyWallet/compare/v1.26.4...v1.26.5) (2026-06-24)
+
+
+### Bug Fixes
+
+* preserve iOS receipt upload boundary ([76c0ad9](https://github.com/kittysaemi/KittyWallet/commit/76c0ad9fa0397fcdf8f60caed85ce5b8ae924e16))
+
 ## [1.26.4](https://github.com/kittysaemi/KittyWallet/compare/v1.26.3...v1.26.4) (2026-06-24)
 
 
