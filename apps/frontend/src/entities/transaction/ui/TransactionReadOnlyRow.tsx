@@ -86,7 +86,7 @@ export const TransactionReadOnlyRow: React.FC<TransactionReadOnlyRowProps> = ({
           )}
         </p>
       </div>
-      <p className={`shrink-0 text-sm font-semibold ${isIncome ? "text-blue-500" : "text-red-500"}`}>
+      <p className={`shrink-0 text-sm font-semibold ${isIncome ? "text-[var(--color-income)]" : "text-red-500"}`}>
         {isIncome ? "+" : "-"}{fmt(tx.amount + (tx.interest ?? 0))}원
       </p>
     </div>

@@ -121,7 +121,7 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ item, iconMap, catego
       <p
         className={`shrink-0 text-sm font-semibold ${
           item.transaction_type === "INCOME"
-            ? "text-blue-500"
+            ? "text-[var(--color-income)]"
             : "text-[var(--color-danger)]"
         }`}
       >
@@ -184,7 +184,7 @@ const PendingTransactionCard: React.FC<PendingTransactionCardProps> = ({
           </span>
         </p>
       </div>
-      <p className={`shrink-0 text-sm font-semibold ${tx.transaction_type === "INCOME" ? "text-blue-500" : "text-[var(--color-danger)]"}`}>
+      <p className={`shrink-0 text-sm font-semibold ${tx.transaction_type === "INCOME" ? "text-[var(--color-income)]" : "text-[var(--color-danger)]"}`}>
         {tx.transaction_type === "INCOME" ? "+" : "-"}{tx.amount.toLocaleString("ko-KR")}원
       </p>
     </div>
@@ -436,7 +436,7 @@ const TransactionsPage: React.FC = () => {
                     </p>
                     <div className="flex items-center gap-2 text-xs font-medium">
                       {income > 0 && (
-                        <span className="text-blue-500">+{income.toLocaleString("ko-KR")}원</span>
+                        <span className="text-[var(--color-income)]">+{income.toLocaleString("ko-KR")}원</span>
                       )}
                       {expense > 0 && (
                         <span className="text-[var(--color-danger)]">-{expense.toLocaleString("ko-KR")}원</span>

@@ -145,7 +145,7 @@ const TransactionRow: React.FC<TransactionRowProps> = ({ item, iconMap, category
       <p
         className={`shrink-0 text-sm font-semibold ${
           item.transaction_type === "INCOME"
-            ? "text-blue-500"
+            ? "text-[var(--color-income)]"
             : "text-[var(--color-danger)]"
         }`}
       >
@@ -619,7 +619,7 @@ const ResultList: React.FC<{
               </p>
               <div className="flex items-center gap-2 text-xs font-medium">
                 {income > 0 && (
-                  <span className="text-blue-500">+{income.toLocaleString("ko-KR")}원</span>
+                  <span className="text-[var(--color-income)]">+{income.toLocaleString("ko-KR")}원</span>
                 )}
                 {expense > 0 && (
                   <span className="text-[var(--color-text-primary)]">-{expense.toLocaleString("ko-KR")}원</span>

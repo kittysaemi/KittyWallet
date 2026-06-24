@@ -552,7 +552,7 @@ const HeatmapContent: React.FC<{
                       className={`shrink-0 text-xs font-semibold ${
                         item.transaction_type === "EXPENSE"
                           ? "text-[var(--color-danger)]"
-                          : "text-blue-500"
+                          : "text-[var(--color-income)]"
                       }`}
                     >
                       {formatSignedAmount(item.amount + (item.interest ?? 0), item.transaction_type)}
