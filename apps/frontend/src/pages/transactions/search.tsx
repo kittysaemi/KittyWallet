@@ -97,12 +97,18 @@ interface TransactionRowProps {
   item: TransactionItem;
   iconMap: Map<number, IconItem>;
   categoryIconMap: Map<number, number>;
+  showOriginalInstallmentAmount?: boolean;
 }
 
-const TransactionRow: React.FC<TransactionRowProps> = ({ item, iconMap, categoryIconMap }) => {
+const TransactionRow: React.FC<TransactionRowProps> = ({ item, iconMap, categoryIconMap, showOriginalInstallmentAmount }) => {
   const navigate = useNavigate();
   const iconId = categoryIconMap.get(item.category_id);
   const icon = iconId ? iconMap.get(iconId) : undefined;
+  const isInstallment = !!item.installment_id;
+  const displayAmount =
+    showOriginalInstallmentAmount && isInstallment && item.installment_original_amount != null
+      ? item.installment_original_amount
+      : item.amount + (item.interest ?? 0);
 
   return (
     <div
@@ -137,7 +143,13 @@ const TransactionRow: React.FC<TransactionRowProps> = ({ item, iconMap, category
               삭제된 지갑
             </span>
           )}
-          {item.installment_seq != null && item.installment_total_count != null && (
+          {isInstallment && showOriginalInstallmentAmount && item.installment_total_count != null && (
+            <>
+              <span className="shrink-0 text-[var(--color-text-caption)]">·</span>
+              <span className="shrink-0">할부 {item.installment_total_count}개월</span>
+            </>
+          )}
+          {(!showOriginalInstallmentAmount || !isInstallment) && item.installment_seq != null && item.installment_total_count != null && (
             <>
               <span className="shrink-0 text-[var(--color-text-caption)]">·</span>
               <span className="shrink-0">{item.installment_seq}/{item.installment_total_count}회차</span>
@@ -152,7 +164,7 @@ const TransactionRow: React.FC<TransactionRowProps> = ({ item, iconMap, category
             : "text-[var(--color-danger)]"
         }`}
       >
-        {formatAmount(item.amount + (item.interest ?? 0), item.transaction_type)}
+        {formatAmount(displayAmount, item.transaction_type)}
       </p>
     </div>
   );
@@ -560,7 +572,7 @@ const KeywordTab: React.FC<{ iconMap: Map<number, IconItem>; categoryIconMap: Ma
           {query.isError && !query.data && <ErrorCard onRetry={() => query.refetch()} />}
           {!query.isLoading && !query.isError && filtered.length === 0 && <EmptyCard />}
           {filtered.length > 0 && (
-            <ResultList items={filtered} iconMap={iconMap} categoryIconMap={categoryIconMap} />
+            <ResultList items={filtered} iconMap={iconMap} categoryIconMap={categoryIconMap} showOriginalInstallmentAmount />
           )}
         </>
       )}
@@ -608,14 +620,23 @@ const ResultList: React.FC<{
   items: TransactionItem[];
   iconMap: Map<number, IconItem>;
   categoryIconMap: Map<number, number>;
-}> = ({ items, iconMap, categoryIconMap }) => {
+  showOriginalInstallmentAmount?: boolean;
+}> = ({ items, iconMap, categoryIconMap, showOriginalInstallmentAmount }) => {
   const grouped = groupByDate(items);
+
+  function getDisplayAmount(t: TransactionItem): number {
+    if (showOriginalInstallmentAmount && t.installment_id && t.installment_original_amount != null) {
+      return t.installment_original_amount;
+    }
+    return t.amount + (t.interest ?? 0);
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <p className="px-1 text-xs text-[var(--color-text-secondary)]">총 {items.length}건</p>
       {Array.from(grouped.entries()).map(([date, txList]) => {
-        const income = txList.filter((t) => t.transaction_type === "INCOME").reduce((s, t) => s + t.amount, 0);
-        const expense = txList.filter((t) => t.transaction_type === "EXPENSE").reduce((s, t) => s + t.amount, 0);
+        const income = txList.filter((t) => t.transaction_type === "INCOME").reduce((s, t) => s + getDisplayAmount(t), 0);
+        const expense = txList.filter((t) => t.transaction_type === "EXPENSE").reduce((s, t) => s + getDisplayAmount(t), 0);
         return (
           <div key={date}>
             <div className="mb-2 flex items-center justify-between px-1">
@@ -633,7 +654,7 @@ const ResultList: React.FC<{
             </div>
             <div className="flex flex-col gap-2">
               {txList.map((tx) => (
-                <TransactionRow key={tx.transaction_id} item={tx} iconMap={iconMap} categoryIconMap={categoryIconMap} />
+                <TransactionRow key={tx.transaction_id} item={tx} iconMap={iconMap} categoryIconMap={categoryIconMap} showOriginalInstallmentAmount={showOriginalInstallmentAmount} />
               ))}
             </div>
           </div>

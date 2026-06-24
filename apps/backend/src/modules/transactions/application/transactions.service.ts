@@ -92,6 +92,7 @@ export interface TransactionItem {
   transaction_date: string;
   created_at: string;
   updated_at: string;
+  installment_id?: number | null;
   installment_seq?: number | null;
   installment_total_count?: number | null;
   installment_original_amount?: number | null;
@@ -116,7 +117,6 @@ export interface InstallmentInfo {
 }
 
 export interface TransactionDetailItem extends TransactionItem {
-  installment_id?: number | null;
   installment_info?: InstallmentInfo | null;
 }
 
@@ -552,6 +552,7 @@ export class TransactionsService {
       transaction_date: t.transactionDate.toISOString().split("T")[0],
       created_at: t.createdAt.toISOString(),
       updated_at: t.updatedAt.toISOString(),
+      installment_id: t.installmentId ? Number(t.installmentId) : null,
       installment_seq: t.installmentSeq ?? null,
       installment_total_count: t.installmentTotalCount ?? null,
       installment_original_amount: t.cardInstallment?.originalAmount.toNumber() ?? null
