@@ -233,4 +233,83 @@ export class StatisticsRepository {
       };
     });
   }
+
+  async groupCategoryAmountsByInstallmentOrigin(
+    condition: StatisticsCondition
+  ): Promise<CategoryAmountGroup[]> {
+    const nonInstallmentWhere = {
+      ...this.buildWhere(condition),
+      transactionType: TransactionType.EXPENSE,
+      installmentId: null
+    };
+
+    const installmentWhere = {
+      userId: condition.userId,
+      deletedYn: false,
+      ...(condition.startDate && condition.endDate
+        ? { purchaseDate: { gte: condition.startDate, lte: condition.endDate } }
+        : {}),
+      ...(condition.walletId ? { cardId: condition.walletId } : {}),
+      category: {
+        categoryUserSettings: {
+          none: { userId: condition.userId, includeInStatistics: false }
+        }
+      }
+    };
+
+    const skipInstallmentPass = condition.walletType === "ACCOUNT";
+
+    const [nonInstallmentRows, installmentRows] = await Promise.all([
+      this.prisma.transaction.groupBy({
+        by: ["categoryId"],
+        where: nonInstallmentWhere,
+        _sum: { amount: true, interest: true },
+        _count: { _all: true }
+      }),
+      skipInstallmentPass
+        ? Promise.resolve([])
+        : this.prisma.cardInstallment.groupBy({
+            by: ["categoryId"],
+            where: installmentWhere,
+            _sum: { originalAmount: true },
+            _count: { _all: true }
+          })
+    ]);
+
+    const amountMap = new Map<string, { amount: number; count: number }>();
+
+    for (const row of nonInstallmentRows) {
+      const key = String(row.categoryId);
+      const amount = (row._sum.amount?.toNumber() ?? 0) + Number(row._sum.interest ?? 0);
+      amountMap.set(key, { amount, count: row._count._all });
+    }
+
+    for (const row of installmentRows) {
+      const key = String(row.categoryId);
+      const amount = row._sum.originalAmount?.toNumber() ?? 0;
+      const existing = amountMap.get(key);
+      amountMap.set(key, {
+        amount: (existing?.amount ?? 0) + amount,
+        count: (existing?.count ?? 0) + row._count._all
+      });
+    }
+
+    const allCategoryIds = Array.from(amountMap.keys()).map((id) => BigInt(id));
+    const categories = allCategoryIds.length
+      ? await this.prisma.category.findMany({
+          where: { categoryId: { in: allCategoryIds } },
+          select: { categoryId: true, categoryName: true, iconId: true }
+        })
+      : [];
+    const categoryMap = new Map(categories.map((c) => [String(c.categoryId), c]));
+
+    return Array.from(amountMap.entries())
+      .map(([catId, { amount, count }]) => ({
+        categoryId: BigInt(catId),
+        amount: new Prisma.Decimal(amount),
+        transactionCount: count,
+        category: categoryMap.get(catId) ?? null
+      }))
+      .sort((a, b) => b.amount.toNumber() - a.amount.toNumber());
+  }
 }

@@ -26,6 +26,7 @@ const mockRepo = {
   groupAmountsByTransactionType: jest.fn(),
   groupDailyAmountsByTransactionType: jest.fn(),
   groupAmountsByCategory: jest.fn(),
+  groupCategoryAmountsByInstallmentOrigin: jest.fn(),
   groupExpensesByWalletAndCategory: jest.fn(),
   groupIncomesByWalletAndCategory: jest.fn()
 } as unknown as StatisticsRepository;
@@ -39,7 +40,7 @@ beforeEach(() => {
 describe("StatisticsService.getCategoryExpenseStatistics", () => {
   describe("period_type=all", () => {
     it("날짜 범위 없이 EXPENSE 지출을 카테고리별로 집계한다", async () => {
-      (mockRepo.groupAmountsByCategory as jest.Mock).mockResolvedValue([
+      (mockRepo.groupCategoryAmountsByInstallmentOrigin as jest.Mock).mockResolvedValue([
         makeCategoryGroup({ categoryId: 1n, amount: makeDecimal(90000), transactionCount: 5 }),
         makeCategoryGroup({ categoryId: 2n, amount: makeDecimal(30000), transactionCount: 2, category: { categoryName: "교통", iconId: 7n } })
       ]);
@@ -49,7 +50,7 @@ describe("StatisticsService.getCategoryExpenseStatistics", () => {
         periodType: "all"
       });
 
-      const call = (mockRepo.groupAmountsByCategory as jest.Mock).mock.calls[0][0];
+      const call = (mockRepo.groupCategoryAmountsByInstallmentOrigin as jest.Mock).mock.calls[0][0];
       expect(call.transactionType).toBe("EXPENSE");
       expect(call.startDate).toBeUndefined();
       expect(call.endDate).toBeUndefined();
@@ -65,7 +66,7 @@ describe("StatisticsService.getCategoryExpenseStatistics", () => {
     });
 
     it("데이터가 없을 때 빈 items를 반환한다", async () => {
-      (mockRepo.groupAmountsByCategory as jest.Mock).mockResolvedValue([]);
+      (mockRepo.groupCategoryAmountsByInstallmentOrigin as jest.Mock).mockResolvedValue([]);
 
       const result = await service.getCategoryExpenseStatistics({
         userId: 1n,
@@ -79,7 +80,7 @@ describe("StatisticsService.getCategoryExpenseStatistics", () => {
 
   describe("period_type=year", () => {
     it("해당 연도의 1월 1일 ~ 12월 31일 범위로 집계한다", async () => {
-      (mockRepo.groupAmountsByCategory as jest.Mock).mockResolvedValue([
+      (mockRepo.groupCategoryAmountsByInstallmentOrigin as jest.Mock).mockResolvedValue([
         makeCategoryGroup()
       ]);
 
@@ -89,7 +90,7 @@ describe("StatisticsService.getCategoryExpenseStatistics", () => {
         year: "2025"
       });
 
-      const call = (mockRepo.groupAmountsByCategory as jest.Mock).mock.calls[0][0];
+      const call = (mockRepo.groupCategoryAmountsByInstallmentOrigin as jest.Mock).mock.calls[0][0];
       expect(call.startDate).toEqual(new Date(Date.UTC(2025, 0, 1)));
       expect(call.endDate).toEqual(new Date(Date.UTC(2025, 11, 31, 23, 59, 59, 999)));
       expect(call.transactionType).toBe("EXPENSE");
@@ -104,7 +105,7 @@ describe("StatisticsService.getCategoryExpenseStatistics", () => {
 
   describe("period_type=month", () => {
     it("해당 월의 첫날 ~ 마지막날 범위로 집계한다", async () => {
-      (mockRepo.groupAmountsByCategory as jest.Mock).mockResolvedValue([
+      (mockRepo.groupCategoryAmountsByInstallmentOrigin as jest.Mock).mockResolvedValue([
         makeCategoryGroup()
       ]);
 
@@ -114,7 +115,7 @@ describe("StatisticsService.getCategoryExpenseStatistics", () => {
         month: "2026-03"
       });
 
-      const call = (mockRepo.groupAmountsByCategory as jest.Mock).mock.calls[0][0];
+      const call = (mockRepo.groupCategoryAmountsByInstallmentOrigin as jest.Mock).mock.calls[0][0];
       expect(call.startDate).toEqual(new Date(Date.UTC(2026, 2, 1)));
       expect(call.endDate).toEqual(new Date(Date.UTC(2026, 3, 0)));
     });
@@ -134,7 +135,7 @@ describe("StatisticsService.getCategoryExpenseStatistics", () => {
 
   describe("ratio 계산", () => {
     it("카테고리 비율이 소수점 2자리로 반올림된다", async () => {
-      (mockRepo.groupAmountsByCategory as jest.Mock).mockResolvedValue([
+      (mockRepo.groupCategoryAmountsByInstallmentOrigin as jest.Mock).mockResolvedValue([
         makeCategoryGroup({ categoryId: 1n, amount: makeDecimal(10000), transactionCount: 1 }),
         makeCategoryGroup({ categoryId: 2n, amount: makeDecimal(20000), transactionCount: 1, category: { categoryName: "교통", iconId: 7n } })
       ]);

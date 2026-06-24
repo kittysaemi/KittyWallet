@@ -101,14 +101,18 @@ export class StatisticsService {
     const transactionType = this.toTransactionType(command.transactionType ?? "EXPENSE");
     this.validateWalletTransactionType(command.walletType, transactionType);
 
-    const groups = await this.statisticsRepository.groupAmountsByCategory({
+    const useInstallmentOrigin = transactionType === TransactionType.EXPENSE;
+    const condition = {
       userId: command.userId,
       startDate,
       endDate,
       transactionType,
       walletType: this.toWalletType(command.walletType),
       walletId: command.walletId
-    });
+    };
+    const groups = useInstallmentOrigin
+      ? await this.statisticsRepository.groupCategoryAmountsByInstallmentOrigin(condition)
+      : await this.statisticsRepository.groupAmountsByCategory(condition);
     const limitedGroups = groups.slice(0, command.limit);
     const totalAmount = groups.reduce((sum, group) => sum + this.toNumber(group.amount), 0);
 
@@ -450,7 +454,7 @@ export class StatisticsService {
 
   async getCategoryExpenseStatistics(command: GetCategoryExpenseStatisticsCommand) {
     const condition = this.buildCategoryExpenseCondition(command);
-    const groups = await this.statisticsRepository.groupAmountsByCategory(condition);
+    const groups = await this.statisticsRepository.groupCategoryAmountsByInstallmentOrigin(condition);
     const totalAmount = groups.reduce((sum, g) => sum + this.toNumber(g.amount), 0);
 
     return {
