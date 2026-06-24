@@ -20,6 +20,8 @@ services:
     env_file:
       - ${KITTYWALLET_ENV_FILE:-.env.production}
     environment:
+      OCR_PROVIDER: ${OCR_PROVIDER:-paddle}
+      PADDLE_OCR_URL: http://ocr:8000
       OCR_TIMEOUT_MS: ${OCR_TIMEOUT_MS:-180000}
     expose:
       - "3000"
