@@ -27,8 +27,9 @@ const TransactionNewPage: React.FC = () => {
     setAnalysisError("");
     try {
       setReceiptDraft(await receiptAnalysisApi.analyzeImage(file));
-    } catch {
-      setAnalysisError("영수증 분석에 실패했습니다. 직접 입력하거나 텍스트 입력을 사용해 주세요.");
+    } catch (error) {
+      const responseError = isAxiosError(error) ? error.response?.data as { error?: { message?: string } } | undefined : undefined;
+      setAnalysisError(responseError?.error?.message ?? "영수증 분석에 실패했습니다. 네트워크 연결을 확인한 뒤 다시 시도해 주세요.");
     } finally {
       setIsAnalyzing(false);
     }
