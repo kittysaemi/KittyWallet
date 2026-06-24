@@ -37,6 +37,8 @@ const WalletTransactionsPage: React.FC<WalletTransactionsPageProps> = ({ walletT
     return new Date(y, m - 1, d);
   }, [todayStr]);
 
+  React.useEffect(() => { window.scrollTo(0, 0); }, []);
+
   const [periodType, setPeriodType] = React.useState<PeriodType>("month");
   const [baseDate, setBaseDate] = React.useState(() => {
     const [y, m, d] = todayStr.split("-").map(Number);

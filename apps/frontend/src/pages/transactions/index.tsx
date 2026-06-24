@@ -307,9 +307,9 @@ const TransactionsPage: React.FC = () => {
   }, []);
 
   React.useLayoutEffect(() => {
-    if (!query.isSuccess || !_savedTxState?.scrollTop) return;
+    if (!query.isSuccess) return;
     const scrollEl = pageRef.current?.parentElement as HTMLElement | null;
-    if (scrollEl) scrollEl.scrollTop = _savedTxState.scrollTop;
+    if (scrollEl) scrollEl.scrollTop = _savedTxState?.scrollTop ?? 0;
   }, [query.isSuccess]);
 
   function prevMonth() {
