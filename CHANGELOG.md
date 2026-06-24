@@ -1,3 +1,10 @@
+# [1.30.0](https://github.com/kittysaemi/KittyWallet/compare/v1.29.0...v1.30.0) (2026-06-24)
+
+
+### Features
+
+* **statistics:** 카테고리 통계 할부 원금 기준 집계 (purchase_date + original_amount) ([a5bcd22](https://github.com/kittysaemi/KittyWallet/commit/a5bcd22791cd883bdfa126721cd6f6429409dd65))
+
 # [1.29.0](https://github.com/kittysaemi/KittyWallet/compare/v1.28.0...v1.29.0) (2026-06-24)
 
 
