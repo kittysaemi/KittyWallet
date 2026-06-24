@@ -303,7 +303,6 @@ const BrowseTab: React.FC<BrowseTabProps> = ({
   walletsLoading
 }) => {
   const timezone = useTimezone();
-  const today = React.useMemo(() => getTodayInTimezone(timezone), [timezone]);
   const [startDate, setStartDate] = React.useState(() => _sc.browse.startDate || getThreeMonthsAgo(timezone));
   const [endDate, setEndDate] = React.useState(() => _sc.browse.endDate || getTodayInTimezone(timezone));
   const [walletOpt, setWalletOpt] = React.useState<SelectOption | undefined>(() => _sc.browse.walletOpt);
@@ -380,10 +379,10 @@ const BrowseTab: React.FC<BrowseTabProps> = ({
         <div>
           <label className="mb-1.5 block text-xs font-medium text-[var(--color-text-secondary)]">기간</label>
           <div className="flex items-center gap-2">
-            <input type="date" className={inputClass} value={startDate} max={endDate || today}
+            <input type="date" className={inputClass} value={startDate} max={endDate || undefined}
               onChange={(e) => setStartDate(e.target.value)} />
             <span className="shrink-0 text-sm text-[var(--color-text-secondary)]">~</span>
-            <input type="date" className={inputClass} value={endDate} min={startDate} max={today}
+            <input type="date" className={inputClass} value={endDate} min={startDate}
               onChange={(e) => setEndDate(e.target.value)} />
           </div>
         </div>
