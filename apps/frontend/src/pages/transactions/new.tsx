@@ -80,7 +80,7 @@ const TransactionNewPage: React.FC = () => {
           <TransactionForm
             receiptDraft={receiptDraft}
             onCreated={(finalDraft) => { if (receiptDraft) void receiptAnalysisApi.saveTrainingSample(receiptDraft, finalDraft); }}
-            onSuccess={() => navigate("/transactions")}
+            onSuccess={() => navigate(-1)}
           />
         </div>
       </div>
