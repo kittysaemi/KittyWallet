@@ -32,6 +32,13 @@ def get_ocr():
     return ocr
 
 
+@app.on_event("startup")
+async def warm_up_ocr() -> None:
+    """Load models before the service becomes healthy, not on a user's first scan."""
+    async with ocr_inference_lock:
+        await run_in_threadpool(get_ocr)
+
+
 def recognize_path(image_path: str) -> list[dict[str, float | str]]:
     """Map PaddleOCR 3.x pipeline output to the provider-neutral response contract."""
     lines: list[dict[str, float | str]] = []

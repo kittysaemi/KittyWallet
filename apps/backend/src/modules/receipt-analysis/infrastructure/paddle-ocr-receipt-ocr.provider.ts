@@ -12,7 +12,7 @@ export class PaddleOcrReceiptOcrProvider implements ReceiptOcrProvider {
 
   async analyze(image: NormalizedReceiptImage): Promise<ReceiptOcrResult> {
     const serviceUrl = this.configService.get<string>("PADDLE_OCR_URL") ?? "http://ocr:8000";
-    const timeoutMs = Number(this.configService.get<string>("OCR_TIMEOUT_MS") ?? 180_000);
+    const timeoutMs = Number(this.configService.get<string>("OCR_TIMEOUT_MS") ?? 45_000);
     const form = new FormData();
     form.append("image", new Blob([Uint8Array.from(image.buffer)], { type: image.mimeType }), "receipt.jpg");
     let response: Response;
