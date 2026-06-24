@@ -135,4 +135,10 @@ K2\t\t\t430,000\t\t 1\t\t430,000
 
     expect(result.fields.totalAmount?.value).toBe(220000);
   });
+
+  it("extracts a sales amount when OCR inserts underscores in its label", () => {
+    const result = parser.parse("판매_금액 1,530,000원");
+
+    expect(result.fields.totalAmount?.value).toBe(1530000);
+  });
 });
