@@ -1,6 +1,5 @@
 import React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AxiosError } from "axios";
 import { BadgeMinus, Minus, Plus, RotateCw, X } from "lucide-react";
 import { z } from "zod";
 import { accountApi } from "../../entities/account/api/accountApi";
@@ -26,6 +25,7 @@ import {
   invalidateCardCaches,
   invalidateCategoryCaches
 } from "../../pwa/cache/cacheInvalidation";
+import { toSupportErrorMessage } from "../../shared/api/apiError";
 
 type ManageTab = "accounts" | "cards" | "categories" | "icons";
 
@@ -178,13 +178,7 @@ const AccountsTab: React.FC = () => {
       setNewNegativeLimit("");
       await refresh();
     },
-    onError: (err: unknown) => {
-      const msg =
-        err instanceof AxiosError
-          ? (err.response?.data as { error?: { message?: string } })?.error?.message
-          : undefined;
-      setErrors((prev) => ({ ...prev, newName: msg ?? "계좌 등록에 실패했습니다." }));
-    }
+    onError: (error: unknown) => setErrors((prev) => ({ ...prev, newName: toSupportErrorMessage(error) }))
   });
 
   const updateMutation = useMutation({
@@ -626,13 +620,7 @@ const CardsTab: React.FC = () => {
       setErrors({});
       await refresh();
     },
-    onError: (err: unknown) => {
-      const msg =
-        err instanceof AxiosError
-          ? (err.response?.data as { error?: { message?: string } })?.error?.message
-          : undefined;
-      setErrors((prev) => ({ ...prev, newName: msg ?? "카드 등록에 실패했습니다." }));
-    }
+    onError: (error: unknown) => setErrors((prev) => ({ ...prev, newName: toSupportErrorMessage(error) }))
   });
 
   const updateMutation = useMutation({
@@ -1138,11 +1126,7 @@ const CategoriesTab: React.FC = () => {
       setNameErrors({});
       await refreshCategories();
     },
-    onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { error?: { message?: string } } } }).response
-        ?.data?.error?.message;
-      setNameErrors({ 0: msg ?? "카테고리 등록에 실패했습니다." });
-    }
+    onError: (error: unknown) => setNameErrors({ 0: toSupportErrorMessage(error) })
   });
 
   const isLoading = categoriesQuery.isLoading || iconsQuery.isLoading;
@@ -1641,7 +1625,7 @@ const IconsTab: React.FC = () => {
               </Button>
             </div>
             {createMutation.isError && (
-              <p className="mt-3 text-sm text-[var(--color-danger)]">아이콘 등록에 실패했습니다.</p>
+              <p className="mt-3 text-sm text-[var(--color-danger)]">{toSupportErrorMessage(createMutation.error)}</p>
             )}
           </div>
         )}
