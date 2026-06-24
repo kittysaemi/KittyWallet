@@ -15,6 +15,7 @@ env:
   IMAGE_NAMESPACE: ${{ github.repository_owner }}
   API_IMAGE_NAME: kittywallet-api
   WEB_IMAGE_NAME: kittywallet-web
+  OCR_IMAGE_NAME: kittywallet-ocr
 
 jobs:
   build-and-push:
@@ -26,6 +27,7 @@ jobs:
     outputs:
       api-image: ${{ steps.image-tags.outputs.api-image }}
       web-image: ${{ steps.image-tags.outputs.web-image }}
+      ocr-image: ${{ steps.image-tags.outputs.ocr-image }}
 
     steps:
       - name: Checkout
@@ -52,11 +54,14 @@ jobs:
           fi
           API_IMAGE="${REGISTRY}/${IMAGE_NAMESPACE}/${API_IMAGE_NAME}:${IMAGE_TAG}"
           WEB_IMAGE="${REGISTRY}/${IMAGE_NAMESPACE}/${WEB_IMAGE_NAME}:${IMAGE_TAG}"
+          OCR_IMAGE="${REGISTRY}/${IMAGE_NAMESPACE}/${OCR_IMAGE_NAME}:${IMAGE_TAG}"
           echo "api-image=${API_IMAGE}" >> "$GITHUB_OUTPUT"
           echo "web-image=${WEB_IMAGE}" >> "$GITHUB_OUTPUT"
+          echo "ocr-image=${OCR_IMAGE}" >> "$GITHUB_OUTPUT"
           echo "IMAGE_TAG=${IMAGE_TAG}" >> "$GITHUB_ENV"
           echo "API_IMAGE=${API_IMAGE}" >> "$GITHUB_ENV"
           echo "WEB_IMAGE=${WEB_IMAGE}" >> "$GITHUB_ENV"
+          echo "OCR_IMAGE=${OCR_IMAGE}" >> "$GITHUB_ENV"
 
       - name: Build and push backend image
         uses: docker/build-push-action@v6
@@ -73,6 +78,14 @@ jobs:
           file: apps/frontend/Dockerfile
           push: true
           tags: ${{ env.WEB_IMAGE }}
+
+      - name: Build and push OCR image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/ocr-service/Dockerfile
+          push: true
+          tags: ${{ env.OCR_IMAGE }}
 
   deploy:
     name: Deploy to production
@@ -124,6 +137,7 @@ jobs:
         env:
           API_IMAGE: ${{ needs.build-and-push.outputs.api-image }}
           WEB_IMAGE: ${{ needs.build-and-push.outputs.web-image }}
+          OCR_IMAGE: ${{ needs.build-and-push.outputs.ocr-image }}
           APP_ENV: ${{ secrets.PRODUCTION_ENV_FILE }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GHCR_USER: ${{ github.actor }}
@@ -132,17 +146,18 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
-          envs: API_IMAGE,WEB_IMAGE,APP_ENV,GHCR_TOKEN,GHCR_USER
+          envs: API_IMAGE,WEB_IMAGE,OCR_IMAGE,APP_ENV,GHCR_TOKEN,GHCR_USER
           script: |
             set -euo pipefail
             cd "${{ secrets.DEPLOY_PATH }}"
             mkdir -p infra/certbot/conf infra/certbot/www
             printf '%s' "$APP_ENV" > .env.production.raw
-            grep -Ev '^(KITTYWALLET_API_IMAGE|KITTYWALLET_WEB_IMAGE)=' .env.production.raw > .env.production
+            grep -Ev '^(KITTYWALLET_API_IMAGE|KITTYWALLET_WEB_IMAGE|KITTYWALLET_OCR_IMAGE)=' .env.production.raw > .env.production
             rm .env.production.raw
             {
               echo "KITTYWALLET_API_IMAGE=$API_IMAGE"
               echo "KITTYWALLET_WEB_IMAGE=$WEB_IMAGE"
+              echo "KITTYWALLET_OCR_IMAGE=$OCR_IMAGE"
             } >> .env.production
             printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
             docker compose --env-file .env.production -f docker-compose.prod.yml pull

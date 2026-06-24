@@ -91,6 +91,9 @@ jobs:
       - name: Docker build backend
         run: docker build -t kittywallet-api:ci -f apps/backend/Dockerfile .
 
+      - name: Docker build OCR
+        run: docker build -t kittywallet-ocr:ci -f apps/ocr-service/Dockerfile .
+
   frontend:
     name: Frontend
     runs-on: ubuntu-latest

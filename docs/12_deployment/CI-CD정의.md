@@ -606,6 +606,7 @@ workflow_dispatch
 ```text
 ghcr.io/<owner>/kittywallet-api:<release-tag>
 ghcr.io/<owner>/kittywallet-web:<release-tag>
+ghcr.io/<owner>/kittywallet-ocr:<release-tag>
 ```
 
 `latest` 태그는 사용하지 않는다.
