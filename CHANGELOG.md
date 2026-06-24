@@ -1,3 +1,10 @@
+## [1.26.6](https://github.com/kittysaemi/KittyWallet/compare/v1.26.5...v1.26.6) (2026-06-24)
+
+
+### Bug Fixes
+
+* **deploy:** guard Docker disk space ([6db2923](https://github.com/kittysaemi/KittyWallet/commit/6db2923e5aa2f7654c1f85fc281ee3490db47ada))
+
 ## [1.26.5](https://github.com/kittysaemi/KittyWallet/compare/v1.26.4...v1.26.5) (2026-06-24)
 
 
