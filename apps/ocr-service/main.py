@@ -32,11 +32,25 @@ def get_ocr():
     return ocr
 
 
+def warm_up_ocr_models() -> None:
+    """Run one inference before health checks can mark the service ready."""
+    with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp:
+        image_path = temp.name
+    try:
+        Image.new("RGB", (32, 32), color="white").save(image_path, "JPEG")
+        # Creating PaddleOCR alone does not necessarily load all inference
+        # models. A tiny prediction makes the first user scan fast and makes a
+        # missing model fail deployment rather than a user's request.
+        list(get_ocr().predict(image_path))
+    finally:
+        if os.path.exists(image_path):
+            os.unlink(image_path)
+
+
 @app.on_event("startup")
 async def warm_up_ocr() -> None:
-    """Load models before the service becomes healthy, not on a user's first scan."""
     async with ocr_inference_lock:
-        await run_in_threadpool(get_ocr)
+        await run_in_threadpool(warm_up_ocr_models)
 
 
 def recognize_path(image_path: str) -> list[dict[str, float | str]]:

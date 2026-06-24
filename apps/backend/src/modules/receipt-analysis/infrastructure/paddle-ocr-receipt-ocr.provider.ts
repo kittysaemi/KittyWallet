@@ -18,8 +18,14 @@ export class PaddleOcrReceiptOcrProvider implements ReceiptOcrProvider {
     let response: Response;
     try {
       response = await fetch(`${serviceUrl}/v1/ocr`, { method: "POST", body: form, signal: AbortSignal.timeout(timeoutMs) });
-    } catch {
-      throw new ServiceUnavailableException({ code: "RECEIPT_OCR_PROVIDER_UNAVAILABLE", message: "PaddleOCR 서비스를 사용할 수 없습니다." });
+    } catch (error) {
+      const reason = error instanceof Error ? `${error.name}: ${error.message}` : "unknown error";
+      this.logger.error(`PaddleOCR request could not complete: ${reason}`);
+      const isTimeout = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
+      throw new ServiceUnavailableException({
+        code: isTimeout ? "RECEIPT_OCR_TIMEOUT" : "RECEIPT_OCR_PROVIDER_UNAVAILABLE",
+        message: isTimeout ? "영수증 분석 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요." : "PaddleOCR 서비스를 사용할 수 없습니다."
+      });
     }
     if (!response.ok) {
       const detail = (await response.text()).replace(/\s+/g, " ").slice(0, 500);
