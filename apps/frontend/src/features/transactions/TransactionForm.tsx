@@ -690,7 +690,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                 setErrors((err) => ({ ...err, installment_months: "" }));
               }}
               disabled={isSaving}
-              className="w-full appearance-none min-h-11 rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 py-2 pr-9 text-sm text-[var(--color-text-primary)] transition focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-soft)] disabled:opacity-50"
+              className="w-full appearance-none min-h-11 rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 py-2 pr-9 text-base text-[var(--color-text-primary)] transition focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-soft)] disabled:opacity-50"
             >
               <option value="">{isEditMode ? "할부 전환 안함" : "일시불"}</option>
               {Array.from({ length: 11 }, (_, i) => i + 2).map((n) => (

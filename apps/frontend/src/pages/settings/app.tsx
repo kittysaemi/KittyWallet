@@ -185,7 +185,7 @@ const AppSettingsPage: React.FC = () => {
                   onChange={(e) =>
                     handleChangeAppSetting("currency", e.target.value as AppSettings["currency"])
                   }
-                  className="min-h-11 rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 text-sm text-[var(--color-text-primary)] outline-none"
+                  className="min-h-11 rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 text-base text-[var(--color-text-primary)] outline-none"
                 >
                   <option value="KRW">KRW</option>
                 </select>
@@ -198,7 +198,7 @@ const AppSettingsPage: React.FC = () => {
                   onChange={(e) =>
                     handleChangeAppSetting("timezone", e.target.value as AppSettings["timezone"])
                   }
-                  className="min-h-11 rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 text-sm text-[var(--color-text-primary)] outline-none"
+                  className="min-h-11 rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 text-base text-[var(--color-text-primary)] outline-none"
                 >
                   {TIMEZONE_OPTIONS.map((tz) => (
                     <option key={tz.value} value={tz.value}>{tz.label}</option>

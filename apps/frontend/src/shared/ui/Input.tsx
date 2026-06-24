@@ -15,7 +15,7 @@ export const Input: React.FC<InputProps> = ({ label, error, id, ...props }) => {
       <input
         id={inputId}
         {...props}
-        className={`min-h-11 rounded-xl border bg-[var(--color-bg-input)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-caption)] focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary-soft)] disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-secondary)] ${
+        className={`min-h-11 rounded-xl border bg-[var(--color-bg-input)] px-3 py-2 text-base text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-caption)] focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary-soft)] disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-secondary)] ${
           error
             ? "border-[var(--color-danger)] focus:ring-[var(--color-danger-soft)]"
             : "border-[var(--color-border-primary)]"
