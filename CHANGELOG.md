@@ -1,3 +1,10 @@
+## [1.26.1](https://github.com/kittysaemi/KittyWallet/compare/v1.26.0...v1.26.1) (2026-06-24)
+
+
+### Bug Fixes
+
+* publish OCR image for deployment ([0ac4cf0](https://github.com/kittysaemi/KittyWallet/commit/0ac4cf0f4360a0d1b117fc01a9c90311304e1a6e))
+
 # [1.26.0](https://github.com/kittysaemi/KittyWallet/compare/v1.25.0...v1.26.0) (2026-06-24)
 
 
