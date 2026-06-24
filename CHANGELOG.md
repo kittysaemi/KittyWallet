@@ -1,3 +1,10 @@
+## [1.26.7](https://github.com/kittysaemi/KittyWallet/compare/v1.26.6...v1.26.7) (2026-06-24)
+
+
+### Bug Fixes
+
+* **deploy:** clean disk before file upload ([e3edb28](https://github.com/kittysaemi/KittyWallet/commit/e3edb28defca88794a52622caab909580be5a03c))
+
 ## [1.26.6](https://github.com/kittysaemi/KittyWallet/compare/v1.26.5...v1.26.6) (2026-06-24)
 
 
