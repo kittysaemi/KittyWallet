@@ -1,3 +1,10 @@
+## [1.26.9](https://github.com/kittysaemi/KittyWallet/compare/v1.26.8...v1.26.9) (2026-06-24)
+
+
+### Bug Fixes
+
+* preserve receipt image form data ([7575e6b](https://github.com/kittysaemi/KittyWallet/commit/7575e6b2bf25e5455b4d92acfece2f235962d0c9))
+
 ## [1.26.8](https://github.com/kittysaemi/KittyWallet/compare/v1.26.7...v1.26.8) (2026-06-24)
 
 
