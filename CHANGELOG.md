@@ -1,3 +1,10 @@
+## [1.26.8](https://github.com/kittysaemi/KittyWallet/compare/v1.26.7...v1.26.8) (2026-06-24)
+
+
+### Bug Fixes
+
+* **ui:** 스크롤/페이지 위치 복원 문제 수정 ([#353](https://github.com/kittysaemi/KittyWallet/issues/353)) ([83c4433](https://github.com/kittysaemi/KittyWallet/commit/83c443351b6ea30be1aab3d36b8beb63e8c14eec))
+
 ## [1.26.7](https://github.com/kittysaemi/KittyWallet/compare/v1.26.6...v1.26.7) (2026-06-24)
 
 
