@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { AxiosError } from "axios";
 import { z } from "zod";
 import { cardApi } from "../../entities/card/api/cardApi";
 import { invalidateCardCaches } from "../../pwa/cache/cacheInvalidation";
@@ -10,6 +9,7 @@ import type { IconItem } from "../../entities/icon/model/icon.types";
 import { IconSelect } from "../icons/IconSelect";
 import { Button } from "../../shared/ui/Button";
 import { Input } from "../../shared/ui/Input";
+import { toSupportErrorMessage } from "../../shared/api/apiError";
 
 const createSchema = z.object({
   card_name: z
@@ -28,13 +28,6 @@ const editSchema = z.object({
   icon_id: z.number().min(1).optional(),
   use_yn: z.boolean().optional()
 });
-
-const ERROR_MESSAGES: Record<string, string> = {
-  CARD_003: "이미 사용 중인 카드명입니다.",
-  CARD_002: "카드를 찾을 수 없습니다.",
-  ICON_002: "선택한 아이콘을 찾을 수 없습니다.",
-  VALIDATION_001: "입력값을 확인해주세요."
-};
 
 interface CardFormProps {
   mode: "create" | "edit";
@@ -58,14 +51,7 @@ export const CardForm: React.FC<CardFormProps> = ({ mode, card }) => {
       await queryClient.invalidateQueries({ queryKey: ["cards"] });
       navigate("/cards", { replace: true });
     },
-    onError: (error: AxiosError<{ error: { code: string; message: string } }>) => {
-      const code = error.response?.data?.error?.code;
-      setServerError(
-        (code && ERROR_MESSAGES[code]) ??
-          error.response?.data?.error?.message ??
-          "카드 등록에 실패했습니다."
-      );
-    }
+    onError: (error: unknown) => setServerError(toSupportErrorMessage(error))
   });
 
   const updateMutation = useMutation({
@@ -76,14 +62,7 @@ export const CardForm: React.FC<CardFormProps> = ({ mode, card }) => {
       void invalidateCardCaches();
       navigate("/cards", { replace: true });
     },
-    onError: (error: AxiosError<{ error: { code: string; message: string } }>) => {
-      const code = error.response?.data?.error?.code;
-      setServerError(
-        (code && ERROR_MESSAGES[code]) ??
-          error.response?.data?.error?.message ??
-          "카드 수정에 실패했습니다."
-      );
-    }
+    onError: (error: unknown) => setServerError(toSupportErrorMessage(error))
   });
 
   const isPending = createMutation.isPending || updateMutation.isPending;

@@ -1,9 +1,9 @@
 import React from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { ChevronLeft } from "lucide-react";
-import { isAxiosError } from "axios";
 import { TransactionForm } from "../../features/transactions/TransactionForm";
 import { receiptAnalysisApi, type ReceiptAnalysisDraft } from "../../entities/receipt/api/receiptAnalysisApi";
+import { toSupportErrorMessage } from "../../shared/api/apiError";
 
 interface NavigationState {
   receiptFile?: File;
@@ -28,15 +28,7 @@ const TransactionNewPage: React.FC = () => {
     try {
       setReceiptDraft(await receiptAnalysisApi.analyzeImage(file));
     } catch (error) {
-      const responseError = isAxiosError(error) ? error.response?.data as { error?: { message?: string } } | undefined : undefined;
-      const status = isAxiosError(error) ? error.response?.status : undefined;
-      const fallbackMessage =
-        status === 413
-          ? "영수증 이미지 크기가 너무 큽니다. 25MB 이하의 사진을 선택해 주세요."
-          : status === 504
-            ? "영수증 분석 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요."
-            : "영수증 분석 서버에서 응답을 받지 못했습니다. 잠시 후 다시 시도해 주세요.";
-      setAnalysisError(responseError?.error?.message ?? fallbackMessage);
+      setAnalysisError(toSupportErrorMessage(error));
     } finally {
       setIsAnalyzing(false);
     }
@@ -62,8 +54,7 @@ const TransactionNewPage: React.FC = () => {
       setReceiptDraft(await receiptAnalysisApi.parseText(pastedText));
       clearSource();
     } catch (error) {
-      const responseError = isAxiosError(error) ? error.response?.data as { error?: { message?: string } } | undefined : undefined;
-      setAnalysisError(responseError?.error?.message ?? "텍스트 분석에 실패했습니다. 원문을 확인해 주세요.");
+      setAnalysisError(toSupportErrorMessage(error));
     } finally {
       setIsAnalyzing(false);
     }

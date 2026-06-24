@@ -1,13 +1,13 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { AxiosError } from "axios";
 import { z } from "zod";
 import { categoryApi } from "../../entities/category/api/categoryApi";
 import type { IconItem } from "../../entities/icon/model/icon.types";
 import { Button } from "../../shared/ui/Button";
 import { Input } from "../../shared/ui/Input";
 import { IconSelect } from "../icons/IconSelect";
+import { toSupportErrorMessage } from "../../shared/api/apiError";
 
 const categorySchema = z.object({
   category_name: z
@@ -18,12 +18,6 @@ const categorySchema = z.object({
   icon_id: z.number().min(1, "아이콘을 선택해주세요."),
   show: z.boolean()
 });
-
-const ERROR_MESSAGES: Record<string, string> = {
-  CATEGORY_003: "이미 사용 중인 카테고리명입니다.",
-  ICON_002: "선택한 아이콘을 찾을 수 없습니다.",
-  VALIDATION_001: "입력값을 확인해주세요."
-};
 
 const extractFieldErrors = (error: z.ZodError): Record<string, string> => {
   const errors: Record<string, string> = {};
@@ -57,14 +51,7 @@ export const CategoryForm: React.FC = () => {
       await invalidateCategories();
       navigate("/categories", { replace: true });
     },
-    onError: (error: AxiosError<{ error: { code: string; message: string } }>) => {
-      const code = error.response?.data?.error?.code;
-      setServerError(
-        (code && ERROR_MESSAGES[code]) ??
-          error.response?.data?.error?.message ??
-          "카테고리 등록에 실패했습니다."
-      );
-    }
+    onError: (error: unknown) => setServerError(toSupportErrorMessage(error))
   });
 
   const isPending = createMutation.isPending;

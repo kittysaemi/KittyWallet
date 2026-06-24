@@ -35,12 +35,16 @@ export class HttpExceptionFilter implements ExceptionFilter {
             ? ((body as Record<string, unknown>).message as string[])[0]
             : (body as Record<string, unknown>).message
           : exception.message;
+      const code =
+        typeof body === 'object' && body !== null && 'code' in body && typeof (body as Record<string, unknown>).code === 'string'
+          ? (body as Record<string, string>).code
+          : 'VALIDATION_001';
 
       response.status(status).json({
         success: false,
         data: null,
         error: {
-          code: 'VALIDATION_001',
+          code,
           message,
         },
       });
@@ -51,7 +55,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       success: false,
       data: null,
       error: {
-        code: 'INTERNAL_SERVER_ERROR',
+        code: 'INTERNAL_001',
         message: '서버 오류가 발생했습니다.',
       },
     });
