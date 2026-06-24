@@ -1,3 +1,10 @@
+# [1.29.0](https://github.com/kittysaemi/KittyWallet/compare/v1.28.0...v1.29.0) (2026-06-24)
+
+
+### Features
+
+* guide retry for low quality receipt OCR ([eb96d63](https://github.com/kittysaemi/KittyWallet/commit/eb96d632e340720280e31ac2b626af431c79c4c1))
+
 # [1.28.0](https://github.com/kittysaemi/KittyWallet/compare/v1.27.1...v1.28.0) (2026-06-24)
 
 
