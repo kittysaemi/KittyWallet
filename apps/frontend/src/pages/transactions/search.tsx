@@ -371,7 +371,7 @@ const BrowseTab: React.FC<BrowseTabProps> = ({
   const items = deduplicateInstallments(query.data?.data?.items ?? []);
 
   const inputClass =
-    "w-full rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-caption)] focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary-soft)]";
+    "w-full rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 py-2.5 text-base text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-caption)] focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary-soft)]";
 
   return (
     <div>
@@ -510,7 +510,7 @@ const KeywordTab: React.FC<{ iconMap: Map<number, IconItem>; categoryIconMap: Ma
   }
 
   const inputClass =
-    "w-full rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-caption)] focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary-soft)]";
+    "w-full rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 py-2.5 text-base text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-caption)] focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary-soft)]";
 
   return (
     <div>
