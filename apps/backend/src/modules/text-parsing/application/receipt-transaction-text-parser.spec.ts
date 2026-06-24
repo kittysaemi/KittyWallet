@@ -123,4 +123,16 @@ K2\t\t\t430,000\t\t 1\t\t430,000
     expect(result.fields.transactionDate?.value).toBe("2026-06-23");
     expect(result.fields.totalAmount?.value).toBe(1530000);
   });
+
+  it("extracts a total when OCR inserts spaces and closing symbols after its label", () => {
+    const result = parser.parse("거래일시 2026.06.24\n합 계】￦45,750원");
+
+    expect(result.fields.totalAmount?.value).toBe(45750);
+  });
+
+  it("extracts a total from a spaced total label followed by a colon", () => {
+    const result = parser.parse("총 합 계 :\n220,000원");
+
+    expect(result.fields.totalAmount?.value).toBe(220000);
+  });
 });
