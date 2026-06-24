@@ -20,7 +20,7 @@ import { Input } from "../../shared/ui/Input";
 import { useTimezone } from "../../shared/hooks/useTimezone";
 import { getTodayInTimezone } from "../../shared/utils/date";
 import { STALE_TIME } from "../../shared/constants/queryConfig";
-import { formatSupportError, toSupportErrorMessage } from "../../shared/api/apiError";
+import { CLIENT_ERROR_CODES, formatSupportError, toSupportErrorMessage } from "../../shared/api/apiError";
 
 function createSchema(today: string, skipFutureDateCheck = false) {
   const dateField = skipFutureDateCheck
@@ -380,6 +380,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    (document.activeElement as HTMLElement)?.blur();
     setApiError("");
     mutation.reset();
 
@@ -414,7 +415,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             void queryClient.invalidateQueries({ queryKey: ["transactions"] });
             onSuccess();
           } catch {
-            setApiError(formatSupportError("OFFLINE_001"));
+            setApiError(formatSupportError(CLIENT_ERROR_CODES.offline));
           }
         })();
         return;
@@ -477,7 +478,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           void queryClient.invalidateQueries({ queryKey: ["statistics"] });
           onSuccess();
         } catch {
-          setApiError(formatSupportError("OFFLINE_001"));
+          setApiError(formatSupportError(CLIENT_ERROR_CODES.offline));
         }
       })();
       return;

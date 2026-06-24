@@ -10,7 +10,7 @@ describe("api error display", () => {
       undefined,
       undefined,
       {
-        data: { error: { code: "RECEIPT_OCR_TIMEOUT", message: "영수증 분석 시간이 초과되었습니다." } },
+        data: { error: { code: "R0007", message: "영수증 분석 시간이 초과되었습니다." } },
         status: 503,
         statusText: "Service Unavailable",
         headers: {},
@@ -18,11 +18,11 @@ describe("api error display", () => {
       }
     );
 
-    expect(toSupportErrorMessage(error)).toBe("오류입니다 #RECEIPT_OCR_TIMEOUT 관리자에 문의하세요.");
+    expect(toSupportErrorMessage(error)).toBe("오류입니다 #R0007 관리자에 문의하세요.");
   });
 
   it("uses a stable client code when no HTTP response exists", () => {
-    expect(toSupportErrorMessage(new AxiosError("Network Error"))).toBe("오류입니다 #NETWORK_001 관리자에 문의하세요.");
-    expect(formatSupportError("OFFLINE_001")).toBe("오류입니다 #OFFLINE_001 관리자에 문의하세요.");
+    expect(toSupportErrorMessage(new AxiosError("Network Error"))).toBe("오류입니다 #C0002 관리자에 문의하세요.");
+    expect(formatSupportError("C0003")).toBe("오류입니다 #C0003 관리자에 문의하세요.");
   });
 });

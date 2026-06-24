@@ -6,6 +6,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { Response } from 'express';
+import { toPublicErrorCode } from '@kittywallet/shared-types';
 import { AppException } from '../exceptions/app.exception';
 
 @Catch()
@@ -19,7 +20,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
         success: false,
         data: null,
         error: {
-          code: exception.code,
+          code: toPublicErrorCode(exception.code),
           message: exception.message,
         },
       });
@@ -44,7 +45,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
         success: false,
         data: null,
         error: {
-          code,
+          code: toPublicErrorCode(code),
           message,
         },
       });
@@ -55,7 +56,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       success: false,
       data: null,
       error: {
-        code: 'INTERNAL_001',
+        code: toPublicErrorCode(),
         message: '서버 오류가 발생했습니다.',
       },
     });

@@ -1,3 +1,23 @@
+# [1.28.0](https://github.com/kittysaemi/KittyWallet/compare/v1.27.1...v1.28.0) (2026-06-24)
+
+
+### Bug Fixes
+
+* **ui:** 입력 완료 시 blur로 줌 복원, 영수증 textarea font-size 16px 통일 ([af12870](https://github.com/kittysaemi/KittyWallet/commit/af12870b1774ed2dea48cad135a752725a95aa55))
+
+
+### Features
+
+* **ui:** 거래 등록 완료 후 거래내역으로 이동 및 해당 날짜 스크롤 ([c7bf6f8](https://github.com/kittysaemi/KittyWallet/commit/c7bf6f897dac557ed6f7048305381d5c9fc5d1ba))
+
+## [1.27.1](https://github.com/kittysaemi/KittyWallet/compare/v1.27.0...v1.27.1) (2026-06-24)
+
+
+### Bug Fixes
+
+* improve receipt amount and date parsing ([65288de](https://github.com/kittysaemi/KittyWallet/commit/65288ded5758547577c3610e81dd2e4fcd8cba9d))
+* support OCR amount labels and frontend build ([e482685](https://github.com/kittysaemi/KittyWallet/commit/e4826855ed6d8a96a3cf973a00624c187938802a))
+
 # [1.27.0](https://github.com/kittysaemi/KittyWallet/compare/v1.26.12...v1.27.0) (2026-06-24)
 
 

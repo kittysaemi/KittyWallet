@@ -1,19 +1,20 @@
 import { isAxiosError } from "axios";
+import { PUBLIC_ERROR_CODES, isPublicErrorCode } from "../../../../../packages/shared-types/src/errorCodes";
 
 interface ApiErrorResponse {
   error?: { code?: string };
 }
 
 export const CLIENT_ERROR_CODES = {
-  network: "NETWORK_001",
-  offline: "OFFLINE_001",
-  unknown: "INTERNAL_001"
+  network: PUBLIC_ERROR_CODES.network,
+  offline: PUBLIC_ERROR_CODES.offline,
+  unknown: PUBLIC_ERROR_CODES.internal
 } as const;
 
 export function getApiErrorCode(error: unknown): string {
   if (isAxiosError<ApiErrorResponse>(error)) {
     const code = error.response?.data?.error?.code;
-    if (code) return code;
+    if (isPublicErrorCode(code)) return code;
     if (!error.response) return CLIENT_ERROR_CODES.network;
   }
   return CLIENT_ERROR_CODES.unknown;

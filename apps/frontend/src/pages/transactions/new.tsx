@@ -13,6 +13,7 @@ const TransactionNewPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const lastCreatedDateRef = React.useRef<string>();
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
   const [analysisError, setAnalysisError] = React.useState("");
   const [receiptDraft, setReceiptDraft] = React.useState<ReceiptAnalysisDraft>();
@@ -120,8 +121,11 @@ const TransactionNewPage: React.FC = () => {
           {analysisError && <p className="mb-3 text-sm text-[var(--color-danger)]">{analysisError}</p>}
           <TransactionForm
             receiptDraft={receiptDraft}
-            onCreated={(finalDraft) => { if (receiptDraft) void receiptAnalysisApi.saveTrainingSample(receiptDraft, finalDraft); }}
-            onSuccess={() => navigate(-1)}
+            onCreated={(finalDraft) => {
+              lastCreatedDateRef.current = finalDraft.transaction_date;
+              if (receiptDraft) void receiptAnalysisApi.saveTrainingSample(receiptDraft, finalDraft);
+            }}
+            onSuccess={() => navigate("/transactions", { state: { highlightDate: lastCreatedDateRef.current } })}
           />
         </div>
       </div>
@@ -131,8 +135,8 @@ const TransactionNewPage: React.FC = () => {
             <h2 id="receipt-text-title" className="font-gamja text-xl">영수증 텍스트 붙여넣기</h2>
             <p className="mt-2 text-sm text-[var(--color-text-secondary)]">다른 앱에서 추출한 영수증 원문을 붙여 넣으면 거래 초안을 만듭니다.</p>
             <label htmlFor="receipt-ocr-text" className="sr-only">영수증 텍스트</label>
-            <textarea id="receipt-ocr-text" autoFocus value={pastedText} onChange={(event) => setPastedText(event.target.value)} placeholder="영수증 텍스트를 붙여 넣어 주세요." className="mt-4 min-h-40 w-full rounded-xl border bg-[var(--color-bg-card)] p-3 text-sm" />
-            <div className="mt-4 flex gap-2"><button type="button" onClick={() => void parsePastedText()} disabled={isAnalyzing || !pastedText.trim()} className="min-h-11 flex-1 rounded-xl bg-[var(--color-primary)] text-sm font-semibold disabled:opacity-50">{isAnalyzing ? "분석 중…" : "텍스트 분석"}</button><button type="button" onClick={() => { setPastedText(""); setAnalysisError(""); clearSource(); }} className="min-h-11 rounded-xl px-4 text-sm">취소</button></div>
+            <textarea id="receipt-ocr-text" autoFocus value={pastedText} onChange={(event) => setPastedText(event.target.value)} placeholder="영수증 텍스트를 붙여 넣어 주세요." className="mt-4 min-h-40 w-full rounded-xl border bg-[var(--color-bg-card)] p-3 text-base" />
+            <div className="mt-4 flex gap-2"><button type="button" onClick={() => { (document.activeElement as HTMLElement)?.blur(); void parsePastedText(); }} disabled={isAnalyzing || !pastedText.trim()} className="min-h-11 flex-1 rounded-xl bg-[var(--color-primary)] text-sm font-semibold disabled:opacity-50">{isAnalyzing ? "분석 중…" : "텍스트 분석"}</button><button type="button" onClick={() => { (document.activeElement as HTMLElement)?.blur(); setPastedText(""); setAnalysisError(""); clearSource(); }} className="min-h-11 rounded-xl px-4 text-sm">취소</button></div>
           </section>
         </div>
       )}
