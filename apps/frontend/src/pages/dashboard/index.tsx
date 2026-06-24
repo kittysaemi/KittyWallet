@@ -198,7 +198,7 @@ const DashboardPage: React.FC = () => {
               amount={data.spending_summary.income_amount}
               sign="+"
               labelColor="text-[var(--color-income)]"
-              amountColor="text-blue-600"
+              amountColor="text-[var(--color-income)]"
             />
             <SumCard
               label="이번달지출"

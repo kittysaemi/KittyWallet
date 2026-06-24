@@ -218,10 +218,10 @@ const WalletTransactionsPage: React.FC<WalletTransactionsPageProps> = ({ walletT
             <p className="text-sm font-semibold text-[var(--color-text-primary)]">{walletName}</p>
             {walletType === "ACCOUNT" ? (
               <p className="text-sm text-[var(--color-text-secondary)]">
-                현재잔액 : <span className={`font-semibold ${accountBalance !== null && accountBalance < 0 ? "text-red-500" : "text-[var(--color-income)]"}`}>{accountBalance !== null ? `${fmt(accountBalance)}원` : "—"}</span>
+                현재잔액 : <span className={`font-semibold ${accountBalance !== null && accountBalance < 0 ? "text-[var(--color-danger)]" : "text-[var(--color-income)]"}`}>{accountBalance !== null ? `${fmt(accountBalance)}원` : "—"}</span>
               </p>
             ) : (
-              <p className="text-sm font-semibold text-red-500">{fmt(periodExpense)}원</p>
+              <p className="text-sm font-semibold text-[var(--color-danger)]">{fmt(periodExpense)}원</p>
             )}
           </div>
         )}
