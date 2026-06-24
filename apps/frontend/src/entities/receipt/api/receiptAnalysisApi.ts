@@ -12,10 +12,6 @@ export interface ReceiptAnalysisDraft {
   items: Array<{ value: string; confidence: number }>;
   warnings: string[];
   parserVersion: string;
-  analysisQuality?: {
-    retryRecommended: boolean;
-    reasons: Array<"LOW_CONFIDENCE" | "MISSING_CORE_FIELDS">;
-  };
   sourceText: string;
   sourceType: ReceiptSourceType;
 }

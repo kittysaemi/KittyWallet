@@ -19,19 +19,8 @@ export class ReceiptAnalysisService {
       if (!ocr.text) {
         throw new UnprocessableEntityException({ code: "RECEIPT_ANALYSIS_FAILED", message: "영수증 내용을 읽을 수 없습니다." });
       }
-      const draft = this.textParsingService.parse("receipt-transaction", ocr.text);
-      const missingCoreFields = !draft.fields.transactionDate && !draft.fields.totalAmount;
-      const retryReasons = [
-        ...(ocr.confidence < 65 ? ["LOW_CONFIDENCE"] : []),
-        ...(missingCoreFields ? ["MISSING_CORE_FIELDS"] : [])
-      ] as const;
-
       return {
-        ...draft,
-        analysisQuality: {
-          retryRecommended: retryReasons.length > 0,
-          reasons: retryReasons
-        },
+        ...this.textParsingService.parse("receipt-transaction", ocr.text),
         sourceText: ocr.text,
         sourceType: "OCR_IMAGE" as const
       };

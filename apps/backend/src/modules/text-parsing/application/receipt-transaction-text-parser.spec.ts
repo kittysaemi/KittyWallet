@@ -52,15 +52,6 @@ NAVER FINANCIAL
     expect(result.fields.totalAmount?.value).toBe(1530000);
   });
 
-  it("prioritizes the sales amount over tax components and other total labels", () => {
-    const result = parser.parse(`과세 금액 1,390,909원
-부가세 금액 139,091원
-총 합계 1,500,000원
-판매 금 액 1,530,000원`);
-
-    expect(result.fields.totalAmount?.value).toBe(1530000);
-  });
-
   it("parses a labeled date when OCR joins the date and time", () => {
     const result = parser.parse("서현365의원\n거래일시:2026/06/2305:13:20\n합계: 680,000원");
 

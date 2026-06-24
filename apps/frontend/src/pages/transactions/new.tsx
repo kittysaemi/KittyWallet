@@ -17,20 +17,11 @@ const TransactionNewPage: React.FC = () => {
   const [analysisError, setAnalysisError] = React.useState("");
   const [receiptDraft, setReceiptDraft] = React.useState<ReceiptAnalysisDraft>();
   const [receiptPreviewUrl, setReceiptPreviewUrl] = React.useState<string>();
-  const [receiptFileForAnalysis, setReceiptFileForAnalysis] = React.useState<File>();
   const [pastedText, setPastedText] = React.useState("");
-  const cameraInputRef = React.useRef<HTMLInputElement>(null);
-  const galleryInputRef = React.useRef<HTMLInputElement>(null);
   const source = searchParams.get("receiptSource");
   const receiptFile = (location.state as NavigationState | null)?.receiptFile;
 
   const clearSource = () => setSearchParams({}, { replace: true });
-  const prepareImage = React.useCallback((file: File) => {
-    setReceiptDraft(undefined);
-    setAnalysisError("");
-    setReceiptFileForAnalysis(file);
-    setReceiptPreviewUrl(URL.createObjectURL(file));
-  }, []);
   const analyzeImage = React.useCallback(async (file: File) => {
     setIsAnalyzing(true);
     setAnalysisError("");
@@ -45,26 +36,15 @@ const TransactionNewPage: React.FC = () => {
 
   React.useEffect(() => {
     if (!receiptFile) return;
-    prepareImage(receiptFile);
+    const previewUrl = URL.createObjectURL(receiptFile);
+    setReceiptPreviewUrl(previewUrl);
+    void analyzeImage(receiptFile);
     navigate(location.pathname, { replace: true, state: null });
-  }, [location.pathname, navigate, prepareImage, receiptFile]);
+  }, [analyzeImage, location.pathname, navigate, receiptFile]);
 
   React.useEffect(() => () => {
     if (receiptPreviewUrl) URL.revokeObjectURL(receiptPreviewUrl);
   }, [receiptPreviewUrl]);
-
-  const selectReplacementImage = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.currentTarget.value = "";
-    if (file) prepareImage(file);
-  };
-
-  const clearImage = () => {
-    setReceiptFileForAnalysis(undefined);
-    setReceiptPreviewUrl(undefined);
-    setReceiptDraft(undefined);
-    setAnalysisError("");
-  };
 
   const parsePastedText = async () => {
     if (!pastedText.trim()) return;
@@ -94,28 +74,6 @@ const TransactionNewPage: React.FC = () => {
               {isAnalyzing && <figcaption className="border-t px-3 py-2 text-sm text-[var(--color-text-secondary)]">서버로 전송하고 영수증을 분석하고 있습니다…</figcaption>}
             </figure>
           )}
-          {receiptFileForAnalysis && !isAnalyzing && !receiptDraft && (
-            <section className="mb-4 rounded-xl border border-[var(--color-border-primary)] p-4" aria-label="영수증 촬영 안내">
-              <p className="text-sm font-semibold">영수증이 선명한지 확인해 주세요</p>
-              <p className="mt-1 text-xs text-[var(--color-text-secondary)]">영수증 전체가 보이도록 가까이 찍고, 흔들림·반사광·그림자를 피해 주세요.</p>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => void analyzeImage(receiptFileForAnalysis)} className="min-h-11 rounded-xl bg-[var(--color-primary)] text-sm font-semibold">분석하기</button>
-                <button type="button" onClick={() => cameraInputRef.current?.click()} className="min-h-11 rounded-xl border text-sm font-semibold">다시 촬영</button>
-                <button type="button" onClick={() => galleryInputRef.current?.click()} className="min-h-11 rounded-xl border text-sm font-semibold">사진 선택</button>
-                <button type="button" onClick={clearImage} className="min-h-11 rounded-xl text-sm text-[var(--color-text-secondary)]">이미지 취소</button>
-              </div>
-            </section>
-          )}
-          {receiptDraft?.analysisQuality?.retryRecommended && (
-            <section className="mb-4 rounded-xl border border-[var(--color-warning)] bg-[var(--color-warning-soft)] p-4" aria-live="polite">
-              <p className="text-sm font-semibold">영수증 글자를 충분히 읽지 못했어요.</p>
-              <p className="mt-1 text-xs text-[var(--color-text-secondary)]">다시 촬영하거나 사진을 선택해 보세요. 현재 입력 화면에서 직접 수정할 수도 있습니다.</p>
-              <div className="mt-3 flex gap-2">
-                <button type="button" onClick={() => cameraInputRef.current?.click()} className="min-h-10 rounded-xl border px-3 text-sm font-semibold">다시 촬영</button>
-                <button type="button" onClick={() => galleryInputRef.current?.click()} className="min-h-10 rounded-xl border px-3 text-sm font-semibold">사진 선택</button>
-              </div>
-            </section>
-          )}
           {isAnalyzing && !receiptPreviewUrl && <p className="mb-3 text-sm text-[var(--color-text-secondary)]">텍스트를 분석하고 있습니다…</p>}
           {analysisError && <p className="mb-3 text-sm text-[var(--color-danger)]">{analysisError}</p>}
           <TransactionForm
@@ -136,8 +94,6 @@ const TransactionNewPage: React.FC = () => {
           </section>
         </div>
       )}
-      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={selectReplacementImage} />
-      <input ref={galleryInputRef} type="file" accept="image/*" className="hidden" onChange={selectReplacementImage} />
     </div>
   );
 };
