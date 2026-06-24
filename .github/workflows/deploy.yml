@@ -141,15 +141,45 @@ jobs:
           APP_ENV: ${{ secrets.PRODUCTION_ENV_FILE }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GHCR_USER: ${{ github.actor }}
+          MIN_DEPLOY_FREE_SPACE_MB: 1024
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
-          envs: API_IMAGE,WEB_IMAGE,OCR_IMAGE,APP_ENV,GHCR_TOKEN,GHCR_USER
+          envs: API_IMAGE,WEB_IMAGE,OCR_IMAGE,APP_ENV,GHCR_TOKEN,GHCR_USER,MIN_DEPLOY_FREE_SPACE_MB
           script: |
             set -euo pipefail
             cd "${{ secrets.DEPLOY_PATH }}"
+
+            free_space_mb() {
+              df -Pm / | awk 'NR == 2 { print $4 }'
+            }
+
+            echo "== Docker disk usage before cleanup =="
+            df -h /
+            docker system df
+
+            # Preserve images used by running containers and remove only old
+            # KittyWallet release images. This avoids deleting another service's
+            # images, volumes, or containers from the shared Docker host.
+            running_images="$(docker ps --format '{{.Image}}' | sort -u)"
+            docker image ls --format '{{.Repository}}:{{.Tag}} {{.ID}}' |
+              awk '$1 ~ /^ghcr\.io\/kittysaemi\/kittywallet-(api|web|ocr):/ { print $1, $2 }' |
+              while read -r image _; do
+                if ! printf '%s\n' "$running_images" | grep -Fxq "$image"; then
+                  echo "Removing unused KittyWallet image: $image"
+                  docker image rm "$image" || true
+                fi
+              done
+
+            free_mb="$(free_space_mb)"
+            echo "Free disk space after cleanup: ${free_mb}MB"
+            if [ "$free_mb" -lt "$MIN_DEPLOY_FREE_SPACE_MB" ]; then
+              echo "::error title=Insufficient deploy disk space::${free_mb}MB free; ${MIN_DEPLOY_FREE_SPACE_MB}MB is required after safe cleanup."
+              exit 1
+            fi
+
             mkdir -p infra/certbot/conf infra/certbot/www
             printf '%s' "$APP_ENV" > .env.production.raw
             grep -Ev '^(KITTYWALLET_API_IMAGE|KITTYWALLET_WEB_IMAGE|KITTYWALLET_OCR_IMAGE)=' .env.production.raw > .env.production
