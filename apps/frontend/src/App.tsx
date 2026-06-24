@@ -7,6 +7,7 @@ import { settingsApi } from "./entities/settings/api/settingsApi";
 import { applyThemeSetting, DEFAULT_THEME, getStoredTheme } from "./entities/settings/model/theme";
 import { PwaStatusBanner } from "./pwa/sync/PwaStatusBanner";
 import { registerSyncQueueRunner } from "./pwa/sync/syncQueue.service";
+import { STALE_TIME } from "./shared/constants/queryConfig";
 
 const AUTH_REFRESH_TIMEOUT_MS = 5000;
 
@@ -30,7 +31,7 @@ const App: React.FC = () => {
     queryKey: ["settings"],
     queryFn: settingsApi.getSettings,
     enabled: isInitialized && isAuthenticated,
-    staleTime: 5 * 60 * 1000
+    staleTime: STALE_TIME.MEDIUM
   });
 
   useEffect(() => {

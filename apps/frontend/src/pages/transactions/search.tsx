@@ -1,7 +1,7 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, Circle, Search, X } from "lucide-react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useNavigationType, useSearchParams } from "react-router-dom";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import type { TransactionItem } from "../../entities/transaction/model/transaction.types";
 import { accountApi } from "../../entities/account/api/accountApi";
@@ -12,6 +12,7 @@ import type { IconItem } from "../../entities/icon/model/icon.types";
 import { IconRenderer } from "../../shared/ui/IconRenderer";
 import { useTimezone } from "../../shared/hooks/useTimezone";
 import { getTodayInTimezone } from "../../shared/utils/date";
+import { STALE_TIME, QUERY_LIMIT } from "../../shared/constants/queryConfig";
 
 const cardClass =
   "rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] shadow-[0_4px_16px_var(--color-card-shadow)]";
@@ -41,11 +42,13 @@ interface SearchPageCache {
   tab: "browse" | "keyword";
   browse: BrowseCacheState;
   keyword: KeywordCacheState;
+  scrollTop: number;
 }
 const _sc: SearchPageCache = {
   tab: "browse",
   browse: { startDate: "", endDate: "", walletOpt: undefined, categoryOpt: undefined, searched: false, params: null },
-  keyword: { keyword: "", submittedKeyword: "", triggered: false, searched: false }
+  keyword: { keyword: "", submittedKeyword: "", triggered: false, searched: false },
+  scrollTop: 0
 };
 
 function formatAmount(amount: number, type: "INCOME" | "EXPENSE"): string {
@@ -55,7 +58,7 @@ function formatAmount(amount: number, type: "INCOME" | "EXPENSE"): string {
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
-  return `${d.getMonth() + 1}월 ${d.getDate()}일 (${["일", "월", "화", "수", "목", "금", "토"][d.getDay()]})`;
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${["일", "월", "화", "수", "목", "금", "토"][d.getDay()]})`;
 }
 
 function groupByDate(items: TransactionItem[]): Map<string, TransactionItem[]> {
@@ -145,8 +148,8 @@ const TransactionRow: React.FC<TransactionRowProps> = ({ item, iconMap, category
       <p
         className={`shrink-0 text-sm font-semibold ${
           item.transaction_type === "INCOME"
-            ? "text-blue-500"
-            : "text-[var(--color-text-primary)]"
+            ? "text-[var(--color-income)]"
+            : "text-[var(--color-danger)]"
         }`}
       >
         {formatAmount(item.amount + (item.interest ?? 0), item.transaction_type)}
@@ -303,7 +306,6 @@ const BrowseTab: React.FC<BrowseTabProps> = ({
   walletsLoading
 }) => {
   const timezone = useTimezone();
-  const today = React.useMemo(() => getTodayInTimezone(timezone), [timezone]);
   const [startDate, setStartDate] = React.useState(() => _sc.browse.startDate || getThreeMonthsAgo(timezone));
   const [endDate, setEndDate] = React.useState(() => _sc.browse.endDate || getTodayInTimezone(timezone));
   const [walletOpt, setWalletOpt] = React.useState<SelectOption | undefined>(() => _sc.browse.walletOpt);
@@ -326,10 +328,10 @@ const BrowseTab: React.FC<BrowseTabProps> = ({
         wallet_type: params?.walletType,
         wallet_id: params?.walletId,
         category_id: params?.catId,
-        limit: 200
+        limit: QUERY_LIMIT.DATE_RANGE
       }),
     enabled: !!params,
-    staleTime: 30 * 1000
+    staleTime: STALE_TIME.SHORT
   });
 
   const iconsForBrowse = iconMap;
@@ -371,7 +373,7 @@ const BrowseTab: React.FC<BrowseTabProps> = ({
   const items = deduplicateInstallments(query.data?.data?.items ?? []);
 
   const inputClass =
-    "w-full rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-caption)] focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary-soft)]";
+    "w-full rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 py-2.5 text-base text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-caption)] focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary-soft)]";
 
   return (
     <div>
@@ -380,10 +382,10 @@ const BrowseTab: React.FC<BrowseTabProps> = ({
         <div>
           <label className="mb-1.5 block text-xs font-medium text-[var(--color-text-secondary)]">기간</label>
           <div className="flex items-center gap-2">
-            <input type="date" className={inputClass} value={startDate} max={endDate || today}
+            <input type="date" className={inputClass} value={startDate} max={endDate || undefined}
               onChange={(e) => setStartDate(e.target.value)} />
             <span className="shrink-0 text-sm text-[var(--color-text-secondary)]">~</span>
-            <input type="date" className={inputClass} value={endDate} min={startDate} max={today}
+            <input type="date" className={inputClass} value={endDate} min={startDate}
               onChange={(e) => setEndDate(e.target.value)} />
           </div>
         </div>
@@ -474,9 +476,9 @@ const KeywordTab: React.FC<{ iconMap: Map<number, IconItem>; categoryIconMap: Ma
   const query = useQuery({
     queryKey: ["transactions", "keyword-all"],
     queryFn: () =>
-      transactionApi.getTransactions({ limit: 500 }),
+      transactionApi.getTransactions({ limit: QUERY_LIMIT.KEYWORD_SEARCH }),
     enabled: triggered,
-    staleTime: 60 * 1000
+    staleTime: STALE_TIME.MINUTE
   });
 
   const filtered = React.useMemo(() => {
@@ -510,7 +512,7 @@ const KeywordTab: React.FC<{ iconMap: Map<number, IconItem>; categoryIconMap: Ma
   }
 
   const inputClass =
-    "w-full rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 py-2.5 text-sm text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-caption)] focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary-soft)]";
+    "w-full rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 py-2.5 text-base text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-caption)] focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary-soft)]";
 
   return (
     <div>
@@ -620,7 +622,7 @@ const ResultList: React.FC<{
               </p>
               <div className="flex items-center gap-2 text-xs font-medium">
                 {income > 0 && (
-                  <span className="text-blue-500">+{income.toLocaleString("ko-KR")}원</span>
+                  <span className="text-[var(--color-income)]">+{income.toLocaleString("ko-KR")}원</span>
                 )}
                 {expense > 0 && (
                   <span className="text-[var(--color-text-primary)]">-{expense.toLocaleString("ko-KR")}원</span>
@@ -648,26 +650,41 @@ const TransactionSearchPage: React.FC = () => {
     _sc.tab = next;
     setSearchParams({ tab: next }, { replace: true });
   };
+  const navigationType = useNavigationType();
+  const pageRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    return () => {
+      const scrollEl = pageRef.current?.parentElement as HTMLElement | null;
+      if (scrollEl) _sc.scrollTop = scrollEl.scrollTop;
+    };
+  }, []);
+
+  React.useLayoutEffect(() => {
+    if (navigationType !== "POP") return;
+    const scrollEl = pageRef.current?.parentElement as HTMLElement | null;
+    if (scrollEl) scrollEl.scrollTop = _sc.scrollTop;
+  }, [navigationType]);
 
   const accountsQuery = useQuery({
     queryKey: ["accounts"],
     queryFn: () => accountApi.getAccounts(),
-    staleTime: 5 * 60 * 1000
+    staleTime: STALE_TIME.MEDIUM
   });
   const cardsQuery = useQuery({
     queryKey: ["cards"],
     queryFn: () => cardApi.getCards(),
-    staleTime: 5 * 60 * 1000
+    staleTime: STALE_TIME.MEDIUM
   });
   const categoriesQuery = useQuery({
     queryKey: ["categories", "active"],
     queryFn: () => categoryApi.getCategories(true),
-    staleTime: 5 * 60 * 1000
+    staleTime: STALE_TIME.MEDIUM
   });
   const iconsQuery = useQuery({
     queryKey: ["icons", "select"],
     queryFn: () => iconApi.getIcons(true),
-    staleTime: 10 * 60 * 1000
+    staleTime: STALE_TIME.LONG
   });
 
   const iconMap = React.useMemo(() => {
@@ -719,7 +736,7 @@ const TransactionSearchPage: React.FC = () => {
     }`;
 
   return (
-    <div className="bg-[var(--color-bg-primary)]">
+    <div ref={pageRef} className="bg-[var(--color-bg-primary)]">
       <div className="mx-auto max-w-[480px] px-4 pb-6 pt-6">
         {/* 헤더 */}
         <div className="mb-4 flex items-center">

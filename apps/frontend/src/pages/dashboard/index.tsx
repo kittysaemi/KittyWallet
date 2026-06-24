@@ -1,5 +1,6 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
+import { STALE_TIME, RETRY, QUERY_LIMIT } from "../../shared/constants/queryConfig";
 import {
   LogOut,
   PawPrint,
@@ -8,7 +9,7 @@ import {
   WifiOff
 } from "lucide-react";
 
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useNavigationType } from "react-router-dom";
 import { dashboardApi } from "../../entities/dashboard/api/dashboardApi";
 import { useAuthStore } from "../../entities/auth/store/authStore";
 import { authApi } from "../../entities/auth/api/authApi";
@@ -53,30 +54,48 @@ const SumCard: React.FC<SumCardProps> = ({ label, amount, sign = "+", labelColor
   </div>
 );
 
+let _savedDashboardScrollTop: number | null = null;
+
 // ─── 메인 페이지 ─────────────────────────────────────────────
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const isOffline = !navigator.onLine;
+  const navigationType = useNavigationType();
+  const pageRef = React.useRef<HTMLDivElement>(null);
 
   const query = useQuery({
     queryKey: ["dashboard"],
-    queryFn: () => dashboardApi.getDashboard({ recent_limit: 5, summary_period: "MONTH" }),
-    staleTime: 0,
-    retry: isOffline ? false : 2
+    queryFn: () => dashboardApi.getDashboard({ recent_limit: QUERY_LIMIT.TOP5, summary_period: "MONTH" }),
+    staleTime: STALE_TIME.REALTIME,
+    retry: isOffline ? false : RETRY.STANDARD
   });
 
   const categoriesQuery = useQuery({
     queryKey: ["categories", "active"],
     queryFn: () => categoryApi.getCategories(true),
-    staleTime: 5 * 60 * 1000
+    staleTime: STALE_TIME.MEDIUM
   });
 
   const iconsQuery = useQuery({
     queryKey: ["icons", "select"],
     queryFn: () => iconApi.getIcons(true),
-    staleTime: 10 * 60 * 1000
+    staleTime: STALE_TIME.LONG
   });
+
+  React.useEffect(() => {
+    return () => {
+      const scrollEl = pageRef.current?.parentElement as HTMLElement | null;
+      if (scrollEl) _savedDashboardScrollTop = scrollEl.scrollTop;
+    };
+  }, []);
+
+  React.useLayoutEffect(() => {
+    if (!query.isSuccess) return;
+    const scrollEl = pageRef.current?.parentElement as HTMLElement | null;
+    if (!scrollEl) return;
+    scrollEl.scrollTop = navigationType === "POP" ? (_savedDashboardScrollTop ?? 0) : 0;
+  }, [query.isSuccess, navigationType]);
 
   const iconMap = React.useMemo(() => {
     const map = new Map<number, IconItem>();
@@ -102,7 +121,7 @@ const DashboardPage: React.FC = () => {
     (data?.spending_summary.card_expense_amount ?? 0);
 
   return (
-    <div className="bg-[var(--color-bg-primary)]">
+    <div ref={pageRef} className="bg-[var(--color-bg-primary)]">
       <div className="mx-auto max-w-[480px] px-4 pb-6 pt-6">
 
         {/* PWA 설치 배너 */}
@@ -197,8 +216,8 @@ const DashboardPage: React.FC = () => {
               label="이번달수입"
               amount={data.spending_summary.income_amount}
               sign="+"
-              labelColor="text-blue-500"
-              amountColor="text-blue-600"
+              labelColor="text-[var(--color-income)]"
+              amountColor="text-[var(--color-income)]"
             />
             <SumCard
               label="이번달지출"

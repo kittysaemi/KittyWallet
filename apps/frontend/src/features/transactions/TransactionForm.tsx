@@ -19,6 +19,7 @@ import { Button } from "../../shared/ui/Button";
 import { Input } from "../../shared/ui/Input";
 import { useTimezone } from "../../shared/hooks/useTimezone";
 import { getTodayInTimezone } from "../../shared/utils/date";
+import { STALE_TIME } from "../../shared/constants/queryConfig";
 import { formatSupportError, toSupportErrorMessage } from "../../shared/api/apiError";
 
 function createSchema(today: string, skipFutureDateCheck = false) {
@@ -253,23 +254,23 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const accountsQuery = useQuery({
     queryKey: ["accounts"],
     queryFn: () => accountApi.getAccounts({ include_balance: true }),
-    staleTime: 0,
+    staleTime: STALE_TIME.REALTIME,
     refetchOnMount: "always"
   });
   const cardsQuery = useQuery({
     queryKey: ["cards"],
     queryFn: () => cardApi.getCards(),
-    staleTime: 60 * 1000
+    staleTime: STALE_TIME.MINUTE
   });
   const categoriesQuery = useQuery({
     queryKey: ["categories", "active"],
     queryFn: () => categoryApi.getCategories(true),
-    staleTime: 5 * 60 * 1000
+    staleTime: STALE_TIME.MEDIUM
   });
   const iconsQuery = useQuery({
     queryKey: ["icons", "select"],
     queryFn: () => iconApi.getIcons(true),
-    staleTime: 10 * 60 * 1000
+    staleTime: STALE_TIME.LONG
   });
 
   const iconMap = React.useMemo(() => {

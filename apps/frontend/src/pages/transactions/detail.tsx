@@ -15,6 +15,7 @@ import { iconApi } from "../../entities/icon/api/iconApi";
 import type { IconItem } from "../../entities/icon/model/icon.types";
 import { IconRenderer } from "../../shared/ui/IconRenderer";
 import type { InstallmentInfo } from "../../entities/transaction/model/transaction.types";
+import { STALE_TIME } from "../../shared/constants/queryConfig";
 
 function formatAmount(amount: number, type: "INCOME" | "EXPENSE"): string {
   const formatted = amount.toLocaleString("ko-KR");
@@ -147,26 +148,26 @@ const TransactionDetailPage: React.FC = () => {
   const iconsQuery = useQuery({
     queryKey: ["icons", "select"],
     queryFn: () => iconApi.getIcons(true),
-    staleTime: 10 * 60 * 1000
+    staleTime: STALE_TIME.LONG
   });
 
   const categoriesQuery = useQuery({
     queryKey: ["categories", "active"],
     queryFn: () => categoryApi.getCategories(true),
-    staleTime: 5 * 60 * 1000
+    staleTime: STALE_TIME.MEDIUM
   });
 
   const accountsQuery = useQuery({
     queryKey: ["accounts"],
     queryFn: () => accountApi.getAccounts(),
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME.MEDIUM,
     enabled: txQuery.data?.data?.wallet_type === "ACCOUNT"
   });
 
   const cardsQuery = useQuery({
     queryKey: ["cards"],
     queryFn: () => cardApi.getCards(),
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIME.MEDIUM,
     enabled: txQuery.data?.data?.wallet_type === "CARD"
   });
 

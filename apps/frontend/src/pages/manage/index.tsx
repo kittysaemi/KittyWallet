@@ -7,6 +7,7 @@ import type { AccountItem } from "../../entities/account/model/account.types";
 import { cardApi } from "../../entities/card/api/cardApi";
 import type { CardItem } from "../../entities/card/model/card.types";
 import { categoryApi } from "../../entities/category/api/categoryApi";
+import { STALE_TIME, RETRY } from "../../shared/constants/queryConfig";
 import type { CategoryItem } from "../../entities/category/model/category.types";
 import { iconApi } from "../../entities/icon/api/iconApi";
 import type {
@@ -142,14 +143,14 @@ const AccountsTab: React.FC = () => {
   const accountsQuery = useQuery({
     queryKey: ["accounts"],
     queryFn: () => accountApi.getAccounts(),
-    staleTime: 0,
+    staleTime: STALE_TIME.REALTIME,
     refetchOnMount: "always",
-    retry: isOffline ? false : 3
+    retry: isOffline ? false : RETRY.AGGRESSIVE
   });
   const iconsQuery = useQuery({
     queryKey: ["icons", "select"],
     queryFn: () => iconApi.getIcons(true),
-    staleTime: 5 * 60 * 1000
+    staleTime: STALE_TIME.MEDIUM
   });
 
   const iconMap = React.useMemo(() => {
@@ -587,14 +588,14 @@ const CardsTab: React.FC = () => {
   const cardsQuery = useQuery({
     queryKey: ["cards"],
     queryFn: () => cardApi.getCards(),
-    staleTime: 0,
+    staleTime: STALE_TIME.REALTIME,
     refetchOnMount: "always",
-    retry: isOffline ? false : 3
+    retry: isOffline ? false : RETRY.AGGRESSIVE
   });
   const iconsQuery = useQuery({
     queryKey: ["icons", "select"],
     queryFn: () => iconApi.getIcons(true),
-    staleTime: 5 * 60 * 1000
+    staleTime: STALE_TIME.MEDIUM
   });
 
   const iconMap = React.useMemo(() => {
