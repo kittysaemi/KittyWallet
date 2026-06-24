@@ -5,8 +5,6 @@ services:
     restart: unless-stopped
     env_file:
       - ${KITTYWALLET_ENV_FILE:-.env.production}
-    environment:
-      OCR_TIMEOUT_MS: ${OCR_TIMEOUT_MS:-180000}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -21,6 +19,8 @@ services:
     restart: unless-stopped
     env_file:
       - ${KITTYWALLET_ENV_FILE:-.env.production}
+    environment:
+      OCR_TIMEOUT_MS: ${OCR_TIMEOUT_MS:-180000}
     expose:
       - "3000"
     depends_on:
@@ -30,9 +30,7 @@ services:
         condition: service_healthy
 
   ocr:
-    build:
-      context: .
-      dockerfile: apps/ocr-service/Dockerfile
+    image: ${KITTYWALLET_OCR_IMAGE}
     container_name: kittywallet-ocr
     restart: unless-stopped
     environment:
