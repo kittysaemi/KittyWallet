@@ -1,3 +1,10 @@
+## [1.26.10](https://github.com/kittysaemi/KittyWallet/compare/v1.26.9...v1.26.10) (2026-06-24)
+
+
+### Bug Fixes
+
+* **ui:** 검색 결과에서 할부 거래 중복 표시 제거 ([#353](https://github.com/kittysaemi/KittyWallet/issues/353)) ([6e7edc0](https://github.com/kittysaemi/KittyWallet/commit/6e7edc0afbe05c818541367fc9c6b9996abd8493))
+
 ## [1.26.9](https://github.com/kittysaemi/KittyWallet/compare/v1.26.8...v1.26.9) (2026-06-24)
 
 
