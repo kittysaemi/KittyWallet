@@ -1,3 +1,10 @@
+## [1.26.4](https://github.com/kittysaemi/KittyWallet/compare/v1.26.3...v1.26.4) (2026-06-24)
+
+
+### Bug Fixes
+
+* **ui:** 거래 등록 후 이전 화면으로 복귀 ([d3c1727](https://github.com/kittysaemi/KittyWallet/commit/d3c17273f2d2eba4f1ee554d2cd075037a04315d)), closes [#353](https://github.com/kittysaemi/KittyWallet/issues/353)
+
 ## [1.26.3](https://github.com/kittysaemi/KittyWallet/compare/v1.26.2...v1.26.3) (2026-06-24)
 
 
