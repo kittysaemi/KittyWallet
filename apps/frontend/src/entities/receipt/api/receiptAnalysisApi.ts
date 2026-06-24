@@ -24,9 +24,9 @@ export const receiptAnalysisApi = {
   analyzeImage: async (image: File): Promise<ReceiptAnalysisDraft> => {
     const formData = new FormData();
     formData.append("image", image);
-    const response = await apiClient.post<{ data: ReceiptAnalysisDraft }>("/receipt-analyses", formData, {
-      headers: { "Content-Type": "multipart/form-data" }
-    });
+    // Do not set Content-Type here. Browsers must add the multipart boundary;
+    // forcing the media type can make iOS Safari send a request Multer cannot parse.
+    const response = await apiClient.post<{ data: ReceiptAnalysisDraft }>("/receipt-analyses", formData);
     return response.data.data;
   },
 
