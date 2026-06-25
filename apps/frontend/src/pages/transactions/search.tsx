@@ -133,8 +133,14 @@ const TransactionRow: React.FC<TransactionRowProps> = ({ item, iconMap, category
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">
-          {item.category_name}
+        <p className="flex min-w-0 items-center gap-1 text-sm font-medium text-[var(--color-text-primary)]">
+          <span className="truncate">{item.category_name}</span>
+          {item.memo && (
+            <>
+              <span className="shrink-0 text-[var(--color-text-caption)]">·</span>
+              <span className="truncate text-[var(--color-text-secondary)]">{item.memo}</span>
+            </>
+          )}
         </p>
         <p className="flex items-center gap-1 text-xs text-[var(--color-text-secondary)]">
           <span className="truncate">{item.wallet_name}</span>
