@@ -35,6 +35,8 @@ services:
     image: ${KITTYWALLET_OCR_IMAGE}
     container_name: kittywallet-ocr
     restart: unless-stopped
+    mem_limit: 2g
+    memswap_limit: 2g
     environment:
       PADDLE_OCR_USE_DOC_ORIENTATION: ${PADDLE_OCR_USE_DOC_ORIENTATION:-true}
       PADDLE_OCR_USE_DOC_UNWARPING: ${PADDLE_OCR_USE_DOC_UNWARPING:-false}
