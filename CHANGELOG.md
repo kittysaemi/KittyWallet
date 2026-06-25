@@ -1,3 +1,13 @@
+## [1.32.3](https://github.com/kittysaemi/KittyWallet/compare/v1.32.2...v1.32.3) (2026-06-25)
+
+
+### Bug Fixes
+
+* **ocr-service:** skip screenshot overlay crop for camera photos ([d09d46d](https://github.com/kittysaemi/KittyWallet/commit/d09d46d7e87589c7ffdcfa2d7338d44d2fee1927))
+* **ocr-service:** use CLAHE for camera photos, lower confidence threshold to 50% ([5f259df](https://github.com/kittysaemi/KittyWallet/commit/5f259df94c66d4534a1c49aa4102daa70b94c6ce))
+* **ocr:** increase default OCR_TIMEOUT_MS from 25s to 35s ([5fe5402](https://github.com/kittysaemi/KittyWallet/commit/5fe5402a210d7ee4ad2e56043a62c795986933c8))
+* **ocr:** revert use_doc_unwarping to false — DocUNet causes CPU timeout ([a18b8e5](https://github.com/kittysaemi/KittyWallet/commit/a18b8e5fcf1af55a5baf16387daa7767538f5059))
+
 ## [1.32.2](https://github.com/kittysaemi/KittyWallet/compare/v1.32.1...v1.32.2) (2026-06-25)
 
 
