@@ -1,3 +1,10 @@
+## [1.32.4](https://github.com/kittysaemi/KittyWallet/compare/v1.32.3...v1.32.4) (2026-06-25)
+
+
+### Bug Fixes
+
+* **search:** 검색 결과에 메모 표시 추가 ([0fa80a1](https://github.com/kittysaemi/KittyWallet/commit/0fa80a1f16215e2f6cd9ff7325e890ab672ba687))
+
 ## [1.32.3](https://github.com/kittysaemi/KittyWallet/compare/v1.32.2...v1.32.3) (2026-06-25)
 
 
