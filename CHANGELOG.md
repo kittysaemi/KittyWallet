@@ -1,3 +1,11 @@
+## [1.32.2](https://github.com/kittysaemi/KittyWallet/compare/v1.32.1...v1.32.2) (2026-06-25)
+
+
+### Bug Fixes
+
+* **search:** 키워드 검색 할부 중복 표시 및 금액 수정 ([57ee1a3](https://github.com/kittysaemi/KittyWallet/commit/57ee1a335e1262119626daca1627fe4cda9e74dc))
+* **transactions:** 비할부 거래 installment_id 필드 undefined로 처리 ([2ae3f5e](https://github.com/kittysaemi/KittyWallet/commit/2ae3f5e1b17bea573a1943dfc3eeee218f397e6d))
+
 ## [1.32.1](https://github.com/kittysaemi/KittyWallet/compare/v1.32.0...v1.32.1) (2026-06-25)
 
 
