@@ -3,6 +3,7 @@ import os
 import tempfile
 from pathlib import Path
 
+import cv2
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from paddleocr import PaddleOCR
@@ -20,6 +21,9 @@ OCR_INFERENCE_TIMEOUT = float(os.getenv("OCR_INFERENCE_TIMEOUT", "30"))
 # Limit the longest side of the image before feeding it to PaddleOCR.
 # Smartphone photos (4000+ px) can push memory over the container limit.
 OCR_MAX_SIDE = int(os.getenv("OCR_MAX_SIDE", "2000"))
+# When average confidence from the first pass falls below this value,
+# a second pass with adaptive threshold is attempted (helps thermal paper).
+OCR_LOW_CONF_THRESHOLD = float(os.getenv("OCR_LOW_CONF_THRESHOLD", "70"))
 
 
 def env_flag(name: str, default: bool) -> bool:
@@ -104,6 +108,18 @@ def resize_for_ocr(image_path: str) -> str:
     return resized_path
 
 
+def adaptive_threshold_candidate(image_path: str) -> str | None:
+    """Binarize with adaptive threshold to recover low-contrast text (thermal paper, shadows)."""
+    img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+    if img is None:
+        return None
+    blurred = cv2.GaussianBlur(img, (3, 3), 0)
+    thresh = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 10)
+    out_path = f"{image_path}-thresh.jpg"
+    cv2.imwrite(out_path, thresh)
+    return out_path
+
+
 def create_bottom_sheet_candidate(image_path: str) -> str | None:
     """Extract a bright full-width bottom sheet from a dimmed mobile screenshot."""
     image = Image.open(image_path).convert("L")
@@ -157,16 +173,30 @@ async def recognize(image: UploadFile = File(...)):
                     )
                     if _score(sheet_lines) > _score(lines):
                         lines = sheet_lines
+
+                avg_conf = sum(line["confidence"] for line in lines) / len(lines) if lines else 0
+                if avg_conf < OCR_LOW_CONF_THRESHOLD:
+                    thresh_path = await run_in_threadpool(adaptive_threshold_candidate, resized_path)
+                    if thresh_path:
+                        thresh_lines = await asyncio.wait_for(
+                            run_in_threadpool(recognize_path, thresh_path),
+                            timeout=OCR_INFERENCE_TIMEOUT,
+                        )
+                        if _score(thresh_lines) > _score(lines):
+                            lines = thresh_lines
         except asyncio.TimeoutError:
             raise HTTPException(status_code=504, detail="OCR inference timed out")
         if not lines:
             raise HTTPException(status_code=422, detail="No text recognized")
         return {"text": "\n".join(line["text"] for line in lines), "confidence": round(sum(line["confidence"] for line in lines) / len(lines), 2), "lines": lines}
     finally:
-        cleanup_paths = {image_path, f"{image_path}-bottom-sheet.jpg"}
-        if resized_path:
-            cleanup_paths.add(resized_path)
-            cleanup_paths.add(f"{resized_path}-bottom-sheet.jpg")
+        base = resized_path or image_path
+        cleanup_paths = {
+            image_path,
+            base,
+            f"{base}-bottom-sheet.jpg",
+            f"{base}-thresh.jpg",
+        }
         for path in cleanup_paths:
             if os.path.exists(path):
                 os.unlink(path)

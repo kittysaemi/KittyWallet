@@ -51,6 +51,7 @@ services:
       PADDLE_OCR_RECOGNITION_MODEL: ${PADDLE_OCR_RECOGNITION_MODEL:-korean_PP-OCRv5_mobile_rec}
       OCR_INFERENCE_TIMEOUT: ${OCR_INFERENCE_TIMEOUT:-30}
       OCR_MAX_SIDE: ${OCR_MAX_SIDE:-2000}
+      OCR_LOW_CONF_THRESHOLD: ${OCR_LOW_CONF_THRESHOLD:-70}
     volumes:
       - paddle-models:/root/.paddlex
 
