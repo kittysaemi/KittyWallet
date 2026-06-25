@@ -1,3 +1,20 @@
+## [1.32.1](https://github.com/kittysaemi/KittyWallet/compare/v1.32.0...v1.32.1) (2026-06-25)
+
+
+### Bug Fixes
+
+* **ocr-service:** add adaptive threshold retry for low-confidence results ([98feb95](https://github.com/kittysaemi/KittyWallet/commit/98feb95d92a4b1170a5e8618b91b820198b65d13))
+* **ocr-service:** add per-request asyncio timeout to prevent lock starvation ([1f5084f](https://github.com/kittysaemi/KittyWallet/commit/1f5084f1256570b07756a094a84d16377515844b))
+* **ocr-service:** cap bottom sheet crop upscale within OCR_MAX_SIDE ([29b2d77](https://github.com/kittysaemi/KittyWallet/commit/29b2d7761bad221b133e439518a9c132a3005d16))
+* **ocr-service:** enable doc unwarping by default for perspective correction ([7ef5091](https://github.com/kittysaemi/KittyWallet/commit/7ef50915f0826a46d88a2719ffffe66e5de0565e))
+* **ocr-service:** replace fixed-position bottom sheet detection with dynamic scan ([c617f81](https://github.com/kittysaemi/KittyWallet/commit/c617f8111a0515f405845a458ea65482ef1a2d2b))
+* **ocr-service:** resize large images before PaddleOCR inference ([88c1803](https://github.com/kittysaemi/KittyWallet/commit/88c18036c98b813e79705b5407227b87aa224619)), closes [Hi#resolution](https://github.com/Hi/issues/resolution)
+* **ocr-service:** use best-pick instead of replacing OCR result with bottom sheet ([aee6223](https://github.com/kittysaemi/KittyWallet/commit/aee6223875fcaab264c8533d808a25746c7c114e))
+* **ocr:** add memory limit to PaddleOCR container to prevent OOM kill ([b436c8a](https://github.com/kittysaemi/KittyWallet/commit/b436c8a71ccdb7a82005bc1ac7d36dd1418e5273))
+* **ocr:** reduce default OCR_TIMEOUT_MS from 45 s to 25 s ([7189cf9](https://github.com/kittysaemi/KittyWallet/commit/7189cf9b275aa033e8472f6ed30837358da50681))
+* **paddle-ocr:** classify ECONNRESET and ETIMEDOUT as R0007 timeout ([d921da4](https://github.com/kittysaemi/KittyWallet/commit/d921da407345bcdf0c63336f0787d0f296a198cb))
+* **paddle-ocr:** retry once on connection failure before returning error ([7c47406](https://github.com/kittysaemi/KittyWallet/commit/7c474068450b025a69ce49c26474ccdfc3aa98fd))
+
 # [1.32.0](https://github.com/kittysaemi/KittyWallet/compare/v1.31.0...v1.32.0) (2026-06-25)
 
 
