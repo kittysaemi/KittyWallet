@@ -1,3 +1,10 @@
+# [1.32.0](https://github.com/kittysaemi/KittyWallet/compare/v1.31.0...v1.32.0) (2026-06-25)
+
+
+### Features
+
+* **ocr-ux:** replace manual analyze button with auto-analyze overlay ([99c9329](https://github.com/kittysaemi/KittyWallet/commit/99c932930cce5704a29c93cd341ee8448772e74a))
+
 # [1.31.0](https://github.com/kittysaemi/KittyWallet/compare/v1.30.0...v1.31.0) (2026-06-25)
 
 
