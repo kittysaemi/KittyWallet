@@ -552,7 +552,7 @@ export class TransactionsService {
       transaction_date: t.transactionDate.toISOString().split("T")[0],
       created_at: t.createdAt.toISOString(),
       updated_at: t.updatedAt.toISOString(),
-      installment_id: t.installmentId ? Number(t.installmentId) : null,
+      ...(t.installmentId ? { installment_id: Number(t.installmentId) } : {}),
       installment_seq: t.installmentSeq ?? null,
       installment_total_count: t.installmentTotalCount ?? null,
       installment_original_amount: t.cardInstallment?.originalAmount.toNumber() ?? null
