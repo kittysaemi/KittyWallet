@@ -8,6 +8,7 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from paddleocr import PaddleOCR
 from PIL import Image, ImageEnhance, ImageStat
+from PIL.ExifTags import TAGS
 
 app = FastAPI()
 ocr = None
@@ -120,6 +121,23 @@ def adaptive_threshold_candidate(image_path: str) -> str | None:
     return out_path
 
 
+def is_camera_photo(image_path: str) -> bool:
+    """Return True if the image carries camera EXIF metadata (Make, Model, or ExposureTime).
+
+    Camera photos always embed these tags; screenshots and messenger-shared images
+    typically do not. Used to skip screenshot-specific preprocessing on real photos.
+    """
+    try:
+        with Image.open(image_path) as img:
+            exif = img._getexif()
+            if not exif:
+                return False
+            # 271=Make, 272=Model, 33434=ExposureTime
+            return any(tag in exif for tag in (271, 272, 33434))
+    except Exception:
+        return False
+
+
 def find_bright_content_region(image_path: str) -> str | None:
     """Detect the uppermost bright content panel in a dimmed mobile screenshot.
 
@@ -127,6 +145,10 @@ def find_bright_content_region(image_path: str) -> str | None:
     then crops everything from that boundary downward. Works for bottom sheets,
     center modals, and card-style overlays at arbitrary vertical positions.
     Returns None for landscape images or images that don't match the pattern.
+
+    Only call this function after confirming the image is NOT a camera photo
+    (use is_camera_photo). Natural photo backgrounds (wood, fabric, dark surfaces)
+    can mimic the dark-top/bright-bottom pattern and cause false crops.
     """
     image = Image.open(image_path).convert("L")
     width, height = image.size
@@ -147,7 +169,14 @@ def find_bright_content_region(image_path: str) -> str | None:
     if start_y is None or start_y < int(height * 0.15):
         return None
 
-    top_brightness = ImageStat.Stat(image.crop((0, 0, width, start_y))).mean[0]
+    top_region = image.crop((0, 0, width, start_y))
+    # Natural photo backgrounds (wood grain, fabric, dark tables with texture) have
+    # high pixel variance. Screenshot dim overlays are nearly uniform. Skip the crop
+    # when the top region looks like a natural scene rather than a UI overlay.
+    if ImageStat.Stat(top_region).stddev[0] > 25:
+        return None
+
+    top_brightness = ImageStat.Stat(top_region).mean[0]
     bottom_brightness = ImageStat.Stat(image.crop((0, start_y, width, height))).mean[0]
     if bottom_brightness < BRIGHT or bottom_brightness < top_brightness * 1.5:
         return None
@@ -176,6 +205,8 @@ async def recognize(image: UploadFile = File(...)):
         image_path = temp.name
     resized_path: str | None = None
     try:
+        # Check EXIF on the original file before resize strips the metadata.
+        camera_photo = await run_in_threadpool(is_camera_photo, image_path)
         resized_path = await run_in_threadpool(resize_for_ocr, image_path)
         # PaddleOCR CPU inference is blocking and uses multiple native threads.
         # Serialize it to prevent competing inference jobs from starving the
@@ -186,7 +217,10 @@ async def recognize(image: UploadFile = File(...)):
                     run_in_threadpool(recognize_path, resized_path),
                     timeout=OCR_INFERENCE_TIMEOUT,
                 )
-                region_path = await run_in_threadpool(find_bright_content_region, resized_path)
+                # Skip screenshot overlay detection for camera photos — the dark
+                # background of a table can mimic a dimmed UI overlay and cause the
+                # receipt to be cropped incorrectly.
+                region_path = None if camera_photo else await run_in_threadpool(find_bright_content_region, resized_path)
                 if region_path:
                     region_lines = await asyncio.wait_for(
                         run_in_threadpool(recognize_path, region_path),
