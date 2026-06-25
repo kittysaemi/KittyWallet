@@ -37,7 +37,7 @@ def get_ocr():
             device="cpu",
             enable_mkldnn=False,
             use_doc_orientation_classify=env_flag("PADDLE_OCR_USE_DOC_ORIENTATION", True),
-            use_doc_unwarping=env_flag("PADDLE_OCR_USE_DOC_UNWARPING", True),
+            use_doc_unwarping=env_flag("PADDLE_OCR_USE_DOC_UNWARPING", False),
             use_textline_orientation=env_flag("PADDLE_OCR_USE_TEXTLINE_ORIENTATION", False),
             text_detection_model_name=os.getenv("PADDLE_OCR_DETECTION_MODEL", "PP-OCRv5_mobile_det"),
             text_recognition_model_name=os.getenv("PADDLE_OCR_RECOGNITION_MODEL", "korean_PP-OCRv5_mobile_rec"),
