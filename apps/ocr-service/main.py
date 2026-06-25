@@ -22,7 +22,7 @@ ocr_inference_lock = asyncio.Lock()
 # Hard ceiling per request so a runaway inference cannot block the lock forever.
 # The NestJS client's AbortSignal will fire first when OCR_TIMEOUT_MS is smaller,
 # but this acts as a safety net at the Python layer.
-OCR_INFERENCE_TIMEOUT = float(os.getenv("OCR_INFERENCE_TIMEOUT", "30"))
+OCR_INFERENCE_TIMEOUT = float(os.getenv("OCR_INFERENCE_TIMEOUT", "20"))
 
 # Limit the longest side of the image before feeding it to PaddleOCR.
 # Smartphone photos (4000+ px) can push memory over the container limit.

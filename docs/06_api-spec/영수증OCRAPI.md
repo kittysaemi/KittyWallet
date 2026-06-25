@@ -42,8 +42,8 @@ interface ReceiptOcrProvider {
 OCR_PROVIDER=paddle
 PADDLE_OCR_URL=http://ocr:8000
 OCR_LANGUAGES=kor+eng
-OCR_TIMEOUT_MS=35000
-OCR_INFERENCE_TIMEOUT=30
+OCR_TIMEOUT_MS=50000
+OCR_INFERENCE_TIMEOUT=20
 OCR_MAX_SIDE=2000
 OCR_LOW_CONF_THRESHOLD=50
 PADDLE_OCR_USE_DOC_ORIENTATION=true
@@ -55,7 +55,7 @@ PADDLE_OCR_RECOGNITION_MODEL=korean_PP-OCRv5_mobile_rec
 
 `paddle`은 제공자 식별자이며 OCR 서비스의 내부 모델 버전과 분리한다. 따라서 향후 다른 OCR 서비스로 교체할 때는 `PADDLE_OCR_URL` 또는 `OCR_PROVIDER`만 변경하고, 거래 등록 화면과 OCR API 호출 코드는 변경하지 않는다.
 
-PaddleOCR CPU 추론은 한 번에 하나의 작업만 처리한다. OCR 모델은 컨테이너 시작 시 실제 추론을 한 번 수행해 준비하며, 준비에 실패하면 health check가 통과하지 않아 배포 단계에서 실패한다. 따라서 첫 사용자 요청이 모델 로딩을 기다리지 않는다. 분석 요청이 겹치면 뒤 요청은 순서대로 대기하며, 서비스 health check는 OCR 추론과 분리되어 계속 응답한다. OCR 컨테이너는 2GB 메모리 제한으로 실행하며, OOM kill 후 재기동 중 연결 오류(ECONNRESET·ECONNREFUSED)가 발생하면 2초 대기 후 1회 재시도한다. 추론 한 건당 `OCR_INFERENCE_TIMEOUT`(기본 30초)을 초과하면 즉시 504를 반환해 락 점유를 방지한다. 기본 시간 제한은 35초이고 운영 환경에서는 `OCR_TIMEOUT_MS`로 조정한다. 운영 Nginx API 프록시 제한은 OCR 제한보다 길어야 하며, 이미지 업로드 허용 크기(25MB)와 동일한 `client_max_body_size`를 사용한다. 브라우저에서 변환 가능한 큰 이미지는 2000px·약 2MB JPEG로 축소해 전송하고, HEIC/HEIF는 서버 변환 경로를 사용한다.
+PaddleOCR CPU 추론은 한 번에 하나의 작업만 처리한다. OCR 모델은 컨테이너 시작 시 실제 추론을 한 번 수행해 준비하며, 준비에 실패하면 health check가 통과하지 않아 배포 단계에서 실패한다. 따라서 첫 사용자 요청이 모델 로딩을 기다리지 않는다. 분석 요청이 겹치면 뒤 요청은 순서대로 대기하며, 서비스 health check는 OCR 추론과 분리되어 계속 응답한다. OCR 컨테이너는 2GB 메모리 제한으로 실행하며, OOM kill 후 재기동 중 연결 오류(ECONNRESET·ECONNREFUSED)가 발생하면 2초 대기 후 1회 재시도한다. 추론 한 건당 `OCR_INFERENCE_TIMEOUT`(기본 20초)을 초과하면 즉시 504를 반환해 락 점유를 방지한다. OCR 파이프라인은 최대 2회 추론 패스로 제한한다. 밝은 콘텐츠 영역 크롭 패스(2차)와 CLAHE·이진화 향상 패스(3차)는 상호 배제적으로 동작해, 2차 패스가 수행된 경우 3차 패스는 건너뛴다. 이를 통해 전체 파이프라인 소요 시간을 2 × `OCR_INFERENCE_TIMEOUT` + 오버헤드로 예측 가능하게 한다. 기본 시간 제한은 50초이고 운영 환경에서는 `OCR_TIMEOUT_MS`로 조정한다. 운영 Nginx API 프록시 제한은 OCR 제한보다 길어야 하며, 이미지 업로드 허용 크기(25MB)와 동일한 `client_max_body_size`를 사용한다. 브라우저에서 변환 가능한 큰 이미지는 2000px·약 2MB JPEG로 축소해 전송하고, HEIC/HEIF는 서버 변환 경로를 사용한다.
 
 ## 4. 문자 파싱 API
 
