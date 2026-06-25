@@ -1,6 +1,8 @@
 import asyncio
+import logging
 import os
 import tempfile
+import time
 from pathlib import Path
 
 import cv2
@@ -10,6 +12,9 @@ from paddleocr import PaddleOCR
 from PIL import Image, ImageEnhance, ImageStat
 from PIL.ExifTags import TAGS
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+logger = logging.getLogger("ocr")
+
 app = FastAPI()
 ocr = None
 ocr_inference_lock = asyncio.Lock()
@@ -17,7 +22,7 @@ ocr_inference_lock = asyncio.Lock()
 # Hard ceiling per request so a runaway inference cannot block the lock forever.
 # The NestJS client's AbortSignal will fire first when OCR_TIMEOUT_MS is smaller,
 # but this acts as a safety net at the Python layer.
-OCR_INFERENCE_TIMEOUT = float(os.getenv("OCR_INFERENCE_TIMEOUT", "30"))
+OCR_INFERENCE_TIMEOUT = float(os.getenv("OCR_INFERENCE_TIMEOUT", "20"))
 
 # Limit the longest side of the image before feeding it to PaddleOCR.
 # Smartphone photos (4000+ px) can push memory over the container limit.
@@ -50,6 +55,16 @@ def get_ocr():
 
 def warm_up_ocr_models() -> None:
     """Run one inference before health checks can mark the service ready."""
+    logger.info(
+        "OCR config: use_doc_unwarping=%s use_doc_orientation=%s use_textline_orientation=%s "
+        "det=%s rec=%s inference_timeout=%.0fs max_side=%d low_conf=%.0f%%",
+        env_flag("PADDLE_OCR_USE_DOC_UNWARPING", False),
+        env_flag("PADDLE_OCR_USE_DOC_ORIENTATION", True),
+        env_flag("PADDLE_OCR_USE_TEXTLINE_ORIENTATION", False),
+        os.getenv("PADDLE_OCR_DETECTION_MODEL", "PP-OCRv5_mobile_det"),
+        os.getenv("PADDLE_OCR_RECOGNITION_MODEL", "korean_PP-OCRv5_mobile_rec"),
+        OCR_INFERENCE_TIMEOUT, OCR_MAX_SIDE, OCR_LOW_CONF_THRESHOLD,
+    )
     with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp:
         image_path = temp.name
     try:
@@ -57,7 +72,9 @@ def warm_up_ocr_models() -> None:
         # Creating PaddleOCR alone does not necessarily load all inference
         # models. A tiny prediction makes the first user scan fast and makes a
         # missing model fail deployment rather than a user's request.
+        t0 = time.monotonic()
         list(get_ocr().predict(image_path))
+        logger.info("warm-up done in %.1fs", time.monotonic() - t0)
     finally:
         if os.path.exists(image_path):
             os.unlink(image_path)
@@ -216,46 +233,75 @@ async def recognize(image: UploadFile = File(...)):
         temp.write(await image.read())
         image_path = temp.name
     resized_path: str | None = None
+    t_req = time.monotonic()
     try:
         # Check EXIF on the original file before resize strips the metadata.
         camera_photo = await run_in_threadpool(is_camera_photo, image_path)
         resized_path = await run_in_threadpool(resize_for_ocr, image_path)
+        logger.info("req start: filename=%s is_camera=%s", image.filename, camera_photo)
         # PaddleOCR CPU inference is blocking and uses multiple native threads.
         # Serialize it to prevent competing inference jobs from starving the
         # container, while keeping the ASGI event loop free for health checks.
         try:
             async with ocr_inference_lock:
+                t_pass = time.monotonic()
                 lines = await asyncio.wait_for(
                     run_in_threadpool(recognize_path, resized_path),
                     timeout=OCR_INFERENCE_TIMEOUT,
                 )
+                avg1 = sum(l["confidence"] for l in lines) / len(lines) if lines else 0.0
+                logger.info("pass1: lines=%d avg_conf=%.1f%% elapsed=%.1fs", len(lines), avg1, time.monotonic() - t_pass)
+
                 # Skip screenshot overlay detection for camera photos — the dark
                 # background of a table can mimic a dimmed UI overlay and cause the
                 # receipt to be cropped incorrectly.
+                region_pass_done = False
                 region_path = None if camera_photo else await run_in_threadpool(find_bright_content_region, resized_path)
                 if region_path:
+                    t_pass = time.monotonic()
                     region_lines = await asyncio.wait_for(
                         run_in_threadpool(recognize_path, region_path),
                         timeout=OCR_INFERENCE_TIMEOUT,
                     )
-                    if _score(region_lines) > _score(lines):
+                    region_pass_done = True
+                    improved = _score(region_lines) > _score(lines)
+                    logger.info(
+                        "pass2(region): lines=%d score=%.1f improved=%s elapsed=%.1fs",
+                        len(region_lines), _score(region_lines), improved, time.monotonic() - t_pass,
+                    )
+                    if improved:
                         lines = region_lines
 
                 avg_conf = sum(line["confidence"] for line in lines) / len(lines) if lines else 0
-                if avg_conf < OCR_LOW_CONF_THRESHOLD:
+                # Enhancement pass is skipped when a region crop was already attempted —
+                # both together would make the total pipeline exceed the backend timeout.
+                if avg_conf < OCR_LOW_CONF_THRESHOLD and not region_pass_done:
                     thresh_path = await run_in_threadpool(adaptive_threshold_candidate, resized_path, camera_photo)
                     if thresh_path:
+                        t_pass = time.monotonic()
                         thresh_lines = await asyncio.wait_for(
                             run_in_threadpool(recognize_path, thresh_path),
                             timeout=OCR_INFERENCE_TIMEOUT,
                         )
-                        if _score(thresh_lines) > _score(lines):
+                        improved = _score(thresh_lines) > _score(lines)
+                        logger.info(
+                            "pass3(enhance/%s): lines=%d score=%.1f improved=%s elapsed=%.1fs",
+                            "clahe" if camera_photo else "thresh",
+                            len(thresh_lines), _score(thresh_lines), improved, time.monotonic() - t_pass,
+                        )
+                        if improved:
                             lines = thresh_lines
+                elif avg_conf < OCR_LOW_CONF_THRESHOLD and region_pass_done:
+                    logger.info("pass3 skipped: region pass already done (avg_conf=%.1f%%)", avg_conf)
+
         except asyncio.TimeoutError:
+            logger.warning("OCR inference timed out after %.1fs", time.monotonic() - t_req)
             raise HTTPException(status_code=504, detail="OCR inference timed out")
         if not lines:
             raise HTTPException(status_code=422, detail="No text recognized")
-        return {"text": "\n".join(line["text"] for line in lines), "confidence": round(sum(line["confidence"] for line in lines) / len(lines), 2), "lines": lines}
+        avg_final = sum(l["confidence"] for l in lines) / len(lines) if lines else 0.0
+        logger.info("req done: lines=%d avg_conf=%.1f%% total=%.1fs", len(lines), avg_final, time.monotonic() - t_req)
+        return {"text": "\n".join(line["text"] for line in lines), "confidence": round(avg_final, 2), "lines": lines}
     finally:
         base = resized_path or image_path
         cleanup_paths = {
