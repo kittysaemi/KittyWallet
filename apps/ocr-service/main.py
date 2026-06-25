@@ -12,6 +12,11 @@ app = FastAPI()
 ocr = None
 ocr_inference_lock = asyncio.Lock()
 
+# Hard ceiling per request so a runaway inference cannot block the lock forever.
+# The NestJS client's AbortSignal will fire first when OCR_TIMEOUT_MS is smaller,
+# but this acts as a safety net at the Python layer.
+OCR_INFERENCE_TIMEOUT = float(os.getenv("OCR_INFERENCE_TIMEOUT", "30"))
+
 
 def env_flag(name: str, default: bool) -> bool:
     return os.getenv(name, str(default)).lower() in {"1", "true", "yes", "on"}
@@ -104,11 +109,20 @@ async def recognize(image: UploadFile = File(...)):
         # PaddleOCR CPU inference is blocking and uses multiple native threads.
         # Serialize it to prevent competing inference jobs from starving the
         # container, while keeping the ASGI event loop free for health checks.
-        async with ocr_inference_lock:
-            lines = await run_in_threadpool(recognize_path, image_path)
-            bottom_sheet_path = await run_in_threadpool(create_bottom_sheet_candidate, image_path)
-            if bottom_sheet_path:
-                lines = await run_in_threadpool(recognize_path, bottom_sheet_path)
+        try:
+            async with ocr_inference_lock:
+                lines = await asyncio.wait_for(
+                    run_in_threadpool(recognize_path, image_path),
+                    timeout=OCR_INFERENCE_TIMEOUT,
+                )
+                bottom_sheet_path = await run_in_threadpool(create_bottom_sheet_candidate, image_path)
+                if bottom_sheet_path:
+                    lines = await asyncio.wait_for(
+                        run_in_threadpool(recognize_path, bottom_sheet_path),
+                        timeout=OCR_INFERENCE_TIMEOUT,
+                    )
+        except asyncio.TimeoutError:
+            raise HTTPException(status_code=504, detail="OCR inference timed out")
         if not lines:
             raise HTTPException(status_code=422, detail="No text recognized")
         return {"text": "\n".join(line["text"] for line in lines), "confidence": round(sum(line["confidence"] for line in lines) / len(lines), 2), "lines": lines}
