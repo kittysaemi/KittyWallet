@@ -17,6 +17,10 @@ ocr_inference_lock = asyncio.Lock()
 # but this acts as a safety net at the Python layer.
 OCR_INFERENCE_TIMEOUT = float(os.getenv("OCR_INFERENCE_TIMEOUT", "30"))
 
+# Limit the longest side of the image before feeding it to PaddleOCR.
+# Smartphone photos (4000+ px) can push memory over the container limit.
+OCR_MAX_SIDE = int(os.getenv("OCR_MAX_SIDE", "2000"))
+
 
 def env_flag(name: str, default: bool) -> bool:
     return os.getenv(name, str(default)).lower() in {"1", "true", "yes", "on"}
@@ -77,6 +81,22 @@ def recognize_path(image_path: str) -> list[dict[str, float | str]]:
     return lines
 
 
+def resize_for_ocr(image_path: str) -> str:
+    """Downscale the image so its longest side is at most OCR_MAX_SIDE pixels.
+
+    Returns the original path unchanged when no resizing is needed, otherwise
+    saves a JPEG next to the original and returns the new path.
+    """
+    img = Image.open(image_path)
+    w, h = img.size
+    if max(w, h) <= OCR_MAX_SIDE:
+        return image_path
+    scale = OCR_MAX_SIDE / max(w, h)
+    resized_path = f"{image_path}-resized.jpg"
+    img.resize((int(w * scale), int(h * scale)), Image.LANCZOS).save(resized_path, "JPEG", quality=90)
+    return resized_path
+
+
 def create_bottom_sheet_candidate(image_path: str) -> str | None:
     """Extract a bright full-width bottom sheet from a dimmed mobile screenshot."""
     image = Image.open(image_path).convert("L")
@@ -105,17 +125,19 @@ async def recognize(image: UploadFile = File(...)):
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as temp:
         temp.write(await image.read())
         image_path = temp.name
+    resized_path: str | None = None
     try:
+        resized_path = await run_in_threadpool(resize_for_ocr, image_path)
         # PaddleOCR CPU inference is blocking and uses multiple native threads.
         # Serialize it to prevent competing inference jobs from starving the
         # container, while keeping the ASGI event loop free for health checks.
         try:
             async with ocr_inference_lock:
                 lines = await asyncio.wait_for(
-                    run_in_threadpool(recognize_path, image_path),
+                    run_in_threadpool(recognize_path, resized_path),
                     timeout=OCR_INFERENCE_TIMEOUT,
                 )
-                bottom_sheet_path = await run_in_threadpool(create_bottom_sheet_candidate, image_path)
+                bottom_sheet_path = await run_in_threadpool(create_bottom_sheet_candidate, resized_path)
                 if bottom_sheet_path:
                     lines = await asyncio.wait_for(
                         run_in_threadpool(recognize_path, bottom_sheet_path),
@@ -127,6 +149,10 @@ async def recognize(image: UploadFile = File(...)):
             raise HTTPException(status_code=422, detail="No text recognized")
         return {"text": "\n".join(line["text"] for line in lines), "confidence": round(sum(line["confidence"] for line in lines) / len(lines), 2), "lines": lines}
     finally:
-        for path in [image_path, f"{image_path}-bottom-sheet.jpg"]:
+        cleanup_paths = {image_path, f"{image_path}-bottom-sheet.jpg"}
+        if resized_path:
+            cleanup_paths.add(resized_path)
+            cleanup_paths.add(f"{resized_path}-bottom-sheet.jpg")
+        for path in cleanup_paths:
             if os.path.exists(path):
                 os.unlink(path)
