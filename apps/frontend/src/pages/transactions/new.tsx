@@ -17,24 +17,23 @@ const TransactionNewPage: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
   const [analysisError, setAnalysisError] = React.useState("");
   const [receiptDraft, setReceiptDraft] = React.useState<ReceiptAnalysisDraft>();
-  const [receiptPreviewUrl, setReceiptPreviewUrl] = React.useState<string>();
   const [receiptFileForAnalysis, setReceiptFileForAnalysis] = React.useState<File>();
+  const [retryOverlayDismissed, setRetryOverlayDismissed] = React.useState(false);
   const [pastedText, setPastedText] = React.useState("");
   const cameraInputRef = React.useRef<HTMLInputElement>(null);
   const galleryInputRef = React.useRef<HTMLInputElement>(null);
-  const source = searchParams.get("receiptSource");
+  const urlSource = searchParams.get("receiptSource");
+  const [lastImageSource, setLastImageSource] = React.useState<"camera" | "gallery">(
+    urlSource === "camera" ? "camera" : "gallery"
+  );
   const receiptFile = (location.state as NavigationState | null)?.receiptFile;
 
   const clearSource = () => setSearchParams({}, { replace: true });
-  const prepareImage = React.useCallback((file: File) => {
-    setReceiptDraft(undefined);
-    setAnalysisError("");
-    setReceiptFileForAnalysis(file);
-    setReceiptPreviewUrl(URL.createObjectURL(file));
-  }, []);
+
   const analyzeImage = React.useCallback(async (file: File) => {
     setIsAnalyzing(true);
     setAnalysisError("");
+    setRetryOverlayDismissed(false);
     try {
       setReceiptDraft(await receiptAnalysisApi.analyzeImage(file));
     } catch (error) {
@@ -44,27 +43,40 @@ const TransactionNewPage: React.FC = () => {
     }
   }, []);
 
+  const prepareImage = React.useCallback((file: File) => {
+    setReceiptDraft(undefined);
+    setAnalysisError("");
+    setRetryOverlayDismissed(false);
+    setReceiptFileForAnalysis(file);
+  }, []);
+
+  React.useEffect(() => {
+    if (receiptFileForAnalysis) void analyzeImage(receiptFileForAnalysis);
+  }, [receiptFileForAnalysis, analyzeImage]);
+
   React.useEffect(() => {
     if (!receiptFile) return;
     prepareImage(receiptFile);
     navigate(location.pathname, { replace: true, state: null });
   }, [location.pathname, navigate, prepareImage, receiptFile]);
 
-  React.useEffect(() => () => {
-    if (receiptPreviewUrl) URL.revokeObjectURL(receiptPreviewUrl);
-  }, [receiptPreviewUrl]);
-
-  const selectReplacementImage = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const selectCameraImage = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.currentTarget.value = "";
+    setLastImageSource("camera");
     if (file) prepareImage(file);
   };
 
-  const clearImage = () => {
-    setReceiptFileForAnalysis(undefined);
-    setReceiptPreviewUrl(undefined);
-    setReceiptDraft(undefined);
-    setAnalysisError("");
+  const selectGalleryImage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.currentTarget.value = "";
+    setLastImageSource("gallery");
+    if (file) prepareImage(file);
+  };
+
+  const cancelAndGoBack = () => {
+    sessionStorage.setItem("reopenEntrySheet", "1");
+    navigate(-1);
   };
 
   const parsePastedText = async () => {
@@ -81,6 +93,10 @@ const TransactionNewPage: React.FC = () => {
     }
   };
 
+  const isRetryRecommended = !retryOverlayDismissed && !!receiptDraft?.analysisQuality?.retryRecommended && !!receiptFileForAnalysis;
+  const showImageOverlay = !!receiptFileForAnalysis && (isAnalyzing || !!analysisError || isRetryRecommended);
+  const isCamera = lastImageSource === "camera";
+
   return (
     <div className="min-h-screen bg-[var(--color-bg-primary)]">
       <div className="mx-auto max-w-[480px] px-4 pb-10 pt-6">
@@ -89,36 +105,8 @@ const TransactionNewPage: React.FC = () => {
           <h1 className="font-gamja text-2xl">거래 등록</h1>
         </div>
         <div className="rounded-2xl border p-5">
-          {receiptPreviewUrl && (
-            <figure className="mb-4 overflow-hidden rounded-xl border bg-[var(--color-bg-secondary)]">
-              <img src={receiptPreviewUrl} alt="촬영한 영수증" className="max-h-64 w-full object-contain" />
-              {isAnalyzing && <figcaption className="border-t px-3 py-2 text-sm text-[var(--color-text-secondary)]">서버로 전송하고 영수증을 분석하고 있습니다…</figcaption>}
-            </figure>
-          )}
-          {receiptFileForAnalysis && !isAnalyzing && !receiptDraft && (
-            <section className="mb-4 rounded-xl border border-[var(--color-border-primary)] p-4" aria-label="영수증 촬영 안내">
-              <p className="text-sm font-semibold">선택한 영수증을 분석할 준비가 됐어요</p>
-              <p className="mt-1 text-xs text-[var(--color-text-secondary)]">분석 품질은 서버에서 판단합니다. 실패하면 다시 촬영하거나 사진을 다시 선택해 주세요.</p>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => void analyzeImage(receiptFileForAnalysis)} className="min-h-11 rounded-xl bg-[var(--color-primary)] text-sm font-semibold">분석하기</button>
-                <button type="button" onClick={() => cameraInputRef.current?.click()} className="min-h-11 rounded-xl border text-sm font-semibold">다시 촬영</button>
-                <button type="button" onClick={() => galleryInputRef.current?.click()} className="min-h-11 rounded-xl border text-sm font-semibold">사진 선택</button>
-                <button type="button" onClick={clearImage} className="min-h-11 rounded-xl text-sm text-[var(--color-text-secondary)]">이미지 취소</button>
-              </div>
-            </section>
-          )}
-          {receiptDraft?.analysisQuality?.retryRecommended && (
-            <section className="mb-4 rounded-xl border border-[var(--color-warning)] bg-[var(--color-warning-soft)] p-4" aria-live="polite">
-              <p className="text-sm font-semibold">영수증 글자를 충분히 읽지 못했어요.</p>
-              <p className="mt-1 text-xs text-[var(--color-text-secondary)]">다시 촬영하거나 사진을 다시 선택해 주세요. 현재 입력 화면에서 직접 수정할 수도 있습니다.</p>
-              <div className="mt-3 flex gap-2">
-                <button type="button" onClick={() => cameraInputRef.current?.click()} className="min-h-10 rounded-xl border px-3 text-sm font-semibold">다시 촬영</button>
-                <button type="button" onClick={() => galleryInputRef.current?.click()} className="min-h-10 rounded-xl border px-3 text-sm font-semibold">사진 선택</button>
-              </div>
-            </section>
-          )}
-          {isAnalyzing && !receiptPreviewUrl && <p className="mb-3 text-sm text-[var(--color-text-secondary)]">텍스트를 분석하고 있습니다…</p>}
-          {analysisError && <p className="mb-3 text-sm text-[var(--color-danger)]">{analysisError}</p>}
+          {isAnalyzing && !receiptFileForAnalysis && <p className="mb-3 text-sm text-[var(--color-text-secondary)]">텍스트를 분석하고 있습니다…</p>}
+          {analysisError && !receiptFileForAnalysis && <p className="mb-3 text-sm text-[var(--color-danger)]">{analysisError}</p>}
           <TransactionForm
             receiptDraft={receiptDraft}
             onCreated={(finalDraft) => {
@@ -129,7 +117,68 @@ const TransactionNewPage: React.FC = () => {
           />
         </div>
       </div>
-      {source === "text" && !receiptDraft && (
+
+      {showImageOverlay && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 px-4">
+          <section role="dialog" aria-modal="true" aria-live="polite" className="w-full max-w-[320px] rounded-3xl bg-[var(--color-bg-card)] p-6 text-center shadow-2xl">
+            {isAnalyzing && (
+              <>
+                <div className="mb-4 flex justify-center">
+                  <div className="h-10 w-10 animate-spin rounded-full border-4 border-[var(--color-border-primary)] border-t-[var(--color-primary)]" />
+                </div>
+                <p className="mb-6 text-sm font-semibold">분석 중…</p>
+              </>
+            )}
+            {!isAnalyzing && !!analysisError && (
+              <>
+                <p className="mb-4 text-sm font-semibold text-[var(--color-danger)]">{analysisError}</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isCamera) cameraInputRef.current?.click();
+                    else galleryInputRef.current?.click();
+                  }}
+                  className="mb-2 min-h-11 w-full rounded-xl bg-[var(--color-primary)] text-sm font-semibold"
+                >
+                  {isCamera ? "재촬영" : "사진 재선택"}
+                </button>
+              </>
+            )}
+            {!isAnalyzing && isRetryRecommended && (
+              <>
+                <p className="mb-1 text-sm font-semibold">영수증 글자를 충분히 읽지 못했어요.</p>
+                <p className="mb-4 text-xs text-[var(--color-text-secondary)]">다시 시도하거나 직접 입력할 수 있습니다.</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isCamera) cameraInputRef.current?.click();
+                    else galleryInputRef.current?.click();
+                  }}
+                  className="mb-2 min-h-11 w-full rounded-xl bg-[var(--color-primary)] text-sm font-semibold"
+                >
+                  {isCamera ? "재촬영" : "사진 재선택"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRetryOverlayDismissed(true)}
+                  className="mb-2 min-h-11 w-full rounded-xl border text-sm font-semibold"
+                >
+                  이대로 계속
+                </button>
+              </>
+            )}
+            <button
+              type="button"
+              onClick={cancelAndGoBack}
+              className="min-h-11 w-full rounded-xl text-sm text-[var(--color-text-secondary)]"
+            >
+              취소
+            </button>
+          </section>
+        </div>
+      )}
+
+      {urlSource === "text" && !receiptDraft && (
         <div className="fixed inset-0 z-[70] flex items-end bg-black/50 px-4 pb-safe sm:items-center sm:justify-center">
           <section role="dialog" aria-modal="true" aria-labelledby="receipt-text-title" className="w-full max-w-[480px] rounded-t-3xl bg-[var(--color-bg-card)] p-5 shadow-2xl sm:rounded-3xl">
             <h2 id="receipt-text-title" className="font-gamja text-xl">영수증 텍스트 붙여넣기</h2>
@@ -140,8 +189,9 @@ const TransactionNewPage: React.FC = () => {
           </section>
         </div>
       )}
-      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={selectReplacementImage} />
-      <input ref={galleryInputRef} type="file" accept="image/*" className="hidden" onChange={selectReplacementImage} />
+
+      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={selectCameraImage} />
+      <input ref={galleryInputRef} type="file" accept="image/*" className="hidden" onChange={selectGalleryImage} />
     </div>
   );
 };
