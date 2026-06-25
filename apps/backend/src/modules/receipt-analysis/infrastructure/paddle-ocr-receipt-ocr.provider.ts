@@ -19,9 +19,16 @@ export class PaddleOcrReceiptOcrProvider implements ReceiptOcrProvider {
     try {
       response = await fetch(`${serviceUrl}/v1/ocr`, { method: "POST", body: form, signal: AbortSignal.timeout(timeoutMs) });
     } catch (error) {
-      const reason = error instanceof Error ? `${error.name}: ${error.message}` : "unknown error";
+      const errCode = (error as NodeJS.ErrnoException).code;
+      const reason = error instanceof Error ? `${error.name}(${errCode ?? ""}): ${error.message}` : "unknown error";
       this.logger.error(`PaddleOCR request could not complete: ${reason}`);
-      const isTimeout = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
+      // AbortSignal timeout, TCP-level timeout, and ECONNRESET (container OOM kill
+      // during inference) are all treated as processing timeouts from the user's
+      // perspective. ECONNREFUSED means the container is not running at all.
+      const isTimeout =
+        (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) ||
+        errCode === "ETIMEDOUT" ||
+        errCode === "ECONNRESET";
       throw new ServiceUnavailableException({
         code: isTimeout ? "RECEIPT_OCR_TIMEOUT" : "RECEIPT_OCR_PROVIDER_UNAVAILABLE",
         message: isTimeout ? "영수증 분석 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요." : "PaddleOCR 서비스를 사용할 수 없습니다."
