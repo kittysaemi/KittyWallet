@@ -1,3 +1,15 @@
+# [1.33.0](https://github.com/kittysaemi/KittyWallet/compare/v1.32.4...v1.33.0) (2026-06-25)
+
+
+### Bug Fixes
+
+* **ocr:** cap pipeline at 2 passes and align timeout defaults ([4c9c338](https://github.com/kittysaemi/KittyWallet/commit/4c9c3384c06027855d6434f864086c00f0766a7f))
+
+
+### Features
+
+* **ocr-service:** add structured logging for startup config and per-pass timing ([c028a3b](https://github.com/kittysaemi/KittyWallet/commit/c028a3bb4d5e3bd965e1feedc1d19e67468cba10))
+
 ## [1.32.4](https://github.com/kittysaemi/KittyWallet/compare/v1.32.3...v1.32.4) (2026-06-25)
 
 
