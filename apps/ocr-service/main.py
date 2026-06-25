@@ -23,8 +23,10 @@ OCR_INFERENCE_TIMEOUT = float(os.getenv("OCR_INFERENCE_TIMEOUT", "30"))
 # Smartphone photos (4000+ px) can push memory over the container limit.
 OCR_MAX_SIDE = int(os.getenv("OCR_MAX_SIDE", "2000"))
 # When average confidence from the first pass falls below this value,
-# a second pass with adaptive threshold is attempted (helps thermal paper).
-OCR_LOW_CONF_THRESHOLD = float(os.getenv("OCR_LOW_CONF_THRESHOLD", "70"))
+# a second pass (CLAHE for camera photos, adaptive threshold for others) is attempted.
+# Lowered from 70 to 50: camera photos with good lighting often score 55-65%,
+# and triggering an aggressive binarize pass degraded clean images.
+OCR_LOW_CONF_THRESHOLD = float(os.getenv("OCR_LOW_CONF_THRESHOLD", "50"))
 
 
 def env_flag(name: str, default: bool) -> bool:
@@ -109,15 +111,25 @@ def resize_for_ocr(image_path: str) -> str:
     return resized_path
 
 
-def adaptive_threshold_candidate(image_path: str) -> str | None:
-    """Binarize with adaptive threshold to recover low-contrast text (thermal paper, shadows)."""
+def adaptive_threshold_candidate(image_path: str, is_cam: bool = False) -> str | None:
+    """Improve low-contrast images for a second OCR pass.
+
+    Camera photos use CLAHE (Contrast Limited Adaptive Histogram Equalization) which
+    enhances local contrast without over-binarizing clean areas — better for uneven
+    lighting from handheld shots. Screenshots and thermal-paper receipts fall back to
+    adaptive threshold binarization which recovers faded print more aggressively.
+    """
     img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
     if img is None:
         return None
-    blurred = cv2.GaussianBlur(img, (3, 3), 0)
-    thresh = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 10)
     out_path = f"{image_path}-thresh.jpg"
-    cv2.imwrite(out_path, thresh)
+    if is_cam:
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        cv2.imwrite(out_path, clahe.apply(img))
+    else:
+        blurred = cv2.GaussianBlur(img, (3, 3), 0)
+        thresh = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 10)
+        cv2.imwrite(out_path, thresh)
     return out_path
 
 
@@ -231,7 +243,7 @@ async def recognize(image: UploadFile = File(...)):
 
                 avg_conf = sum(line["confidence"] for line in lines) / len(lines) if lines else 0
                 if avg_conf < OCR_LOW_CONF_THRESHOLD:
-                    thresh_path = await run_in_threadpool(adaptive_threshold_candidate, resized_path)
+                    thresh_path = await run_in_threadpool(adaptive_threshold_candidate, resized_path, camera_photo)
                     if thresh_path:
                         thresh_lines = await asyncio.wait_for(
                             run_in_threadpool(recognize_path, thresh_path),
