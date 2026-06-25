@@ -97,8 +97,8 @@ const TransactionNewPage: React.FC = () => {
           )}
           {receiptFileForAnalysis && !isAnalyzing && !receiptDraft && (
             <section className="mb-4 rounded-xl border border-[var(--color-border-primary)] p-4" aria-label="영수증 촬영 안내">
-              <p className="text-sm font-semibold">영수증이 선명한지 확인해 주세요</p>
-              <p className="mt-1 text-xs text-[var(--color-text-secondary)]">영수증 전체가 보이도록 가까이 찍고, 흔들림·반사광·그림자를 피해 주세요.</p>
+              <p className="text-sm font-semibold">선택한 영수증을 분석할 준비가 됐어요</p>
+              <p className="mt-1 text-xs text-[var(--color-text-secondary)]">분석 품질은 서버에서 판단합니다. 실패하면 다시 촬영하거나 사진을 다시 선택해 주세요.</p>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <button type="button" onClick={() => void analyzeImage(receiptFileForAnalysis)} className="min-h-11 rounded-xl bg-[var(--color-primary)] text-sm font-semibold">분석하기</button>
                 <button type="button" onClick={() => cameraInputRef.current?.click()} className="min-h-11 rounded-xl border text-sm font-semibold">다시 촬영</button>
@@ -110,7 +110,7 @@ const TransactionNewPage: React.FC = () => {
           {receiptDraft?.analysisQuality?.retryRecommended && (
             <section className="mb-4 rounded-xl border border-[var(--color-warning)] bg-[var(--color-warning-soft)] p-4" aria-live="polite">
               <p className="text-sm font-semibold">영수증 글자를 충분히 읽지 못했어요.</p>
-              <p className="mt-1 text-xs text-[var(--color-text-secondary)]">다시 촬영하거나 사진을 선택해 보세요. 현재 입력 화면에서 직접 수정할 수도 있습니다.</p>
+              <p className="mt-1 text-xs text-[var(--color-text-secondary)]">다시 촬영하거나 사진을 다시 선택해 주세요. 현재 입력 화면에서 직접 수정할 수도 있습니다.</p>
               <div className="mt-3 flex gap-2">
                 <button type="button" onClick={() => cameraInputRef.current?.click()} className="min-h-10 rounded-xl border px-3 text-sm font-semibold">다시 촬영</button>
                 <button type="button" onClick={() => galleryInputRef.current?.click()} className="min-h-10 rounded-xl border px-3 text-sm font-semibold">사진 선택</button>
