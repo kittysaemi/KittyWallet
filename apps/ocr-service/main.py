@@ -120,26 +120,47 @@ def adaptive_threshold_candidate(image_path: str) -> str | None:
     return out_path
 
 
-def create_bottom_sheet_candidate(image_path: str) -> str | None:
-    """Extract a bright full-width bottom sheet from a dimmed mobile screenshot."""
+def find_bright_content_region(image_path: str) -> str | None:
+    """Detect the uppermost bright content panel in a dimmed mobile screenshot.
+
+    Scans horizontal strips from the top to find a dark→bright transition,
+    then crops everything from that boundary downward. Works for bottom sheets,
+    center modals, and card-style overlays at arbitrary vertical positions.
+    Returns None for landscape images or images that don't match the pattern.
+    """
     image = Image.open(image_path).convert("L")
     width, height = image.size
     if height < width * 1.2:
         return None
-    split_y = int(height * 0.38)
-    top_brightness = ImageStat.Stat(image.crop((0, 0, width, split_y))).mean[0]
-    bottom_brightness = ImageStat.Stat(image.crop((0, split_y, width, height))).mean[0]
-    if bottom_brightness < 180 or bottom_brightness < top_brightness * 1.7:
+
+    BRIGHT = 190
+    step = max(1, height // 100)
+    start_y = None
+    for y in range(0, height, step):
+        strip = image.crop((0, y, width, min(y + step, height)))
+        if ImageStat.Stat(strip).mean[0] >= BRIGHT:
+            start_y = y
+            break
+
+    # Reject if bright region starts too early (image is just bright overall)
+    # or no bright region was found
+    if start_y is None or start_y < int(height * 0.15):
         return None
-    candidate_path = f"{image_path}-bottom-sheet.jpg"
-    crop = image.crop((0, split_y, width, height))
+
+    top_brightness = ImageStat.Stat(image.crop((0, 0, width, start_y))).mean[0]
+    bottom_brightness = ImageStat.Stat(image.crop((0, start_y, width, height))).mean[0]
+    if bottom_brightness < BRIGHT or bottom_brightness < top_brightness * 1.5:
+        return None
+
+    crop = image.crop((0, start_y, width, height))
     cw, ch = crop.size
     max_side = max(cw, ch)
     if max_side < OCR_MAX_SIDE:
         scale = min(2.0, OCR_MAX_SIDE / max_side)
         crop = crop.resize((int(cw * scale), int(ch * scale)), Image.LANCZOS)
-    ImageEnhance.Contrast(crop).enhance(1.4).save(candidate_path)
-    return candidate_path
+    out_path = f"{image_path}-bright-region.jpg"
+    ImageEnhance.Contrast(crop).enhance(1.4).save(out_path)
+    return out_path
 
 
 @app.get("/health")
@@ -165,14 +186,14 @@ async def recognize(image: UploadFile = File(...)):
                     run_in_threadpool(recognize_path, resized_path),
                     timeout=OCR_INFERENCE_TIMEOUT,
                 )
-                bottom_sheet_path = await run_in_threadpool(create_bottom_sheet_candidate, resized_path)
-                if bottom_sheet_path:
-                    sheet_lines = await asyncio.wait_for(
-                        run_in_threadpool(recognize_path, bottom_sheet_path),
+                region_path = await run_in_threadpool(find_bright_content_region, resized_path)
+                if region_path:
+                    region_lines = await asyncio.wait_for(
+                        run_in_threadpool(recognize_path, region_path),
                         timeout=OCR_INFERENCE_TIMEOUT,
                     )
-                    if _score(sheet_lines) > _score(lines):
-                        lines = sheet_lines
+                    if _score(region_lines) > _score(lines):
+                        lines = region_lines
 
                 avg_conf = sum(line["confidence"] for line in lines) / len(lines) if lines else 0
                 if avg_conf < OCR_LOW_CONF_THRESHOLD:
@@ -194,7 +215,7 @@ async def recognize(image: UploadFile = File(...)):
         cleanup_paths = {
             image_path,
             base,
-            f"{base}-bottom-sheet.jpg",
+            f"{base}-bright-region.jpg",
             f"{base}-thresh.jpg",
         }
         for path in cleanup_paths:
