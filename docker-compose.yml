@@ -27,7 +27,7 @@ services:
       DATABASE_URL: postgresql://kittywallet:kittywallet@postgres:5432/kittywallet?schema=public
       OCR_PROVIDER: ${OCR_PROVIDER:-paddle}
       PADDLE_OCR_URL: http://ocr:8000
-      OCR_TIMEOUT_MS: ${OCR_TIMEOUT_MS:-45000}
+      OCR_TIMEOUT_MS: ${OCR_TIMEOUT_MS:-25000}
     ports:
       - "3700:3000"
     depends_on:
