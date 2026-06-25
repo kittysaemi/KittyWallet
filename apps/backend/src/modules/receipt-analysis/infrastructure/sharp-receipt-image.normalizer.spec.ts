@@ -1,5 +1,6 @@
 import { ConfigService } from "@nestjs/config";
 import sharp from "sharp";
+import cv from "@techstark/opencv-js";
 import { SharpReceiptImageNormalizer } from "./sharp-receipt-image.normalizer";
 
 jest.mock("file-type", () => ({
@@ -15,6 +16,16 @@ const meanBrightness = async (buffer: Buffer) => {
 };
 
 describe("SharpReceiptImageNormalizer", () => {
+  beforeAll(async () => {
+    await new Promise<void>((resolve) => {
+      if (typeof (cv as Record<string, unknown>)["Mat"] === "function") {
+        resolve();
+      } else {
+        (cv as unknown as { onRuntimeInitialized: () => void }).onRuntimeInitialized = resolve;
+      }
+    });
+  }, 30_000);
+
   it("inverts dark-background light-text screenshots before OCR", async () => {
     const input = await sharp({
       create: {
@@ -49,5 +60,43 @@ describe("SharpReceiptImageNormalizer", () => {
     const result = await createNormalizer().normalize(input);
 
     expect(await meanBrightness(result.buffer)).toBeGreaterThan(200);
+  });
+
+  it("crops receipt region from an image with a contrasting background", async () => {
+    const bgW = 480, bgH = 640;
+    const rxW = 260, rxH = 420;
+    const rx = (bgW - rxW) / 2;
+    const ry = (bgH - rxH) / 2;
+
+    const input = await sharp({
+      create: { width: bgW, height: bgH, channels: 3, background: "#1a1a1a" }
+    })
+      .composite([{
+        input: Buffer.from(
+          `<svg width="${bgW}" height="${bgH}">` +
+          `<rect x="${rx}" y="${ry}" width="${rxW}" height="${rxH}" fill="white"/>` +
+          `</svg>`
+        ),
+        top: 0, left: 0
+      }])
+      .png()
+      .toBuffer();
+
+    const result = await createNormalizer().normalize(input);
+
+    expect(result.width * result.height).toBeLessThan(bgW * bgH * 0.85);
+  });
+
+  it("preserves original dimensions when no clear document boundary is found", async () => {
+    const input = await sharp({
+      create: { width: 400, height: 600, channels: 3, background: "#f0f0f0" }
+    })
+      .png()
+      .toBuffer();
+
+    const result = await createNormalizer().normalize(input);
+
+    expect(result.width).toBeGreaterThan(300);
+    expect(result.height).toBeGreaterThan(400);
   });
 });
