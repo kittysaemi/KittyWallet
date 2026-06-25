@@ -5,6 +5,9 @@ jest.mock("../infrastructure/sharp-receipt-image.normalizer", () => ({
 }));
 
 import { ReceiptAnalysisService } from "./receipt-analysis.service";
+import type { SharpReceiptImageNormalizer } from "../infrastructure/sharp-receipt-image.normalizer";
+import type { ReceiptOcrProviderFactory } from "./receipt-ocr-provider.factory";
+import type { TextParsingService } from "../../text-parsing/application/text-parsing.service";
 import type { NormalizedReceiptImage } from "../application/receipt-image.types";
 import type { TextParseResult } from "../../text-parsing/application/text-parser.types";
 
@@ -37,9 +40,9 @@ const makeService = (overrides: {
   const textParsingService = { parse: jest.fn().mockReturnValue(overrides.parseResult ?? fakeParseResult) };
 
   const service = new ReceiptAnalysisService(
-    normalizer as any,
-    providerFactory as any,
-    textParsingService as any
+    normalizer as unknown as SharpReceiptImageNormalizer,
+    providerFactory as unknown as ReceiptOcrProviderFactory,
+    textParsingService as unknown as TextParsingService
   );
 
   return { service, normalizer, provider, providerFactory, textParsingService };
@@ -47,7 +50,8 @@ const makeService = (overrides: {
 
 describe("ReceiptAnalysisService.preprocessOcrText", () => {
   const { service } = makeService();
-  const preprocess = (text: string) => (service as any).preprocessOcrText(text) as string;
+  const preprocess = (text: string) =>
+    (service as unknown as { preprocessOcrText(t: string): string }).preprocessOcrText(text);
 
   it("removes control characters", () => {
     expect(preprocess("hello\x01\x1Fworld")).toBe("hello world");
