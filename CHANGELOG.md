@@ -1,3 +1,20 @@
+# [1.31.0](https://github.com/kittysaemi/KittyWallet/compare/v1.30.0...v1.31.0) (2026-06-25)
+
+
+### Bug Fixes
+
+* add @techstark/opencv-js to package-lock.json ([5f9289f](https://github.com/kittysaemi/KittyWallet/commit/5f9289fe04f257bc1047e4aaed2fbebad377b734)), closes [#371](https://github.com/kittysaemi/KittyWallet/issues/371) [#340](https://github.com/kittysaemi/KittyWallet/issues/340)
+* improve receipt OCR quality guidance ([8da4c87](https://github.com/kittysaemi/KittyWallet/commit/8da4c875e425971773ea61614d496e63283ae9d1))
+* **lint:** replace as any with as unknown as Type in receipt-analysis service spec ([88390c9](https://github.com/kittysaemi/KittyWallet/commit/88390c9fdd8aaa8c005d79d9a8dd5d383a87ba07))
+* **lint:** resolve ESLint no-explicit-any errors in receipt-analysis service spec ([a8bd481](https://github.com/kittysaemi/KittyWallet/commit/a8bd481c43dc86833fb36374a8a332db1b0a3c34))
+* **receipt-ocr:** add Tesseract singleton worker, OCR text preprocessing ([3091527](https://github.com/kittysaemi/KittyWallet/commit/30915278eabe4490893816336b382051ee6b39fd))
+
+
+### Features
+
+* **ocr:** add document boundary detection and perspective crop ([b73d0f6](https://github.com/kittysaemi/KittyWallet/commit/b73d0f633e520d6246a5f39245302a0bbbcd7f9b))
+* **receipt-ocr:** document boundary detection, Tesseract singleton, OCR preprocessing ([872c573](https://github.com/kittysaemi/KittyWallet/commit/872c57306fb1be47e82d95b7d9cc5954f4b6f36d))
+
 # [1.30.0](https://github.com/kittysaemi/KittyWallet/compare/v1.29.0...v1.30.0) (2026-06-24)
 
 
