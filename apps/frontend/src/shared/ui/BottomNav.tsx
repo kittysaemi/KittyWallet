@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { BarChart2, Camera, ClipboardPaste, FileImage, Home, PenLine, Plus, Search, Settings2, X } from "lucide-react";
 
 export const BottomNav: React.FC = () => {
-  const { pathname } = useLocation();
+  const location = useLocation();
   const navigate = useNavigate();
   const [isEntrySheetOpen, setIsEntrySheetOpen] = React.useState(false);
   const [isMobileDevice, setIsMobileDevice] = React.useState(false);
@@ -14,6 +14,14 @@ export const BottomNav: React.FC = () => {
     setIsMobileDevice(/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent));
   }, []);
 
+  React.useEffect(() => {
+    if (sessionStorage.getItem("reopenEntrySheet") === "1") {
+      sessionStorage.removeItem("reopenEntrySheet");
+      setIsEntrySheetOpen(true);
+    }
+  }, [location]);
+
+  const { pathname } = location;
   const isHome = pathname === "/dashboard";
   const isSearch = pathname === "/transactions/search";
   const isStats = pathname.startsWith("/statistics");
@@ -23,11 +31,20 @@ export const BottomNav: React.FC = () => {
 
   const activeText = "text-[var(--color-primary)]";
   const inactiveText = "text-[var(--color-text-secondary)]";
+
   const startTransaction = (source?: "text") => {
     setIsEntrySheetOpen(false);
     navigate(source ? `/transactions/new?receiptSource=${source}` : "/transactions/new");
   };
-  const selectImage = (event: React.ChangeEvent<HTMLInputElement>) => {
+
+  const selectCameraImage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.currentTarget.value = "";
+    setIsEntrySheetOpen(false);
+    if (file) navigate("/transactions/new?receiptSource=camera", { state: { receiptFile: file } });
+  };
+
+  const selectGalleryImage = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.currentTarget.value = "";
     setIsEntrySheetOpen(false);
@@ -83,8 +100,8 @@ export const BottomNav: React.FC = () => {
           </section>
         </div>
       )}
-      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={selectImage} />
-      <input ref={galleryInputRef} type="file" accept="image/*" className="hidden" onChange={selectImage} />
+      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={selectCameraImage} />
+      <input ref={galleryInputRef} type="file" accept="image/*" className="hidden" onChange={selectGalleryImage} />
     </div>
   );
 };
