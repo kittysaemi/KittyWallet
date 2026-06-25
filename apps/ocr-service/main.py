@@ -81,6 +81,13 @@ def recognize_path(image_path: str) -> list[dict[str, float | str]]:
     return lines
 
 
+def _score(lines: list[dict]) -> float:
+    """Higher is better: penalizes both low line count and low confidence."""
+    if not lines:
+        return 0.0
+    return len(lines) * sum(line["confidence"] for line in lines) / len(lines)
+
+
 def resize_for_ocr(image_path: str) -> str:
     """Downscale the image so its longest side is at most OCR_MAX_SIDE pixels.
 
@@ -144,10 +151,12 @@ async def recognize(image: UploadFile = File(...)):
                 )
                 bottom_sheet_path = await run_in_threadpool(create_bottom_sheet_candidate, resized_path)
                 if bottom_sheet_path:
-                    lines = await asyncio.wait_for(
+                    sheet_lines = await asyncio.wait_for(
                         run_in_threadpool(recognize_path, bottom_sheet_path),
                         timeout=OCR_INFERENCE_TIMEOUT,
                     )
+                    if _score(sheet_lines) > _score(lines):
+                        lines = sheet_lines
         except asyncio.TimeoutError:
             raise HTTPException(status_code=504, detail="OCR inference timed out")
         if not lines:
