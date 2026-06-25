@@ -8,6 +8,7 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from paddleocr import PaddleOCR
 from PIL import Image, ImageEnhance, ImageStat
+from PIL.ExifTags import TAGS
 
 app = FastAPI()
 ocr = None
@@ -22,8 +23,10 @@ OCR_INFERENCE_TIMEOUT = float(os.getenv("OCR_INFERENCE_TIMEOUT", "30"))
 # Smartphone photos (4000+ px) can push memory over the container limit.
 OCR_MAX_SIDE = int(os.getenv("OCR_MAX_SIDE", "2000"))
 # When average confidence from the first pass falls below this value,
-# a second pass with adaptive threshold is attempted (helps thermal paper).
-OCR_LOW_CONF_THRESHOLD = float(os.getenv("OCR_LOW_CONF_THRESHOLD", "70"))
+# a second pass (CLAHE for camera photos, adaptive threshold for others) is attempted.
+# Lowered from 70 to 50: camera photos with good lighting often score 55-65%,
+# and triggering an aggressive binarize pass degraded clean images.
+OCR_LOW_CONF_THRESHOLD = float(os.getenv("OCR_LOW_CONF_THRESHOLD", "50"))
 
 
 def env_flag(name: str, default: bool) -> bool:
@@ -37,7 +40,7 @@ def get_ocr():
             device="cpu",
             enable_mkldnn=False,
             use_doc_orientation_classify=env_flag("PADDLE_OCR_USE_DOC_ORIENTATION", True),
-            use_doc_unwarping=env_flag("PADDLE_OCR_USE_DOC_UNWARPING", True),
+            use_doc_unwarping=env_flag("PADDLE_OCR_USE_DOC_UNWARPING", False),
             use_textline_orientation=env_flag("PADDLE_OCR_USE_TEXTLINE_ORIENTATION", False),
             text_detection_model_name=os.getenv("PADDLE_OCR_DETECTION_MODEL", "PP-OCRv5_mobile_det"),
             text_recognition_model_name=os.getenv("PADDLE_OCR_RECOGNITION_MODEL", "korean_PP-OCRv5_mobile_rec"),
@@ -108,16 +111,43 @@ def resize_for_ocr(image_path: str) -> str:
     return resized_path
 
 
-def adaptive_threshold_candidate(image_path: str) -> str | None:
-    """Binarize with adaptive threshold to recover low-contrast text (thermal paper, shadows)."""
+def adaptive_threshold_candidate(image_path: str, is_cam: bool = False) -> str | None:
+    """Improve low-contrast images for a second OCR pass.
+
+    Camera photos use CLAHE (Contrast Limited Adaptive Histogram Equalization) which
+    enhances local contrast without over-binarizing clean areas — better for uneven
+    lighting from handheld shots. Screenshots and thermal-paper receipts fall back to
+    adaptive threshold binarization which recovers faded print more aggressively.
+    """
     img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
     if img is None:
         return None
-    blurred = cv2.GaussianBlur(img, (3, 3), 0)
-    thresh = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 10)
     out_path = f"{image_path}-thresh.jpg"
-    cv2.imwrite(out_path, thresh)
+    if is_cam:
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        cv2.imwrite(out_path, clahe.apply(img))
+    else:
+        blurred = cv2.GaussianBlur(img, (3, 3), 0)
+        thresh = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 10)
+        cv2.imwrite(out_path, thresh)
     return out_path
+
+
+def is_camera_photo(image_path: str) -> bool:
+    """Return True if the image carries camera EXIF metadata (Make, Model, or ExposureTime).
+
+    Camera photos always embed these tags; screenshots and messenger-shared images
+    typically do not. Used to skip screenshot-specific preprocessing on real photos.
+    """
+    try:
+        with Image.open(image_path) as img:
+            exif = img._getexif()
+            if not exif:
+                return False
+            # 271=Make, 272=Model, 33434=ExposureTime
+            return any(tag in exif for tag in (271, 272, 33434))
+    except Exception:
+        return False
 
 
 def find_bright_content_region(image_path: str) -> str | None:
@@ -127,6 +157,10 @@ def find_bright_content_region(image_path: str) -> str | None:
     then crops everything from that boundary downward. Works for bottom sheets,
     center modals, and card-style overlays at arbitrary vertical positions.
     Returns None for landscape images or images that don't match the pattern.
+
+    Only call this function after confirming the image is NOT a camera photo
+    (use is_camera_photo). Natural photo backgrounds (wood, fabric, dark surfaces)
+    can mimic the dark-top/bright-bottom pattern and cause false crops.
     """
     image = Image.open(image_path).convert("L")
     width, height = image.size
@@ -147,7 +181,14 @@ def find_bright_content_region(image_path: str) -> str | None:
     if start_y is None or start_y < int(height * 0.15):
         return None
 
-    top_brightness = ImageStat.Stat(image.crop((0, 0, width, start_y))).mean[0]
+    top_region = image.crop((0, 0, width, start_y))
+    # Natural photo backgrounds (wood grain, fabric, dark tables with texture) have
+    # high pixel variance. Screenshot dim overlays are nearly uniform. Skip the crop
+    # when the top region looks like a natural scene rather than a UI overlay.
+    if ImageStat.Stat(top_region).stddev[0] > 25:
+        return None
+
+    top_brightness = ImageStat.Stat(top_region).mean[0]
     bottom_brightness = ImageStat.Stat(image.crop((0, start_y, width, height))).mean[0]
     if bottom_brightness < BRIGHT or bottom_brightness < top_brightness * 1.5:
         return None
@@ -176,6 +217,8 @@ async def recognize(image: UploadFile = File(...)):
         image_path = temp.name
     resized_path: str | None = None
     try:
+        # Check EXIF on the original file before resize strips the metadata.
+        camera_photo = await run_in_threadpool(is_camera_photo, image_path)
         resized_path = await run_in_threadpool(resize_for_ocr, image_path)
         # PaddleOCR CPU inference is blocking and uses multiple native threads.
         # Serialize it to prevent competing inference jobs from starving the
@@ -186,7 +229,10 @@ async def recognize(image: UploadFile = File(...)):
                     run_in_threadpool(recognize_path, resized_path),
                     timeout=OCR_INFERENCE_TIMEOUT,
                 )
-                region_path = await run_in_threadpool(find_bright_content_region, resized_path)
+                # Skip screenshot overlay detection for camera photos — the dark
+                # background of a table can mimic a dimmed UI overlay and cause the
+                # receipt to be cropped incorrectly.
+                region_path = None if camera_photo else await run_in_threadpool(find_bright_content_region, resized_path)
                 if region_path:
                     region_lines = await asyncio.wait_for(
                         run_in_threadpool(recognize_path, region_path),
@@ -197,7 +243,7 @@ async def recognize(image: UploadFile = File(...)):
 
                 avg_conf = sum(line["confidence"] for line in lines) / len(lines) if lines else 0
                 if avg_conf < OCR_LOW_CONF_THRESHOLD:
-                    thresh_path = await run_in_threadpool(adaptive_threshold_candidate, resized_path)
+                    thresh_path = await run_in_threadpool(adaptive_threshold_candidate, resized_path, camera_photo)
                     if thresh_path:
                         thresh_lines = await asyncio.wait_for(
                             run_in_threadpool(recognize_path, thresh_path),

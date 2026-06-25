@@ -27,7 +27,7 @@ services:
       DATABASE_URL: postgresql://kittywallet:kittywallet@postgres:5432/kittywallet?schema=public
       OCR_PROVIDER: ${OCR_PROVIDER:-paddle}
       PADDLE_OCR_URL: http://ocr:8000
-      OCR_TIMEOUT_MS: ${OCR_TIMEOUT_MS:-25000}
+      OCR_TIMEOUT_MS: ${OCR_TIMEOUT_MS:-35000}
     ports:
       - "3700:3000"
     depends_on:
@@ -45,13 +45,13 @@ services:
     memswap_limit: 2g
     environment:
       PADDLE_OCR_USE_DOC_ORIENTATION: ${PADDLE_OCR_USE_DOC_ORIENTATION:-true}
-      PADDLE_OCR_USE_DOC_UNWARPING: ${PADDLE_OCR_USE_DOC_UNWARPING:-true}
+      PADDLE_OCR_USE_DOC_UNWARPING: ${PADDLE_OCR_USE_DOC_UNWARPING:-false}
       PADDLE_OCR_USE_TEXTLINE_ORIENTATION: ${PADDLE_OCR_USE_TEXTLINE_ORIENTATION:-false}
       PADDLE_OCR_DETECTION_MODEL: ${PADDLE_OCR_DETECTION_MODEL:-PP-OCRv5_mobile_det}
       PADDLE_OCR_RECOGNITION_MODEL: ${PADDLE_OCR_RECOGNITION_MODEL:-korean_PP-OCRv5_mobile_rec}
       OCR_INFERENCE_TIMEOUT: ${OCR_INFERENCE_TIMEOUT:-30}
       OCR_MAX_SIDE: ${OCR_MAX_SIDE:-2000}
-      OCR_LOW_CONF_THRESHOLD: ${OCR_LOW_CONF_THRESHOLD:-70}
+      OCR_LOW_CONF_THRESHOLD: ${OCR_LOW_CONF_THRESHOLD:-50}
     volumes:
       - paddle-models:/root/.paddlex
 
