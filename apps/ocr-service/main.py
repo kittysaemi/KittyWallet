@@ -109,8 +109,13 @@ def create_bottom_sheet_candidate(image_path: str) -> str | None:
     if bottom_brightness < 180 or bottom_brightness < top_brightness * 1.7:
         return None
     candidate_path = f"{image_path}-bottom-sheet.jpg"
-    candidate = image.crop((0, split_y, width, height)).resize((width * 2, (height - split_y) * 2))
-    ImageEnhance.Contrast(candidate).enhance(1.4).save(candidate_path)
+    crop = image.crop((0, split_y, width, height))
+    cw, ch = crop.size
+    max_side = max(cw, ch)
+    if max_side < OCR_MAX_SIDE:
+        scale = min(2.0, OCR_MAX_SIDE / max_side)
+        crop = crop.resize((int(cw * scale), int(ch * scale)), Image.LANCZOS)
+    ImageEnhance.Contrast(crop).enhance(1.4).save(candidate_path)
     return candidate_path
 
 
