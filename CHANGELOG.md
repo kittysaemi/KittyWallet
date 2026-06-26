@@ -1,3 +1,10 @@
+## [1.34.1](https://github.com/kittysaemi/KittyWallet/compare/v1.34.0...v1.34.1) (2026-06-26)
+
+
+### Bug Fixes
+
+* **ocr:** 카메라 사진 OCR 실패 및 메모 숫자 아티팩트 수정 ([2189e48](https://github.com/kittysaemi/KittyWallet/commit/2189e48df9aeac0b1be375b317a6d40b145ed2f6))
+
 # [1.34.0](https://github.com/kittysaemi/KittyWallet/compare/v1.33.1...v1.34.0) (2026-06-26)
 
 
