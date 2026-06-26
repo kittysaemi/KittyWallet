@@ -13,6 +13,7 @@ export interface NormalizedReceiptImage {
   mimeType: "image/jpeg";
   width: number;
   height: number;
+  isCamera?: boolean;
 }
 
 export interface ReceiptImageNormalizer {

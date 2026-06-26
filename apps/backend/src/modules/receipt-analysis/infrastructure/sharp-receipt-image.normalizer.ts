@@ -79,15 +79,21 @@ export class SharpReceiptImageNormalizer implements ReceiptImageNormalizer, OnMo
 
     try {
       const maxDimension = this.getPositiveNumber("OCR_MAX_IMAGE_DIMENSION", DEFAULT_MAX_DIMENSION);
-      const decodedInput =
-        detected.mime === "image/heic" || detected.mime === "image/heif"
-          ? Buffer.from(await heicConvert({ buffer: input, format: "JPEG", quality: 0.9 }))
-          : input;
+      const isHEIC = detected.mime === "image/heic" || detected.mime === "image/heif";
+      const decodedInput = isHEIC
+        ? Buffer.from(await heicConvert({ buffer: input, format: "JPEG", quality: 0.9 }))
+        : input;
       const image = sharp(decodedInput, { failOn: "error", limitInputPixels: DEFAULT_MAX_PIXELS }).rotate();
       const metadata = await image.metadata();
       if (!metadata.width || !metadata.height) throw new ReceiptImageInvalidException();
 
-      const cropped = await this.cropToDocumentBounds(image, metadata.width, metadata.height);
+      // HEIC is always a camera format; for others, EXIF presence indicates a camera photo.
+      // Must be read here — toBuffer() strips EXIF from the output JPEG.
+      const isCamera = isHEIC || !!metadata.exif;
+
+      // Skip perspective warp for camera photos: natural backgrounds produce false quad
+      // detections and warpPerspective distorts the receipt instead of correcting it.
+      const cropped = isCamera ? image : await this.cropToDocumentBounds(image, metadata.width, metadata.height);
       const resized = cropped.resize({ width: maxDimension, height: maxDimension, fit: "inside", withoutEnlargement: true });
       const shouldInvert = await this.isDarkBackgroundWithLightText(resized);
       const prepared = shouldInvert ? resized.clone().negate({ alpha: false }).normalize() : resized;
@@ -103,7 +109,8 @@ export class SharpReceiptImageNormalizer implements ReceiptImageNormalizer, OnMo
         buffer: output.data,
         mimeType: "image/jpeg",
         width: output.info.width,
-        height: output.info.height
+        height: output.info.height,
+        isCamera
       };
     } catch (error) {
       if (

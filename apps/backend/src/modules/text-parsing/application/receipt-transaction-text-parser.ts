@@ -153,6 +153,6 @@ export class ReceiptTransactionTextParser implements TextParserProfileHandler {
   }
 
   private isTextCandidate(line: string, isExcluded = false): boolean {
-    return !isExcluded && !/(상세\s*이용내역)/.test(line) && !TOTAL_LABELS.some((label) => label.test(line)) && !DATE_LABELS.some((label) => label.test(line)) && !PRODUCT_LABEL.test(line) && !MERCHANT_LABEL.test(line) && !EXCLUDED_LABEL.test(line) && !NON_MEMO_PATTERN.test(line) && !DATE_PATTERN.test(line) && !COMPACT_DATE_PATTERN.test(line) && !SHORT_DATE_PATTERN.test(line) && !/(?:₩\s*\d|\d[\d,\s]*\s*(?:원|KRW))/i.test(line) && line.length >= 2 && line.length <= 80;
+    return !isExcluded && !/(상세\s*이용내역)/.test(line) && !TOTAL_LABELS.some((label) => label.test(line)) && !DATE_LABELS.some((label) => label.test(line)) && !PRODUCT_LABEL.test(line) && !MERCHANT_LABEL.test(line) && !EXCLUDED_LABEL.test(line) && !NON_MEMO_PATTERN.test(line) && !DATE_PATTERN.test(line) && !COMPACT_DATE_PATTERN.test(line) && !SHORT_DATE_PATTERN.test(line) && !/(?:₩\s*\d|\d[\d,\s]*\s*(?:원|KRW))/i.test(line) && /[가-힣a-zA-Z]/.test(line) && line.length >= 2 && line.length <= 80;
   }
 }
