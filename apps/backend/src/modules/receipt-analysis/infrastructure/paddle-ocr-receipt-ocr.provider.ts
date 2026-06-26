@@ -17,6 +17,7 @@ export class PaddleOcrReceiptOcrProvider implements ReceiptOcrProvider {
     const makeRequest = () => {
       const form = new FormData();
       form.append("image", new Blob([Uint8Array.from(image.buffer)], { type: image.mimeType }), "receipt.jpg");
+      if (image.isCamera) form.append("is_camera", "true");
       return fetch(`${serviceUrl}/v1/ocr`, { method: "POST", body: form, signal: AbortSignal.timeout(timeoutMs) });
     };
 

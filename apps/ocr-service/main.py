@@ -6,11 +6,10 @@ import time
 from pathlib import Path
 
 import cv2
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from paddleocr import PaddleOCR
 from PIL import Image, ImageEnhance, ImageStat
-from PIL.ExifTags import TAGS
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 logger = logging.getLogger("ocr")
@@ -150,23 +149,6 @@ def adaptive_threshold_candidate(image_path: str, is_cam: bool = False) -> str |
     return out_path
 
 
-def is_camera_photo(image_path: str) -> bool:
-    """Return True if the image carries camera EXIF metadata (Make, Model, or ExposureTime).
-
-    Camera photos always embed these tags; screenshots and messenger-shared images
-    typically do not. Used to skip screenshot-specific preprocessing on real photos.
-    """
-    try:
-        with Image.open(image_path) as img:
-            exif = img._getexif()
-            if not exif:
-                return False
-            # 271=Make, 272=Model, 33434=ExposureTime
-            return any(tag in exif for tag in (271, 272, 33434))
-    except Exception:
-        return False
-
-
 def find_bright_content_region(image_path: str) -> str | None:
     """Detect the uppermost bright content panel in a dimmed mobile screenshot.
 
@@ -175,9 +157,9 @@ def find_bright_content_region(image_path: str) -> str | None:
     center modals, and card-style overlays at arbitrary vertical positions.
     Returns None for landscape images or images that don't match the pattern.
 
-    Only call this function after confirming the image is NOT a camera photo
-    (use is_camera_photo). Natural photo backgrounds (wood, fabric, dark surfaces)
-    can mimic the dark-top/bright-bottom pattern and cause false crops.
+    Only call this function when is_camera is False. Natural photo backgrounds
+    (wood, fabric, dark surfaces) can mimic the dark-top/bright-bottom pattern
+    and cause false crops.
     """
     image = Image.open(image_path).convert("L")
     width, height = image.size
@@ -227,7 +209,7 @@ def health():
 
 
 @app.post("/v1/ocr")
-async def recognize(image: UploadFile = File(...)):
+async def recognize(image: UploadFile = File(...), is_camera: bool = Form(False)):
     suffix = Path(image.filename or "receipt.jpg").suffix or ".jpg"
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as temp:
         temp.write(await image.read())
@@ -235,8 +217,8 @@ async def recognize(image: UploadFile = File(...)):
     resized_path: str | None = None
     t_req = time.monotonic()
     try:
-        # Check EXIF on the original file before resize strips the metadata.
-        camera_photo = await run_in_threadpool(is_camera_photo, image_path)
+        # is_camera is set by the NestJS normalizer before EXIF is stripped from the JPEG.
+        camera_photo = is_camera
         resized_path = await run_in_threadpool(resize_for_ocr, image_path)
         logger.info("req start: filename=%s is_camera=%s", image.filename, camera_photo)
         # PaddleOCR CPU inference is blocking and uses multiple native threads.
