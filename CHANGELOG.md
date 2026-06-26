@@ -1,3 +1,10 @@
+## [1.34.2](https://github.com/kittysaemi/KittyWallet/compare/v1.34.1...v1.34.2) (2026-06-26)
+
+
+### Bug Fixes
+
+* **ocr:** 프론트엔드 is_camera 플래그 전달로 카메라/스크린샷 판정 수정 ([28e002f](https://github.com/kittysaemi/KittyWallet/commit/28e002f89c604be10ee7c668b4015c0a5d4743f9))
+
 ## [1.34.1](https://github.com/kittysaemi/KittyWallet/compare/v1.34.0...v1.34.1) (2026-06-26)
 
 
