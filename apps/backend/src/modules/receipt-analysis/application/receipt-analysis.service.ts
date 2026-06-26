@@ -12,9 +12,9 @@ export class ReceiptAnalysisService {
     private readonly textParsingService: TextParsingService
   ) {}
 
-  async analyze(image: Buffer) {
+  async analyze(image: Buffer, isCamera?: boolean) {
     try {
-      const normalized = await this.normalizer.normalize(image);
+      const normalized = await this.normalizer.normalize(image, isCamera);
       const ocr = await this.providerFactory.getProvider().analyze(normalized);
       if (!ocr.text) {
         throw new UnprocessableEntityException({ code: "RECEIPT_ANALYSIS_FAILED", message: "영수증 내용을 읽을 수 없습니다." });

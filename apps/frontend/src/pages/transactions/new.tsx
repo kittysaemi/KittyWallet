@@ -30,12 +30,12 @@ const TransactionNewPage: React.FC = () => {
 
   const clearSource = () => setSearchParams({}, { replace: true });
 
-  const analyzeImage = React.useCallback(async (file: File) => {
+  const analyzeImage = React.useCallback(async (file: File, isCameraPhoto: boolean) => {
     setIsAnalyzing(true);
     setAnalysisError("");
     setRetryOverlayDismissed(false);
     try {
-      setReceiptDraft(await receiptAnalysisApi.analyzeImage(file));
+      setReceiptDraft(await receiptAnalysisApi.analyzeImage(file, isCameraPhoto));
     } catch (error) {
       setAnalysisError(toSupportErrorMessage(error));
     } finally {
@@ -51,8 +51,8 @@ const TransactionNewPage: React.FC = () => {
   }, []);
 
   React.useEffect(() => {
-    if (receiptFileForAnalysis) void analyzeImage(receiptFileForAnalysis);
-  }, [receiptFileForAnalysis, analyzeImage]);
+    if (receiptFileForAnalysis) void analyzeImage(receiptFileForAnalysis, lastImageSource === "camera");
+  }, [receiptFileForAnalysis, analyzeImage, lastImageSource]);
 
   React.useEffect(() => {
     if (!receiptFile) return;

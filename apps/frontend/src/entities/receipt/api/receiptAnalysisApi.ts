@@ -68,9 +68,10 @@ async function prepareReceiptImage(image: File): Promise<File> {
 }
 
 export const receiptAnalysisApi = {
-  analyzeImage: async (image: File): Promise<ReceiptAnalysisDraft> => {
+  analyzeImage: async (image: File, isCamera?: boolean): Promise<ReceiptAnalysisDraft> => {
     const formData = new FormData();
     formData.append("image", await prepareReceiptImage(image));
+    if (isCamera) formData.append("is_camera", "true");
     // Do not set Content-Type here. Browsers must add the multipart boundary;
     // forcing the media type can make iOS Safari send a request Multer cannot parse.
     const response = await apiClient.post<{ data: ReceiptAnalysisDraft }>("/receipt-analyses", formData);
