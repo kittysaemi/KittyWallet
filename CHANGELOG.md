@@ -1,3 +1,10 @@
+# [1.34.0](https://github.com/kittysaemi/KittyWallet/compare/v1.33.1...v1.34.0) (2026-06-26)
+
+
+### Features
+
+* **parser:** 영수증 파서 라벨 확장 및 폴백 개선 ([d94c133](https://github.com/kittysaemi/KittyWallet/commit/d94c133bc857141c352d9a55093619117efc10c9)), closes [#340](https://github.com/kittysaemi/KittyWallet/issues/340)
+
 ## [1.33.1](https://github.com/kittysaemi/KittyWallet/compare/v1.33.0...v1.33.1) (2026-06-25)
 
 
