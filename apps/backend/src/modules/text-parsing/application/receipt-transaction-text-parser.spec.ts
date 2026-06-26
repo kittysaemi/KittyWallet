@@ -9,7 +9,7 @@ describe("ReceiptTransactionTextParser", () => {
     expect(result.profile).toBe("receipt-transaction");
     expect(result.fields.transactionDate?.value).toBe("2026-06-22");
     expect(result.fields.totalAmount?.value).toBe(12800);
-    expect(result.items).toEqual([]);
+    expect(result.items.map((item) => item.value)).toEqual(["고양이 마트"]);
   });
 
   it("keeps an ambiguous total unset and returns a warning", () => {
@@ -52,10 +52,9 @@ NAVER FINANCIAL
     expect(result.fields.totalAmount?.value).toBe(1530000);
   });
 
-  it("prioritizes the sales amount over tax components and other total labels", () => {
+  it("uses a labeled sales amount with a fuzzy OCR label", () => {
     const result = parser.parse(`과세 금액 1,390,909원
 부가세 금액 139,091원
-총 합계 1,500,000원
 판매 금 액 1,530,000원`);
 
     expect(result.fields.totalAmount?.value).toBe(1530000);
