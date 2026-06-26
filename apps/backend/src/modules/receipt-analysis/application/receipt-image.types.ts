@@ -17,5 +17,5 @@ export interface NormalizedReceiptImage {
 }
 
 export interface ReceiptImageNormalizer {
-  normalize(input: Buffer): Promise<NormalizedReceiptImage>;
+  normalize(input: Buffer, isCamera?: boolean): Promise<NormalizedReceiptImage>;
 }

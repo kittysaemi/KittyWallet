@@ -66,7 +66,7 @@ export class SharpReceiptImageNormalizer implements ReceiptImageNormalizer, OnMo
     await ensureOpenCV();
   }
 
-  async normalize(input: Buffer): Promise<NormalizedReceiptImage> {
+  async normalize(input: Buffer, isCamera?: boolean): Promise<NormalizedReceiptImage> {
     if (!input?.length) throw new ReceiptImageRequiredException();
 
     const maxInputBytes = this.getPositiveNumber("OCR_MAX_INPUT_FILE_BYTES", DEFAULT_MAX_INPUT_BYTES);
@@ -87,13 +87,17 @@ export class SharpReceiptImageNormalizer implements ReceiptImageNormalizer, OnMo
       const metadata = await image.metadata();
       if (!metadata.width || !metadata.height) throw new ReceiptImageInvalidException();
 
-      // HEIC is always a camera format; for others, EXIF presence indicates a camera photo.
-      // Must be read here — toBuffer() strips EXIF from the output JPEG.
-      const isCamera = isHEIC || !!metadata.exif;
+      // Use the frontend hint when provided (most reliable — set before canvas strips EXIF).
+      // Fallback: HEIC is always a camera photo; PNG is always a screenshot; JPEG without
+      // a hint falls back to EXIF presence (only works when canvas compression was skipped).
+      const isPNG = detected.mime === "image/png";
+      const isCameraPhoto = isCamera !== undefined
+        ? isCamera
+        : isHEIC || (!isPNG && !!metadata.exif);
 
       // Skip perspective warp for camera photos: natural backgrounds produce false quad
       // detections and warpPerspective distorts the receipt instead of correcting it.
-      const cropped = isCamera ? image : await this.cropToDocumentBounds(image, metadata.width, metadata.height);
+      const cropped = isCameraPhoto ? image : await this.cropToDocumentBounds(image, metadata.width, metadata.height);
       const resized = cropped.resize({ width: maxDimension, height: maxDimension, fit: "inside", withoutEnlargement: true });
       const shouldInvert = await this.isDarkBackgroundWithLightText(resized);
       const prepared = shouldInvert ? resized.clone().negate({ alpha: false }).normalize() : resized;
@@ -110,7 +114,7 @@ export class SharpReceiptImageNormalizer implements ReceiptImageNormalizer, OnMo
         mimeType: "image/jpeg",
         width: output.info.width,
         height: output.info.height,
-        isCamera
+        isCamera: isCameraPhoto
       };
     } catch (error) {
       if (
