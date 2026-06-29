@@ -1,3 +1,10 @@
+# [1.35.0](https://github.com/kittysaemi/KittyWallet/compare/v1.34.2...v1.35.0) (2026-06-29)
+
+
+### Features
+
+* **ui:** ReceiptImageSource 인터페이스 기반 image source adapter 구현 ([#342](https://github.com/kittysaemi/KittyWallet/issues/342)) ([e826958](https://github.com/kittysaemi/KittyWallet/commit/e8269583fe4679c8705899cc469335c9b264b781))
+
 ## [1.34.2](https://github.com/kittysaemi/KittyWallet/compare/v1.34.1...v1.34.2) (2026-06-26)
 
 
