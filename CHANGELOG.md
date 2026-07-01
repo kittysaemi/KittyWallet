@@ -1,3 +1,18 @@
+# [1.36.0](https://github.com/kittysaemi/KittyWallet/compare/v1.35.0...v1.36.0) (2026-07-01)
+
+
+### Features
+
+* add TechnicalArchive static serving to nginx ([5040692](https://github.com/kittysaemi/KittyWallet/commit/5040692ea80213581d90a26b74bc08162783b87c))
+* mount TechnicalArchive static directory in nginx ([01ad5e7](https://github.com/kittysaemi/KittyWallet/commit/01ad5e7d8d2f116c47c816bf0ca839519943561d))
+* remove nginx from KittyWallet, add shared-web network ([fab5703](https://github.com/kittysaemi/KittyWallet/commit/fab5703146592d3c4430c519a8c446d8fe3aa241))
+* serve all static projects from /usr/share/nginx/static ([68955b6](https://github.com/kittysaemi/KittyWallet/commit/68955b6543f75aa79e9e74f0d7c270f9f91c12ad))
+
+
+### Reverts
+
+* restore nginx/default.conf (nginx managed independently) ([2b87e1b](https://github.com/kittysaemi/KittyWallet/commit/2b87e1bfc7d91e78d7c0a1c0a687748c0ffdccd1))
+
 # [1.35.0](https://github.com/kittysaemi/KittyWallet/compare/v1.34.2...v1.35.0) (2026-06-29)
 
 
