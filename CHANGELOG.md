@@ -1,3 +1,12 @@
+## [1.36.1](https://github.com/kittysaemi/KittyWallet/compare/v1.36.0...v1.36.1) (2026-08-01)
+
+
+### Bug Fixes
+
+* **dashboard:** 지출요약 기간(TODAY/WEEK/MONTH) 계산을 UTC 기준으로 수정 ([0f8b6d4](https://github.com/kittysaemi/KittyWallet/commit/0f8b6d47e1f815118190b4b77b3ab89b77f26b6e)), closes [#353](https://github.com/kittysaemi/KittyWallet/issues/353)
+* **transactions:** Round 8·9 UI 수정 — 대시보드 최근내역, 지갑 거래내역 이동, 등록 후 스크롤 ([c3ee173](https://github.com/kittysaemi/KittyWallet/commit/c3ee1737359f6af73775d690f21c1b692064f93f)), closes [#353](https://github.com/kittysaemi/KittyWallet/issues/353)
+* **transactions:** 카드 할부 회차 날짜 계산을 UTC 기준으로 수정 ([bb8aa5f](https://github.com/kittysaemi/KittyWallet/commit/bb8aa5fb66089c8428dedcdcf3ea0e251aeee438)), closes [#353](https://github.com/kittysaemi/KittyWallet/issues/353)
+
 # [1.36.0](https://github.com/kittysaemi/KittyWallet/compare/v1.35.0...v1.36.0) (2026-07-01)
 
 
