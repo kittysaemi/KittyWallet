@@ -312,6 +312,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     mutationFn: transactionApi.createTransaction,
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      void queryClient.invalidateQueries({ queryKey: ["transactions-position"] });
       void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       void queryClient.invalidateQueries({ queryKey: ["accounts"] });
       void queryClient.invalidateQueries({ queryKey: ["cards"] });
@@ -328,6 +329,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       transactionApi.updateTransaction(transactionId!, data),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      void queryClient.invalidateQueries({ queryKey: ["transactions-position"] });
       void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       void queryClient.invalidateQueries({ queryKey: ["accounts"] });
       void queryClient.invalidateQueries({ queryKey: ["cards"] });
@@ -343,6 +345,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       transactionApi.convertToInstallment(transactionId!, { installment_months: months, timezone }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      void queryClient.invalidateQueries({ queryKey: ["transactions-position"] });
       void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       void queryClient.invalidateQueries({ queryKey: ["cards"] });
       void queryClient.invalidateQueries({ queryKey: ["statistics"] });
@@ -472,6 +475,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           });
           usePwaStore.getState().setSyncStatus("pending_sync");
           void queryClient.invalidateQueries({ queryKey: ["transactions"] });
+          void queryClient.invalidateQueries({ queryKey: ["transactions-position"] });
           void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
           void queryClient.invalidateQueries({ queryKey: ["accounts"] });
           void queryClient.invalidateQueries({ queryKey: ["cards"] });
