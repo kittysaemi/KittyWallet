@@ -315,6 +315,7 @@ const WalletTransactionsPage: React.FC<WalletTransactionsPageProps> = ({ walletT
                   iconMap={iconMap}
                   categoryIconMap={categoryIconMap}
                   showWallet={false}
+                  linkTo={(transactionId) => `/transactions/${transactionId}/edit`}
                 />
               ))}
             </div>

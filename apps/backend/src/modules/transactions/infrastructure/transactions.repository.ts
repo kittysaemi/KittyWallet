@@ -159,12 +159,15 @@ export class TransactionsRepository {
       for (let seq = 1; seq <= installmentInput.installmentMonths; seq++) {
         const amount = seq === 1 ? baseAmount + remainder : baseAmount;
         const base = installmentInput.purchaseDate;
-        const originalDay = base.getDate();
-        const targetMonthOffset = base.getMonth() + seq - 1;
-        const targetYear = base.getFullYear() + Math.floor(targetMonthOffset / 12);
+        // purchaseDate는 날짜 문자열(예: "2026-08-01")을 UTC 자정으로 파싱한 값이고, 저장/조회도
+        // 전부 UTC 기준(toISOString().split("T")[0])이다. 로컬 타임존 getter(getDate 등)를 쓰면
+        // 서버 프로세스가 UTC보다 서쪽 시간대일 때 하루가 밀리므로 UTC getter로 계산해야 한다.
+        const originalDay = base.getUTCDate();
+        const targetMonthOffset = base.getUTCMonth() + seq - 1;
+        const targetYear = base.getUTCFullYear() + Math.floor(targetMonthOffset / 12);
         const targetMonth = ((targetMonthOffset % 12) + 12) % 12;
-        const lastDayOfMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
-        const txDate = new Date(targetYear, targetMonth, Math.min(originalDay, lastDayOfMonth));
+        const lastDayOfMonth = new Date(Date.UTC(targetYear, targetMonth + 1, 0)).getUTCDate();
+        const txDate = new Date(Date.UTC(targetYear, targetMonth, Math.min(originalDay, lastDayOfMonth)));
 
         const transaction = await tx.transaction.create({
           data: {

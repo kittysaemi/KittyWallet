@@ -9,7 +9,7 @@ import { iconApi } from "../../entities/icon/api/iconApi";
 import type { IconItem } from "../../entities/icon/model/icon.types";
 import { IconRenderer } from "../../shared/ui/IconRenderer";
 import { useTimezone } from "../../shared/hooks/useTimezone";
-import { getTodayInTimezone } from "../../shared/utils/date";
+import { getTodayInTimezone, toDateValue } from "../../shared/utils/date";
 import { STALE_TIME, RETRY, QUERY_LIMIT } from "../../shared/constants/queryConfig";
 import { accountApi } from "../../entities/account/api/accountApi";
 import { cardApi } from "../../entities/card/api/cardApi";
@@ -211,17 +211,61 @@ const TransactionsPage: React.FC = () => {
     return _savedTxState?.month ?? parseInt(todayStr.slice(5, 7), 10);
   });
   const [page, setPage] = React.useState(_savedTxState?.page ?? 1);
+  // 신규 등록된 거래(highlightDate)로 진입한 경우, 해당 날짜가 속한 페이지를 먼저 계산할 때까지
+  // 잘못된 페이지(1페이지)가 잠깐 보이지 않도록 목록 조회를 지연한다.
+  const [pageResolved, setPageResolved] = React.useState(!highlightDate);
   const pageRef = React.useRef<HTMLDivElement>(null);
   const isOffline = !navigator.onLine;
 
+  const isCurrentMonth =
+    year === parseInt(todayStr.slice(0, 4), 10) && month === parseInt(todayStr.slice(5, 7), 10);
   const { start, end } = getMonthRange(year, month);
+  // 신규 진입(리셋) 시에만 "오늘" 위치로 스크롤 이동한다. 카드 할부의 미래 회차 등
+  // 오늘보다 미래 날짜 거래는 데이터에서 제외하지 않고 그대로 보여주되, 스크롤만 오늘로 옮긴다.
+  // StrictMode에서 effect가 두 번 실행되어도 결과가 같도록, 값을 도중에 바꾸지 않고 마운트 시점에
+  // 한 번만 계산해서 고정한다(실행 후 false로 바꾸는 방식은 두 번째 실행에서 폴백 분기로 빠져
+  // 방금 옮긴 스크롤을 다시 0으로 되돌려버린다).
+  const wasFreshEntry = React.useRef(!highlightDate && _savedTxState === null).current;
+
+  const positionQuery = useQuery({
+    queryKey: ["transactions-position", year, month, highlightDate],
+    queryFn: async () => {
+      const dayAfter = new Date(`${highlightDate}T00:00:00`);
+      dayAfter.setDate(dayAfter.getDate() + 1);
+      const dayAfterStr = toDateValue(dayAfter);
+      if (dayAfterStr > end) return { total_count: 0 };
+      const res = await transactionApi.getTransactions({
+        start_date: dayAfterStr,
+        end_date: end,
+        page: 1,
+        limit: 1
+      });
+      return { total_count: res.data?.total_count ?? 0 };
+    },
+    enabled: !!highlightDate && !pageResolved,
+    staleTime: 0
+  });
+
+  React.useEffect(() => {
+    if (!highlightDate || pageResolved) return;
+    if (positionQuery.data) {
+      setPage(Math.floor(positionQuery.data.total_count / QUERY_LIMIT.PAGE) + 1);
+      setPageResolved(true);
+    } else if (positionQuery.isError) {
+      // 위치 계산에 실패해도 목록 자체는 볼 수 있어야 하므로 1페이지로 대체한다.
+      setPageResolved(true);
+    }
+  }, [highlightDate, pageResolved, positionQuery.data, positionQuery.isError]);
+
+  const isResolvingHighlightPosition = !!highlightDate && !pageResolved;
 
   const query = useQuery({
     queryKey: ["transactions", year, month, page],
     queryFn: () =>
       transactionApi.getTransactions({ start_date: start, end_date: end, page, limit: QUERY_LIMIT.PAGE }),
     staleTime: STALE_TIME.SHORT,
-    retry: isOffline ? false : RETRY.STANDARD
+    retry: isOffline ? false : RETRY.STANDARD,
+    enabled: pageResolved
   });
 
   const categoriesQuery = useQuery({
@@ -316,12 +360,36 @@ const TransactionsPage: React.FC = () => {
   React.useLayoutEffect(() => {
     if (!query.isSuccess) return;
     if (highlightDate) {
-      const el = pageRef.current?.querySelector(`[data-date="${highlightDate}"]`);
-      if (el) { el.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
+      const el = pageRef.current?.querySelector(`[data-date="${highlightDate}"]`) as HTMLElement | null;
+      const scrollEl = pageRef.current?.parentElement as HTMLElement | null;
+      if (el && scrollEl) {
+        // 이 스크롤 컨테이너는 라우트 전환 시 초기화되지 않는다(NavLayout이 /transactions는
+        // 자체 복원 로직에 맡기고 건너뜀). 그래서 등록 폼 화면 등 직전 화면의 scrollTop이
+        // 그대로 남아있을 수 있는데, 그 값을 기준으로 "이미 보이는지"를 판단하면 실제로는
+        // 안 보이는 상태를 잘못 보이는 것으로 오판할 수 있다. 항상 맨 위를 기준선으로 삼는다.
+        scrollEl.scrollTop = 0;
+        const elRect = el.getBoundingClientRect();
+        const containerRect = scrollEl.getBoundingClientRect();
+        // 이미 화면(하단 네비게이션 위 영역)에 온전히 보이는 경우 불필요한 스크롤을 생략한다.
+        const alreadyVisible = elRect.top >= containerRect.top && elRect.bottom <= containerRect.bottom;
+        if (!alreadyVisible) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      return;
     }
     const scrollEl = pageRef.current?.parentElement as HTMLElement | null;
+    if (wasFreshEntry && isCurrentMonth) {
+      const todayEl = pageRef.current?.querySelector(`[data-date="${todayStr}"]`) as HTMLElement | null;
+      if (todayEl) {
+        todayEl.scrollIntoView({ block: "start" });
+        return;
+      }
+    }
     if (scrollEl) scrollEl.scrollTop = _savedTxState?.scrollTop ?? 0;
-  }, [query.isSuccess, highlightDate]);
+    // query.dataUpdatedAt을 의존성에 포함한다: 이 페이지로 돌아올 때 캐시된(stale) 이전 데이터로
+    // isSuccess가 먼저 true가 되고, 방금 등록한 거래가 반영된 최신 데이터는 백그라운드 refetch로
+    // 뒤늦게 도착한다. isSuccess는 그사이 계속 true라 dataUpdatedAt이 없으면 effect가 다시 실행되지
+    // 않아, 최신 데이터가 온 뒤에도 하이라이트 대상 요소를 계속 못 찾은 채로 남는다.
+  }, [query.isSuccess, query.dataUpdatedAt, highlightDate, isCurrentMonth, todayStr, wasFreshEntry]);
 
   function prevMonth() {
     if (month === 1) { setYear(y => y - 1); setMonth(12); }
@@ -338,11 +406,6 @@ const TransactionsPage: React.FC = () => {
     else setMonth(m => m + 1);
     setPage(1);
   }
-
-  const isCurrentMonth = (() => {
-    const nowStr = getTodayInTimezone(timezone);
-    return year === parseInt(nowStr.slice(0, 4), 10) && month === parseInt(nowStr.slice(5, 7), 10);
-  })();
 
   return (
     <div ref={pageRef} className="bg-[var(--color-bg-primary)]">
@@ -400,7 +463,7 @@ const TransactionsPage: React.FC = () => {
         )}
 
         {/* 로딩 */}
-        {query.isLoading && <TransactionSkeleton />}
+        {(query.isLoading || isResolvingHighlightPosition) && <TransactionSkeleton />}
 
         {/* 에러 */}
         {query.isError && !query.data && (
@@ -422,7 +485,7 @@ const TransactionsPage: React.FC = () => {
         )}
 
         {/* 빈 상태 */}
-        {!query.isLoading && !query.isError && items.length === 0 && monthPendingTxs.length === 0 && (
+        {!query.isLoading && !isResolvingHighlightPosition && !query.isError && items.length === 0 && monthPendingTxs.length === 0 && (
           <div className={`${cardClass} flex flex-col items-center gap-2 px-6 py-12 text-center`}>
             <p className="text-base font-medium text-[var(--color-text-primary)]">
               거래 내역이 없습니다

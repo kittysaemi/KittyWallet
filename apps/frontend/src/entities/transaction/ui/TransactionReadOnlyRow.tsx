@@ -18,6 +18,7 @@ export interface TransactionReadOnlyRowProps {
   iconMap: Map<number, IconItem>;
   categoryIconMap: Map<number, number>;
   showWallet?: boolean;
+  linkTo?: (transactionId: number) => string;
 }
 
 export const TransactionReadOnlyRow: React.FC<TransactionReadOnlyRowProps> = ({
@@ -25,19 +26,21 @@ export const TransactionReadOnlyRow: React.FC<TransactionReadOnlyRowProps> = ({
   iconMap,
   categoryIconMap,
   showWallet = true,
+  linkTo = (transactionId) => `/transactions/${transactionId}`,
 }) => {
   const navigate = useNavigate();
   const isIncome = tx.transaction_type === "INCOME";
   const iconId = categoryIconMap.get(tx.category_id);
   const icon = iconId ? iconMap.get(iconId) : undefined;
+  const target = linkTo(tx.transaction_id);
 
   return (
     <div
       className="flex cursor-pointer items-center gap-3 px-1 py-3 rounded-xl transition hover:bg-[var(--color-bg-secondary)]"
-      onClick={() => navigate(`/transactions/${tx.transaction_id}`)}
+      onClick={() => navigate(target)}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => e.key === "Enter" && navigate(`/transactions/${tx.transaction_id}`)}
+      onKeyDown={(e) => e.key === "Enter" && navigate(target)}
     >
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--color-bg-secondary)]">
         {icon ? (

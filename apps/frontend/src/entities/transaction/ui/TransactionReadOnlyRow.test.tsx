@@ -101,6 +101,12 @@ describe("TransactionReadOnlyRow", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/transactions/1");
   });
 
+  it("navigates using the linkTo override when provided", async () => {
+    renderRow({ linkTo: (id) => `/transactions/${id}/edit` });
+    await userEvent.click(screen.getByRole("button"));
+    expect(mockNavigate).toHaveBeenCalledWith("/transactions/1/edit");
+  });
+
   it("shows first letter of category as fallback when no icon", () => {
     renderRow({ tx: makeTx({ category_name: "교통" }) });
     expect(screen.getByText("교")).toBeInTheDocument();

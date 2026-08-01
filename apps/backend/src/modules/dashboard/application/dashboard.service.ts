@@ -11,13 +11,11 @@ export class DashboardService {
   async getDashboard(userId: bigint, query: DashboardQueryDto) {
     const recentLimit = query.recent_limit ?? 5;
     const summaryPeriod = query.summary_period ?? "MONTH";
-    const baseDate = query.base_date
-      ? new Date(query.base_date)
-      : new Date();
-
-    const baseDateStr = query.base_date
-      ? query.base_date
-      : getTodayInTimezone();
+    // 거래일자(transactionDate)는 "YYYY-MM-DD" 형태의 달력 날짜를 UTC 자정으로 정규화해
+    // 저장/조회한다. 기준 날짜도 같은 방식(UTC 자정)으로 맞춰야 서버 프로세스의 로컬
+    // 시스템 시간대와 무관하게 항상 같은 날짜 범위를 계산할 수 있다.
+    const baseDateStr = query.base_date ?? getTodayInTimezone();
+    const baseDate = new Date(`${baseDateStr}T00:00:00.000Z`);
     const { startDate, endDate } = this.calcPeriod(summaryPeriod, baseDate);
 
     const user = await this.dashboardRepository.getUser(userId);
@@ -65,20 +63,30 @@ export class DashboardService {
     period: "TODAY" | "WEEK" | "MONTH",
     baseDate: Date
   ): { startDate: Date; endDate: Date } {
-    const endDate = new Date(baseDate);
-    endDate.setHours(23, 59, 59, 999);
+    // baseDate는 UTC 자정으로 정규화된 달력 날짜이므로, 이후 계산도 전부 UTC getter/Date.UTC로
+    // 수행해 서버의 로컬 시스템 시간대에 영향받지 않도록 한다.
+    const endDate = new Date(Date.UTC(
+      baseDate.getUTCFullYear(),
+      baseDate.getUTCMonth(),
+      baseDate.getUTCDate(),
+      23, 59, 59, 999
+    ));
 
     let startDate: Date;
     if (period === "TODAY") {
-      startDate = new Date(baseDate);
-      startDate.setHours(0, 0, 0, 0);
+      startDate = new Date(Date.UTC(
+        baseDate.getUTCFullYear(),
+        baseDate.getUTCMonth(),
+        baseDate.getUTCDate()
+      ));
     } else if (period === "WEEK") {
-      startDate = new Date(baseDate);
-      startDate.setDate(startDate.getDate() - 6);
-      startDate.setHours(0, 0, 0, 0);
+      startDate = new Date(Date.UTC(
+        baseDate.getUTCFullYear(),
+        baseDate.getUTCMonth(),
+        baseDate.getUTCDate() - 6
+      ));
     } else {
-      startDate = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1);
-      startDate.setHours(0, 0, 0, 0);
+      startDate = new Date(Date.UTC(baseDate.getUTCFullYear(), baseDate.getUTCMonth(), 1));
     }
 
     return { startDate, endDate };
