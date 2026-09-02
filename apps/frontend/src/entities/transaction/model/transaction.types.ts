@@ -19,6 +19,8 @@ export interface TransactionItem {
   installment_seq?: number | null;
   installment_total_count?: number | null;
   installment_original_amount?: number | null;
+  /** 계좌이동으로 등록된 거래의 짝을 연결하는 값. 백엔드 API(#389) 배포 전까지는 항상 없음. */
+  transfer_group_id?: string | null;
 }
 
 export interface InstallmentItem {

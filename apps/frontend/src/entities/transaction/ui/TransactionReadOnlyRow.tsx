@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import type { TransactionItem } from "../model/transaction.types";
 import type { IconItem } from "../../icon/model/icon.types";
 import { IconRenderer } from "../../../shared/ui/IconRenderer";
+import { isTransferTransaction } from "../lib/isTransfer";
 
 function fmt(n: number): string {
   return n.toLocaleString("ko-KR");
@@ -30,6 +31,7 @@ export const TransactionReadOnlyRow: React.FC<TransactionReadOnlyRowProps> = ({
 }) => {
   const navigate = useNavigate();
   const isIncome = tx.transaction_type === "INCOME";
+  const isTransfer = isTransferTransaction(tx);
   const iconId = categoryIconMap.get(tx.category_id);
   const icon = iconId ? iconMap.get(iconId) : undefined;
   const target = linkTo(tx.transaction_id);
@@ -59,6 +61,11 @@ export const TransactionReadOnlyRow: React.FC<TransactionReadOnlyRowProps> = ({
       <div className="min-w-0 flex-1">
         <p className="flex min-w-0 items-center gap-1 text-sm font-medium text-[var(--color-text-primary)]">
           <span className="truncate">{tx.category_name}</span>
+          {isTransfer && (
+            <span className="shrink-0 inline-block rounded px-1 py-0.5 text-[10px] font-medium leading-none bg-[var(--color-primary-soft)] text-[var(--color-primary)]">
+              계좌이동
+            </span>
+          )}
           {tx.memo && (
             <>
               <span className="shrink-0 text-[var(--color-text-caption)]">·</span>
@@ -89,7 +96,15 @@ export const TransactionReadOnlyRow: React.FC<TransactionReadOnlyRowProps> = ({
           )}
         </p>
       </div>
-      <p className={`shrink-0 text-sm font-semibold ${isIncome ? "text-[var(--color-income)]" : "text-[var(--color-danger)]"}`}>
+      <p
+        className={`shrink-0 text-sm font-semibold ${
+          isTransfer
+            ? "text-[var(--color-text-secondary)]"
+            : isIncome
+              ? "text-[var(--color-income)]"
+              : "text-[var(--color-danger)]"
+        }`}
+      >
         {isIncome ? "+" : "-"}{fmt(tx.amount + (tx.interest ?? 0))}원
       </p>
     </div>

@@ -17,6 +17,7 @@ import { categoryApi } from "../../entities/category/api/categoryApi";
 import { iconApi } from "../../entities/icon/api/iconApi";
 import type { IconItem } from "../../entities/icon/model/icon.types";
 import { TransactionReadOnlyRow } from "../../entities/transaction/ui/TransactionReadOnlyRow";
+import { isTransferTransaction } from "../../entities/transaction/lib/isTransfer";
 import PwaInstallBanner from "../../shared/ui/PwaInstallBanner";
 
 const cardClass =
@@ -110,6 +111,8 @@ const DashboardPage: React.FC = () => {
   }, [categoriesQuery.data]);
 
   const data = query.data?.data;
+  // 계좌이동 거래는 여러 계좌를 섞어 보여주는 "최근 내역"에는 노출하지 않는다(지갑별 거래내역에서만 노출).
+  const recentTransactions = (data?.recent_transactions ?? []).filter((tx) => !isTransferTransaction(tx));
 
   async function handleLogout() {
     try { await authApi.logout(); } catch { /* ignore */ }
@@ -251,7 +254,7 @@ const DashboardPage: React.FC = () => {
                 전체 보기 →
               </Link>
             </div>
-            {data.recent_transactions.length === 0 ? (
+            {recentTransactions.length === 0 ? (
               <div className="flex flex-col items-center py-6 text-center">
                 <p className="text-sm text-[var(--color-text-secondary)]">최근 거래가 없습니다.</p>
                 <Link
@@ -263,7 +266,7 @@ const DashboardPage: React.FC = () => {
               </div>
             ) : (
               <div className="divide-y divide-[var(--color-border-secondary)]">
-                {data.recent_transactions.map((tx) => (
+                {recentTransactions.map((tx) => (
                   <TransactionReadOnlyRow key={tx.transaction_id} tx={tx} iconMap={iconMap} categoryIconMap={categoryIconMap} />
                 ))}
               </div>
