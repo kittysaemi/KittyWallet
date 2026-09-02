@@ -1,8 +1,8 @@
 import React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
-import { ChevronLeft, Circle, RefreshCw, Trash2 } from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
+import { ChevronLeft, Circle, Pencil, RefreshCw, Trash2 } from "lucide-react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import { invalidateTransactionCaches } from "../../pwa/cache/cacheInvalidation";
 import { addOfflineTransaction } from "../../pwa/indexed-db/repositories/offlineTransaction.repository";
@@ -110,6 +110,8 @@ const InstallmentSection: React.FC<{
 const TransactionDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const editable = Boolean((location.state as { editable?: boolean } | null)?.editable);
   const queryClient = useQueryClient();
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
   const [deleteError, setDeleteError] = React.useState("");
@@ -259,16 +261,28 @@ const TransactionDetailPage: React.FC = () => {
             </button>
             <h1 className="font-gamja text-2xl text-[var(--color-text-primary)]">상세내역</h1>
           </div>
-          {tx?.wallet_deleted && (
-            <button
-              type="button"
-              onClick={() => { setDeleteError(""); setShowDeleteDialog(true); }}
-              className="flex h-9 w-9 items-center justify-center rounded-xl text-[var(--color-danger)] transition hover:bg-[var(--color-danger-soft)]"
-              aria-label="거래 삭제"
-            >
-              <Trash2 size={18} />
-            </button>
-          )}
+          <div className="flex items-center gap-1">
+            {editable && tx && !tx.wallet_deleted && (
+              <button
+                type="button"
+                onClick={() => navigate(`/transactions/${id}/edit`)}
+                className="flex h-9 w-9 items-center justify-center rounded-xl text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-secondary)]"
+                aria-label="거래 수정"
+              >
+                <Pencil size={18} />
+              </button>
+            )}
+            {tx?.wallet_deleted && (
+              <button
+                type="button"
+                onClick={() => { setDeleteError(""); setShowDeleteDialog(true); }}
+                className="flex h-9 w-9 items-center justify-center rounded-xl text-[var(--color-danger)] transition hover:bg-[var(--color-danger-soft)]"
+                aria-label="거래 삭제"
+              >
+                <Trash2 size={18} />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* 로딩 */}
