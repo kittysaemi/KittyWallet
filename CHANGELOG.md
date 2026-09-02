@@ -1,3 +1,16 @@
+# [1.40.0](https://github.com/kittysaemi/KittyWallet/compare/v1.39.1...v1.40.0) (2026-09-02)
+
+
+### Bug Fixes
+
+* **frontend:** 지갑별 거래내역 + 버튼 위치 수정 ([#391](https://github.com/kittysaemi/KittyWallet/issues/391) 피드백) ([7a14031](https://github.com/kittysaemi/KittyWallet/commit/7a1403171c469155c6fb2b139642f0850c6a8c87))
+
+
+### Features
+
+* **frontend:** 지갑별 거래내역 + 버튼을 카드 내 인라인 2열 확장으로 변경 ([ba14009](https://github.com/kittysaemi/KittyWallet/commit/ba14009234118955300d137d08d60ba049b05980))
+* **transactions:** add account-to-account transfer API ([a5caa36](https://github.com/kittysaemi/KittyWallet/commit/a5caa36d4ab377b1055cd36f61bd2f65db3b99a6)), closes [#389](https://github.com/kittysaemi/KittyWallet/issues/389)
+
 ## [1.39.1](https://github.com/kittysaemi/KittyWallet/compare/v1.39.0...v1.39.1) (2026-09-02)
 
 
