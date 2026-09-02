@@ -2,7 +2,7 @@ import React from "react";
 import { STALE_TIME, GC_TIME, RETRY, QUERY_LIMIT } from "../../shared/constants/queryConfig";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
-import { ArrowLeftRight, ChevronLeft, ChevronRight, Loader2, PenLine, Plus, RefreshCw, WifiOff, X } from "lucide-react";
+import { ArrowLeftRight, ChevronLeft, ChevronRight, Loader2, PenLine, Plus, RefreshCw, WifiOff } from "lucide-react";
 import { accountApi } from "../../entities/account/api/accountApi";
 import { cardApi } from "../../entities/card/api/cardApi";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
@@ -32,14 +32,14 @@ const WalletTransactionsPage: React.FC<WalletTransactionsPageProps> = ({ walletT
   const timezone = useTimezone();
   const todayStr = getTodayInTimezone(timezone);
   const isOffline = !navigator.onLine;
-  const [isEntrySheetOpen, setIsEntrySheetOpen] = React.useState(false);
+  const [isEntryExpanded, setIsEntryExpanded] = React.useState(false);
 
   function handleAddClick() {
     if (walletType === "CARD") {
       navigate(`/transactions/new?walletType=CARD&walletId=${walletId}`);
       return;
     }
-    setIsEntrySheetOpen(true);
+    setIsEntryExpanded((v) => !v);
   }
 
   const today = React.useMemo(() => {
@@ -224,8 +224,8 @@ const WalletTransactionsPage: React.FC<WalletTransactionsPageProps> = ({ walletT
         )}
 
         {walletName && (
-          <div className="flex items-stretch gap-2">
-            <div className={`${cardClass} flex flex-1 items-center justify-between px-5 py-4`}>
+          <div className={cardClass}>
+            <div className="flex items-center justify-between px-5 py-4">
               <p className="text-sm font-semibold text-[var(--color-text-primary)]">{walletName}</p>
               {walletType === "ACCOUNT" ? (
                 <p className="text-sm text-[var(--color-text-secondary)]">
@@ -238,11 +238,37 @@ const WalletTransactionsPage: React.FC<WalletTransactionsPageProps> = ({ walletT
             <button
               type="button"
               onClick={handleAddClick}
+              aria-expanded={walletType === "ACCOUNT" ? isEntryExpanded : undefined}
               aria-label={walletType === "ACCOUNT" ? "거래등록/계좌이동" : "거래등록"}
-              className="flex w-14 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-primary)] shadow-[0_4px_16px_var(--color-card-shadow)] transition active:scale-95"
+              className="flex w-full items-center justify-center gap-1.5 border-t border-[var(--color-border-primary)] py-2.5 text-sm font-bold text-[var(--color-primary-hover)] transition hover:bg-[var(--color-bg-secondary)]"
             >
-              <Plus size={20} strokeWidth={3} className="text-[var(--color-text-primary)]" />
+              <Plus
+                size={14}
+                strokeWidth={3}
+                className={`transition-transform ${isEntryExpanded ? "rotate-45" : ""}`}
+              />
+              추가
             </button>
+            {walletType === "ACCOUNT" && isEntryExpanded && (
+              <div className="flex divide-x divide-[var(--color-border-secondary)] border-t border-[var(--color-border-secondary)]">
+                <button
+                  type="button"
+                  onClick={() => navigate(`/transactions/new?walletType=ACCOUNT&walletId=${walletId}`)}
+                  className="flex flex-1 flex-col items-center gap-1.5 py-4 transition hover:bg-[var(--color-bg-secondary)]"
+                >
+                  <PenLine size={22} className="text-[var(--color-primary-hover)]" />
+                  <span className="text-xs font-semibold text-[var(--color-text-primary)]">거래등록</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/transfer/new?fromAccountId=${walletId}`)}
+                  className="flex flex-1 flex-col items-center gap-1.5 py-4 transition hover:bg-[var(--color-bg-secondary)]"
+                >
+                  <ArrowLeftRight size={22} className="text-[var(--color-primary-hover)]" />
+                  <span className="text-xs font-semibold text-[var(--color-text-primary)]">계좌이동</span>
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -360,62 +386,6 @@ const WalletTransactionsPage: React.FC<WalletTransactionsPageProps> = ({ walletT
         )}
         </div>
       </div>
-
-      {isEntrySheetOpen && (
-        <div className="fixed inset-0 z-[70] flex items-end bg-black/50 px-4 pb-safe sm:items-center sm:justify-center">
-          <section
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="wallet-entry-title"
-            className="w-full max-w-[480px] rounded-t-3xl bg-[var(--color-bg-card)] p-5 shadow-2xl sm:rounded-3xl"
-          >
-            <div className="mb-5 flex items-center justify-between">
-              <h2 id="wallet-entry-title" className="font-gamja text-xl text-[var(--color-text-primary)]">
-                {walletName}
-              </h2>
-              <button
-                type="button"
-                onClick={() => setIsEntrySheetOpen(false)}
-                className="flex h-10 w-10 items-center justify-center rounded-xl text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)]"
-                aria-label="닫기"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsEntrySheetOpen(false);
-                  navigate(`/transactions/new?walletType=ACCOUNT&walletId=${walletId}`);
-                }}
-                className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-[var(--color-border-primary)] px-4 text-left hover:bg-[var(--color-bg-secondary)]"
-              >
-                <PenLine size={20} className="text-[var(--color-primary)]" />
-                <span className="text-sm font-semibold text-[var(--color-text-primary)]">거래등록</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsEntrySheetOpen(false);
-                  navigate(`/transfer/new?fromAccountId=${walletId}`);
-                }}
-                className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-[var(--color-border-primary)] px-4 text-left hover:bg-[var(--color-bg-secondary)]"
-              >
-                <ArrowLeftRight size={20} className="text-[var(--color-primary)]" />
-                <span className="text-sm font-semibold text-[var(--color-text-primary)]">계좌이동</span>
-              </button>
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsEntrySheetOpen(false)}
-              className="mt-3 min-h-11 w-full rounded-xl text-sm font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)]"
-            >
-              취소
-            </button>
-          </section>
-        </div>
-      )}
     </div>
   );
 };
