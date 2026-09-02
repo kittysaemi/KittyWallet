@@ -224,9 +224,9 @@ const WalletTransactionsPage: React.FC<WalletTransactionsPageProps> = ({ walletT
         )}
 
         {walletName && (
-          <div className={`${cardClass} flex items-center justify-between px-5 py-4`}>
-            <p className="text-sm font-semibold text-[var(--color-text-primary)]">{walletName}</p>
-            <div className="flex items-center gap-3">
+          <div className="flex items-stretch gap-2">
+            <div className={`${cardClass} flex flex-1 items-center justify-between px-5 py-4`}>
+              <p className="text-sm font-semibold text-[var(--color-text-primary)]">{walletName}</p>
               {walletType === "ACCOUNT" ? (
                 <p className="text-sm text-[var(--color-text-secondary)]">
                   현재잔액 : <span className={`font-semibold ${accountBalance !== null && accountBalance < 0 ? "text-[var(--color-danger)]" : "text-[var(--color-income)]"}`}>{accountBalance !== null ? `${fmt(accountBalance)}원` : "—"}</span>
@@ -234,15 +234,15 @@ const WalletTransactionsPage: React.FC<WalletTransactionsPageProps> = ({ walletT
               ) : (
                 <p className="text-sm font-semibold text-[var(--color-danger)]">{fmt(periodExpense)}원</p>
               )}
-              <button
-                type="button"
-                onClick={handleAddClick}
-                aria-label={walletType === "ACCOUNT" ? "거래등록/계좌이동" : "거래등록"}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] transition active:scale-95"
-              >
-                <Plus size={16} strokeWidth={3} className="text-[var(--color-text-primary)]" />
-              </button>
             </div>
+            <button
+              type="button"
+              onClick={handleAddClick}
+              aria-label={walletType === "ACCOUNT" ? "거래등록/계좌이동" : "거래등록"}
+              className="flex w-14 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-primary)] shadow-[0_4px_16px_var(--color-card-shadow)] transition active:scale-95"
+            >
+              <Plus size={20} strokeWidth={3} className="text-[var(--color-text-primary)]" />
+            </button>
           </div>
         )}
 
