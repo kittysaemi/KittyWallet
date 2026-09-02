@@ -14,7 +14,12 @@
     "start": "node dist/main.js",
     "lint": "eslint src --ext .ts",
     "type-check": "tsc -p tsconfig.json --noEmit",
-    "test": "jest --config jest.config.cjs"
+    "test": "jest --config jest.config.cjs",
+    "transfer-migration:inspect": "ts-node --transpile-only scripts/account-transfer-migration/01-inspect.ts",
+    "transfer-migration:dry-run": "ts-node --transpile-only scripts/account-transfer-migration/02-dry-run-match.ts",
+    "transfer-migration:backfill": "ts-node --transpile-only scripts/account-transfer-migration/03-backfill.ts",
+    "transfer-migration:snapshot": "ts-node --transpile-only scripts/account-transfer-migration/04-snapshot.ts",
+    "transfer-migration:compare-snapshots": "ts-node --transpile-only scripts/account-transfer-migration/05-compare-snapshots.ts"
   },
   "dependencies": {
     "@kittywallet/shared-api": "0.1.0",
