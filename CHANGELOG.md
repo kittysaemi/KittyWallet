@@ -1,3 +1,10 @@
+## [1.40.1](https://github.com/kittysaemi/KittyWallet/compare/v1.40.0...v1.40.1) (2026-09-02)
+
+
+### Bug Fixes
+
+* **prisma:** remove duplicate transfer_group_id migration ([7a797b8](https://github.com/kittysaemi/KittyWallet/commit/7a797b822a24459a33e409ca85983f9010c3bae5)), closes [#399](https://github.com/kittysaemi/KittyWallet/issues/399) [396/#388](https://github.com/kittysaemi/KittyWallet/issues/388) [389/#388](https://github.com/kittysaemi/KittyWallet/issues/388)
+
 # [1.40.0](https://github.com/kittysaemi/KittyWallet/compare/v1.39.1...v1.40.0) (2026-09-02)
 
 
