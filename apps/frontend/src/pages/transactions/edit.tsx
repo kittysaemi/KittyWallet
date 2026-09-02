@@ -8,6 +8,8 @@ import { addOfflineTransaction } from "../../pwa/indexed-db/repositories/offline
 import { enqueueSyncItem } from "../../pwa/indexed-db/repositories/syncQueue.repository";
 import { usePwaStore } from "../../pwa/state/pwa.store";
 import { TransactionForm } from "../../features/transactions/TransactionForm";
+import { TransferForm } from "../../features/transactions/TransferForm";
+import { isTransferTransaction } from "../../entities/transaction/lib/isTransfer";
 import { invalidateTransactionCaches } from "../../pwa/cache/cacheInvalidation";
 import { useTimezone } from "../../shared/hooks/useTimezone";
 import { getTodayInTimezone } from "../../shared/utils/date";
@@ -76,7 +78,17 @@ const TransactionEditPage: React.FC = () => {
   const [deleteError, setDeleteError] = React.useState<string>("");
 
   const deleteMutation = useMutation({
-    mutationFn: () => transactionApi.deleteTransaction(Number(id)),
+    // 짝 거래가 연결된 계좌이동(transfer_group_id 존재)은 두 거래를 함께 삭제해야 하므로
+    // deleteTransfer를 사용한다. 오프라인 삭제(아래 handleDelete)는 계좌이동 짝 삭제를
+    // 아직 지원하지 않는다(온라인 상태에서만 계좌이동 삭제 가능).
+    mutationFn: async () => {
+      const currentTransferGroupId = transactionQuery.data?.data?.transfer_group_id;
+      if (currentTransferGroupId) {
+        await transactionApi.deleteTransfer(currentTransferGroupId);
+        return;
+      }
+      await transactionApi.deleteTransaction(Number(id));
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["transactions"] });
       void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
@@ -106,10 +118,26 @@ const TransactionEditPage: React.FC = () => {
   const isFutureInstallment =
     !!transaction?.installment_id && transaction.transaction_date > todayStr;
 
+  // 계좌이동으로 보이는 거래인지 판별. transfer_group_id가 있으면(백엔드 API #389 배포 후)
+  // 짝 거래 정보를 불러와 계좌이동 전용 수정 화면(TransferForm)으로 연결한다.
+  // transfer_group_id가 없는(마이그레이션 전/미매칭) 레거시 건은 기존처럼 단건 수정으로 처리한다.
+  const isTransfer = transaction ? isTransferTransaction(transaction) : false;
+  const transferGroupId = transaction?.transfer_group_id ?? null;
+
+  const transferDetailQuery = useQuery({
+    queryKey: ["transfer", transferGroupId],
+    queryFn: () => transactionApi.getTransfer(transferGroupId!),
+    enabled: !!transferGroupId
+  });
+
   const handleDelete = async () => {
     setDeleteError("");
     if (!transaction) return;
     if (!navigator.onLine) {
+      if (transferGroupId) {
+        setDeleteError("계좌이동 삭제는 온라인 상태에서만 가능합니다. 네트워크 연결 후 다시 시도해주세요.");
+        return;
+      }
       try {
         const payload = {
           transaction_type: transaction.transaction_type,
@@ -201,7 +229,9 @@ const TransactionEditPage: React.FC = () => {
               >
                 <ChevronLeft size={20} />
               </button>
-              <h1 className="font-gamja text-2xl text-[var(--color-text-primary)]">거래 수정</h1>
+              <h1 className="font-gamja text-2xl text-[var(--color-text-primary)]">
+                {isTransfer ? "계좌이동 수정" : "거래 수정"}
+              </h1>
             </div>
             {!walletDeleted && (
               <button
@@ -223,15 +253,48 @@ const TransactionEditPage: React.FC = () => {
             </div>
           )}
 
-          <div className="rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] p-5 shadow-[0_4px_16px_var(--color-card-shadow)]">
-            <TransactionForm
-              initialData={transaction}
-              transactionId={transaction.transaction_id}
-              onSuccess={() => navigate("/transactions", { replace: true })}
-              readOnly={walletDeleted}
-              futureInstallment={isFutureInstallment}
-            />
-          </div>
+          {isTransfer && !transferGroupId && (
+            <div className="mb-4 rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] px-4 py-3">
+              <p className="text-sm text-[var(--color-text-secondary)]">
+                계좌이동으로 보이는 거래이지만 아직 연결 정보가 없어(데이터 정리 전), 계좌이동 전용
+                수정이 아닌 개별 거래 수정으로 진행합니다.
+              </p>
+            </div>
+          )}
+
+          {transferGroupId ? (
+            transferDetailQuery.data?.data ? (
+              <div className="rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] p-5 shadow-[0_4px_16px_var(--color-card-shadow)]">
+                <TransferForm
+                  initialData={{
+                    transfer_group_id: transferGroupId,
+                    from_account_id: transferDetailQuery.data.data.from_account_id,
+                    to_account_id: transferDetailQuery.data.data.to_account_id,
+                    amount: transferDetailQuery.data.data.amount,
+                    transaction_date: transferDetailQuery.data.data.transaction_date,
+                    memo: transaction.memo
+                  }}
+                  onSuccess={() => navigate("/transactions", { replace: true })}
+                />
+              </div>
+            ) : (
+              <div className="animate-pulse rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] p-5">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="mb-4 h-10 rounded-xl bg-[var(--color-bg-secondary)]" />
+                ))}
+              </div>
+            )
+          ) : (
+            <div className="rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] p-5 shadow-[0_4px_16px_var(--color-card-shadow)]">
+              <TransactionForm
+                initialData={transaction}
+                transactionId={transaction.transaction_id}
+                onSuccess={() => navigate("/transactions", { replace: true })}
+                readOnly={walletDeleted}
+                futureInstallment={isFutureInstallment}
+              />
+            </div>
+          )}
         </div>
       </div>
 

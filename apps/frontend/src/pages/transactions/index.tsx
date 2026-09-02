@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Clock, RefreshCw, WifiOff } from "lucide-rea
 import { useLocation, useNavigate } from "react-router-dom";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import type { TransactionItem } from "../../entities/transaction/model/transaction.types";
+import { isTransferTransaction } from "../../entities/transaction/lib/isTransfer";
 import { categoryApi } from "../../entities/category/api/categoryApi";
 import { iconApi } from "../../entities/icon/api/iconApi";
 import type { IconItem } from "../../entities/icon/model/icon.types";
@@ -338,7 +339,10 @@ const TransactionsPage: React.FC = () => {
   }, [pendingTxs, year, month]);
 
 
-  const items = query.data?.data?.items ?? [];
+  // 계좌이동 거래는 전체 거래내역에 노출하지 않는다(지갑별 거래내역에서만 노출).
+  // 서버가 아직 이 필터를 지원하지 않아 클라이언트에서 제외하므로, 한 페이지에 표시되는
+  // 항목 수가 페이지 크기보다 적게 보일 수 있다(백엔드 API #389에서 서버 필터 추가 예정).
+  const items = (query.data?.data?.items ?? []).filter((tx) => !isTransferTransaction(tx));
   const totalCount = query.data?.data?.total_count ?? 0;
   const totalPages = Math.ceil(totalCount / 20);
   const grouped = groupByDate(items);

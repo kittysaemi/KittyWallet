@@ -1,3 +1,17 @@
+# [1.39.0](https://github.com/kittysaemi/KittyWallet/compare/v1.38.0...v1.39.0) (2026-09-02)
+
+
+### Features
+
+* **#388:** add Transaction.transferGroupId and transfer-category statistics exclusion ([cd6dfb6](https://github.com/kittysaemi/KittyWallet/commit/cd6dfb63d763c78baf79a6b8566c7f083241d1de)), closes [#388](https://github.com/kittysaemi/KittyWallet/issues/388)
+
+# [1.38.0](https://github.com/kittysaemi/KittyWallet/compare/v1.37.0...v1.38.0) (2026-09-02)
+
+
+### Features
+
+* **frontend:** 계좌이동 노출 규칙/상세화면/빠른 진입점 추가 ([#391](https://github.com/kittysaemi/KittyWallet/issues/391)) ([3a08b2b](https://github.com/kittysaemi/KittyWallet/commit/3a08b2bf77899e47d18055947029d61cf3c13faf)), closes [#389](https://github.com/kittysaemi/KittyWallet/issues/389)
+
 # [1.37.0](https://github.com/kittysaemi/KittyWallet/compare/v1.36.1...v1.37.0) (2026-09-02)
 
 
