@@ -1,3 +1,17 @@
+## [1.39.1](https://github.com/kittysaemi/KittyWallet/compare/v1.39.0...v1.39.1) (2026-09-02)
+
+
+### Bug Fixes
+
+* **frontend:** 지갑 거래내역 항목 선택 시 수정화면 대신 상세화면으로 이동 ([8a397bb](https://github.com/kittysaemi/KittyWallet/commit/8a397bb2c82cb0081f077a3127765ea00c826995)), closes [#353](https://github.com/kittysaemi/KittyWallet/issues/353)
+
+# [1.39.0](https://github.com/kittysaemi/KittyWallet/compare/v1.38.0...v1.39.0) (2026-09-02)
+
+
+### Features
+
+* **#388:** add Transaction.transferGroupId and transfer-category statistics exclusion ([cd6dfb6](https://github.com/kittysaemi/KittyWallet/commit/cd6dfb63d763c78baf79a6b8566c7f083241d1de)), closes [#388](https://github.com/kittysaemi/KittyWallet/issues/388)
+
 # [1.38.0](https://github.com/kittysaemi/KittyWallet/compare/v1.37.0...v1.38.0) (2026-09-02)
 
 
