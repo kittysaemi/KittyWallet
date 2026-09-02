@@ -122,7 +122,7 @@ export class TransferRepository {
     }
 
     try {
-      return await tx.category.create({
+      const created = await tx.category.create({
         data: {
           user: { connect: { userId } },
           icon: { connect: { iconId: fallbackIcon.iconId } },
@@ -131,6 +131,28 @@ export class TransferRepository {
           show: true
         }
       });
+
+      // 계좌이동 거래는 통계(총수입/총지출)에 집계되면 안 되므로, 카테고리 생성과 같은 트랜잭션에서
+      // CategoryUserSetting.includeInStatistics를 false로 설정한다. CategoryUserSetting은
+      // 카테고리 생성 시 자동으로 만들어지지 않으므로(기본값은 애플리케이션 레이어에서 "설정 없음 = true"로
+      // 해석) 여기서 명시적으로 만들어줘야 한다.
+      await tx.categoryUserSetting.upsert({
+        where: {
+          userId_categoryId: {
+            userId,
+            categoryId: created.categoryId
+          }
+        },
+        update: {},
+        create: {
+          user: { connect: { userId } },
+          category: { connect: { categoryId: created.categoryId } },
+          show: true,
+          includeInStatistics: false
+        }
+      });
+
+      return created;
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
         const racedCategory = await tx.category.findFirst({

@@ -2,7 +2,7 @@ import { HttpStatus, Injectable } from "@nestjs/common";
 import { Prisma, TransactionType, WalletType } from "@prisma/client";
 import { AppException } from "../../../common/exceptions/app.exception";
 import { getTodayInTimezone } from "../../../common/utils/date.util";
-import { BalanceViolationError } from "../domain/errors";
+import { BalanceViolationError, TransferGroupMismatchError } from "../domain/errors";
 import {
   AccountBalanceTransaction,
   CreateInstallmentInput,
@@ -147,6 +147,11 @@ export class TransactionsService {
     );
     if (!existing) {
       throw new AppException("TX_005", "거래 내역을 찾을 수 없습니다.", HttpStatus.NOT_FOUND);
+    }
+
+    if (existing.transferGroupId) {
+      const error = new TransferGroupMismatchError();
+      throw new AppException("TRANSFER_005", error.message, HttpStatus.CONFLICT);
     }
 
     if (existing.walletType === "ACCOUNT") {
@@ -343,6 +348,11 @@ export class TransactionsService {
     const existing = await this.transactionsRepository.findById(transactionId, userId);
     if (!existing) {
       throw new AppException("TX_005", "거래 내역을 찾을 수 없습니다.", HttpStatus.NOT_FOUND);
+    }
+
+    if (existing.transferGroupId) {
+      const error = new TransferGroupMismatchError();
+      throw new AppException("TRANSFER_005", error.message, HttpStatus.CONFLICT);
     }
 
     if (existing.installmentId) {

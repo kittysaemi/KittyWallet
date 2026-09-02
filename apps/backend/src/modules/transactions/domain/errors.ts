@@ -25,3 +25,12 @@ export class TransferPairCorruptedError extends Error {
     this.name = 'TransferPairCorruptedError';
   }
 }
+
+export class TransferGroupMismatchError extends Error {
+  constructor() {
+    super(
+      '계좌이동으로 연결된 거래는 일반 거래 수정/삭제 API로 처리할 수 없습니다. 계좌이동 전용 API를 사용해주세요.'
+    );
+    this.name = 'TransferGroupMismatchError';
+  }
+}
