@@ -111,4 +111,16 @@ describe("TransactionReadOnlyRow", () => {
     renderRow({ tx: makeTx({ category_name: "교통" }) });
     expect(screen.getByText("교")).toBeInTheDocument();
   });
+
+  it("shows 계좌이동 badge and neutral amount color for transfer transactions", () => {
+    renderRow({ tx: makeTx({ category_name: "계좌금액이동", transaction_type: "EXPENSE", amount: 30000 }) });
+    expect(screen.getByText("계좌이동")).toBeInTheDocument();
+    const amountEl = screen.getByText("-30,000원");
+    expect(amountEl.className).toContain("text-[var(--color-text-secondary)]");
+  });
+
+  it("does not show 계좌이동 badge for regular transactions", () => {
+    renderRow();
+    expect(screen.queryByText("계좌이동")).not.toBeInTheDocument();
+  });
 });
