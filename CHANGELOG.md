@@ -1,3 +1,10 @@
+# [1.39.0](https://github.com/kittysaemi/KittyWallet/compare/v1.38.0...v1.39.0) (2026-09-02)
+
+
+### Features
+
+* **#388:** add Transaction.transferGroupId and transfer-category statistics exclusion ([cd6dfb6](https://github.com/kittysaemi/KittyWallet/commit/cd6dfb63d763c78baf79a6b8566c7f083241d1de)), closes [#388](https://github.com/kittysaemi/KittyWallet/issues/388)
+
 # [1.38.0](https://github.com/kittysaemi/KittyWallet/compare/v1.37.0...v1.38.0) (2026-09-02)
 
 
