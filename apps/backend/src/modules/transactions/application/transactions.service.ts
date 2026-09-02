@@ -96,6 +96,7 @@ export interface TransactionItem {
   installment_seq?: number | null;
   installment_total_count?: number | null;
   installment_original_amount?: number | null;
+  transfer_group_id: string | null;
 }
 
 export interface InstallmentItem {
@@ -555,7 +556,8 @@ export class TransactionsService {
       ...(t.installmentId ? { installment_id: Number(t.installmentId) } : {}),
       installment_seq: t.installmentSeq ?? null,
       installment_total_count: t.installmentTotalCount ?? null,
-      installment_original_amount: t.cardInstallment?.originalAmount.toNumber() ?? null
+      installment_original_amount: t.cardInstallment?.originalAmount.toNumber() ?? null,
+      transfer_group_id: t.transferGroupId ?? null
     };
   }
 

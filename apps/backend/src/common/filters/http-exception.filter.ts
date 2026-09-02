@@ -22,6 +22,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
         error: {
           code: toPublicErrorCode(exception.code),
           message: exception.message,
+          ...(exception.details ? { details: exception.details } : {}),
         },
       });
       return;
