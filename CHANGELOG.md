@@ -1,3 +1,15 @@
+# [1.37.0](https://github.com/kittysaemi/KittyWallet/compare/v1.36.1...v1.37.0) (2026-09-02)
+
+
+### Bug Fixes
+
+* **frontend:** 계좌이동 실제 저장 방지 (백엔드 API 배포 전까지) ([d685f0c](https://github.com/kittysaemi/KittyWallet/commit/d685f0c5a4bce93e5251b3facde44ea46bdea0c3)), closes [#389](https://github.com/kittysaemi/KittyWallet/issues/389)
+
+
+### Features
+
+* **frontend:** 계좌이동 입력/수정 화면 및 진입점 추가 ([f5de82d](https://github.com/kittysaemi/KittyWallet/commit/f5de82d06a05e37cb0da7bbff59642b9f67c4639)), closes [#389](https://github.com/kittysaemi/KittyWallet/issues/389)
+
 ## [1.36.1](https://github.com/kittysaemi/KittyWallet/compare/v1.36.0...v1.36.1) (2026-08-01)
 
 
