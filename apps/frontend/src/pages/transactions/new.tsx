@@ -28,6 +28,15 @@ const TransactionNewPage: React.FC = () => {
   );
   const receiptFile = (location.state as NavigationState | null)?.receiptFile;
 
+  const lockedWalletType = searchParams.get("walletType");
+  const lockedWalletId = searchParams.get("walletId");
+  const lockedWallet: { walletType: "ACCOUNT" | "CARD"; walletId: number } | undefined =
+    lockedWalletType === "ACCOUNT" || lockedWalletType === "CARD"
+      ? lockedWalletId
+        ? { walletType: lockedWalletType, walletId: Number(lockedWalletId) }
+        : undefined
+      : undefined;
+
   const clearSource = () => setSearchParams({}, { replace: true });
 
   const analyzeImage = React.useCallback(async (file: File, isCameraPhoto: boolean) => {
@@ -109,6 +118,7 @@ const TransactionNewPage: React.FC = () => {
           {analysisError && !receiptFileForAnalysis && <p className="mb-3 text-sm text-[var(--color-danger)]">{analysisError}</p>}
           <TransactionForm
             receiptDraft={receiptDraft}
+            lockedWallet={lockedWallet}
             onCreated={(finalDraft) => {
               lastCreatedDateRef.current = finalDraft.transaction_date;
               if (receiptDraft) void receiptAnalysisApi.saveTrainingSample(receiptDraft, finalDraft);

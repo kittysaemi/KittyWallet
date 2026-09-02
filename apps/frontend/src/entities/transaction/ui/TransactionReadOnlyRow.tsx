@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import type { TransactionItem } from "../model/transaction.types";
 import type { IconItem } from "../../icon/model/icon.types";
 import { IconRenderer } from "../../../shared/ui/IconRenderer";
+import { isTransferTransaction } from "../lib/isTransfer";
 
 function fmt(n: number): string {
   return n.toLocaleString("ko-KR");
@@ -19,6 +20,7 @@ export interface TransactionReadOnlyRowProps {
   categoryIconMap: Map<number, number>;
   showWallet?: boolean;
   linkTo?: (transactionId: number) => string;
+  state?: Record<string, unknown>;
 }
 
 export const TransactionReadOnlyRow: React.FC<TransactionReadOnlyRowProps> = ({
@@ -27,20 +29,23 @@ export const TransactionReadOnlyRow: React.FC<TransactionReadOnlyRowProps> = ({
   categoryIconMap,
   showWallet = true,
   linkTo = (transactionId) => `/transactions/${transactionId}`,
+  state,
 }) => {
   const navigate = useNavigate();
   const isIncome = tx.transaction_type === "INCOME";
+  const isTransfer = isTransferTransaction(tx);
   const iconId = categoryIconMap.get(tx.category_id);
   const icon = iconId ? iconMap.get(iconId) : undefined;
   const target = linkTo(tx.transaction_id);
+  const go = () => (state ? navigate(target, { state }) : navigate(target));
 
   return (
     <div
       className="flex cursor-pointer items-center gap-3 px-1 py-3 rounded-xl transition hover:bg-[var(--color-bg-secondary)]"
-      onClick={() => navigate(target)}
+      onClick={go}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => e.key === "Enter" && navigate(target)}
+      onKeyDown={(e) => e.key === "Enter" && go()}
     >
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--color-bg-secondary)]">
         {icon ? (
@@ -59,6 +64,11 @@ export const TransactionReadOnlyRow: React.FC<TransactionReadOnlyRowProps> = ({
       <div className="min-w-0 flex-1">
         <p className="flex min-w-0 items-center gap-1 text-sm font-medium text-[var(--color-text-primary)]">
           <span className="truncate">{tx.category_name}</span>
+          {isTransfer && (
+            <span className="shrink-0 inline-block rounded px-1 py-0.5 text-[10px] font-medium leading-none bg-[var(--color-primary-soft)] text-[var(--color-primary)]">
+              계좌이동
+            </span>
+          )}
           {tx.memo && (
             <>
               <span className="shrink-0 text-[var(--color-text-caption)]">·</span>
@@ -89,7 +99,15 @@ export const TransactionReadOnlyRow: React.FC<TransactionReadOnlyRowProps> = ({
           )}
         </p>
       </div>
-      <p className={`shrink-0 text-sm font-semibold ${isIncome ? "text-[var(--color-income)]" : "text-[var(--color-danger)]"}`}>
+      <p
+        className={`shrink-0 text-sm font-semibold ${
+          isTransfer
+            ? "text-[var(--color-text-secondary)]"
+            : isIncome
+              ? "text-[var(--color-income)]"
+              : "text-[var(--color-danger)]"
+        }`}
+      >
         {isIncome ? "+" : "-"}{fmt(tx.amount + (tx.interest ?? 0))}원
       </p>
     </div>
