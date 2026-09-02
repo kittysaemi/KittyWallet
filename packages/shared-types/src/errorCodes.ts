@@ -62,7 +62,11 @@ export const PUBLIC_ERROR_CODES = {
   receiptProviderUnavailable: "R0006",
   receiptTimeout: "R0007",
   receiptTextRequired: "R0008",
-  receiptProfileUnsupported: "R0009"
+  receiptProfileUnsupported: "R0009",
+  transferSameAccount: "F0001",
+  transferInvalidAmount: "F0002",
+  transferPairMissing: "F0003",
+  transferPairCorrupted: "F0004"
 } as const;
 
 const internalToPublicCode: Record<string, string> = {
@@ -120,7 +124,11 @@ const internalToPublicCode: Record<string, string> = {
   RECEIPT_OCR_PROVIDER_UNAVAILABLE: PUBLIC_ERROR_CODES.receiptProviderUnavailable,
   RECEIPT_OCR_TIMEOUT: PUBLIC_ERROR_CODES.receiptTimeout,
   TEXT_PARSE_TEXT_REQUIRED: PUBLIC_ERROR_CODES.receiptTextRequired,
-  TEXT_PARSE_PROFILE_UNSUPPORTED: PUBLIC_ERROR_CODES.receiptProfileUnsupported
+  TEXT_PARSE_PROFILE_UNSUPPORTED: PUBLIC_ERROR_CODES.receiptProfileUnsupported,
+  TRANSFER_001: PUBLIC_ERROR_CODES.transferSameAccount,
+  TRANSFER_002: PUBLIC_ERROR_CODES.transferInvalidAmount,
+  TRANSFER_003: PUBLIC_ERROR_CODES.transferPairMissing,
+  TRANSFER_004: PUBLIC_ERROR_CODES.transferPairCorrupted
 };
 
 export function toPublicErrorCode(internalCode?: string): string {
