@@ -123,6 +123,7 @@ const createWrapper = (walletType: "ACCOUNT" | "CARD", walletId: string) => {
             path={`/${walletType === "ACCOUNT" ? "accounts" : "cards"}/:walletId/transactions`}
             element={children}
           />
+          <Route path="/transactions/:id" element={<div>상세내역 화면</div>} />
           <Route path="/transactions/:id/edit" element={<div>거래 수정 화면</div>} />
         </Routes>
       </MemoryRouter>
@@ -188,7 +189,7 @@ describe("WalletTransactionsPage — ACCOUNT", () => {
     expect(rows).toHaveLength(1);
   });
 
-  it("navigates to the edit page (with delete/edit) on row click", async () => {
+  it("navigates to the detail page on row click", async () => {
     mockedTransactionApi.getTransactions.mockResolvedValue(makeTxPage([makeTx(1)], 1));
 
     render(<WalletTransactionsPage walletType="ACCOUNT" />, {
@@ -196,7 +197,7 @@ describe("WalletTransactionsPage — ACCOUNT", () => {
     });
 
     await userEvent.click(await screen.findByText("식비"));
-    expect(await screen.findByText("거래 수정 화면")).toBeInTheDocument();
+    expect(await screen.findByText("상세내역 화면")).toBeInTheDocument();
   });
 
   it("renders loading skeleton while fetching", () => {
