@@ -92,7 +92,7 @@ describe("TransferForm", () => {
     await user.selectOptions(toSelect, "2");
     await user.type(screen.getByLabelText("이동 금액"), "200000"); // 잔액 초과
 
-    expect(screen.getByRole("button", { name: "준비 중" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "계좌이동 등록" })).toBeDisabled();
     expect(screen.getByText(/잔액\/한도를 초과해서 등록할 수 없습니다/)).toBeInTheDocument();
   });
 
@@ -116,22 +116,26 @@ describe("TransferForm", () => {
     expect(fromSelect).toBeDisabled();
   });
 
-  it("백엔드 API 준비 전에는 입력이 유효해도 저장 버튼이 비활성화되고 API를 호출하지 않는다", async () => {
+  it("입력이 유효하면 저장 버튼이 활성화되고 제출 시 계좌이동 생성 API를 호출한다", async () => {
     const user = userEvent.setup();
-    render(<TransferForm onSuccess={vi.fn()} />, { wrapper: createWrapper() });
+    vi.mocked(transactionApi.createTransfer).mockResolvedValue({
+      success: true,
+      data: null,
+      error: null
+    });
+    const onSuccess = vi.fn();
+    render(<TransferForm onSuccess={onSuccess} />, { wrapper: createWrapper() });
     await screen.findAllByText("생활통장", { selector: "option" });
     const [fromSelect, toSelect] = screen.getAllByRole("combobox");
     await user.selectOptions(fromSelect, "1");
     await user.selectOptions(toSelect, "2");
     await user.type(screen.getByLabelText("이동 금액"), "10000");
 
-    const submitButton = screen.getByRole("button", { name: "준비 중" });
-    expect(submitButton).toBeDisabled();
-    expect(
-      screen.getByText(/계좌이동 저장 기능은 준비 중입니다/)
-    ).toBeInTheDocument();
+    const submitButton = screen.getByRole("button", { name: "계좌이동 등록" });
+    expect(submitButton).toBeEnabled();
 
     await user.click(submitButton);
-    expect(transactionApi.createTransfer).not.toHaveBeenCalled();
+    await waitFor(() => expect(transactionApi.createTransfer).toHaveBeenCalled());
+    await waitFor(() => expect(onSuccess).toHaveBeenCalled());
   });
 });
