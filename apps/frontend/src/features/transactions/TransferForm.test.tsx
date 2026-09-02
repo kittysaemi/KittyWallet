@@ -92,7 +92,7 @@ describe("TransferForm", () => {
     await user.selectOptions(toSelect, "2");
     await user.type(screen.getByLabelText("이동 금액"), "200000"); // 잔액 초과
 
-    expect(screen.getByRole("button", { name: "계좌이동 등록" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "준비 중" })).toBeDisabled();
     expect(screen.getByText(/잔액\/한도를 초과해서 등록할 수 없습니다/)).toBeInTheDocument();
   });
 
@@ -116,38 +116,22 @@ describe("TransferForm", () => {
     expect(fromSelect).toBeDisabled();
   });
 
-  it("유효한 입력이면 createTransfer를 올바른 payload로 호출한다", async () => {
+  it("백엔드 API 준비 전에는 입력이 유효해도 저장 버튼이 비활성화되고 API를 호출하지 않는다", async () => {
     const user = userEvent.setup();
-    const onSuccess = vi.fn();
-    vi.mocked(transactionApi.createTransfer).mockResolvedValue({
-      success: true,
-      data: {
-        transfer_group_id: "tg-1",
-        from_transaction_id: 10,
-        to_transaction_id: 11,
-        from_account_id: 1,
-        to_account_id: 2,
-        amount: 10000,
-        transaction_date: "2026-01-01",
-        updated_at: "2026-01-01T00:00:00Z"
-      },
-      error: null
-    });
-
-    render(<TransferForm onSuccess={onSuccess} />, { wrapper: createWrapper() });
+    render(<TransferForm onSuccess={vi.fn()} />, { wrapper: createWrapper() });
     await screen.findAllByText("생활통장", { selector: "option" });
     const [fromSelect, toSelect] = screen.getAllByRole("combobox");
     await user.selectOptions(fromSelect, "1");
     await user.selectOptions(toSelect, "2");
     await user.type(screen.getByLabelText("이동 금액"), "10000");
 
-    await user.click(screen.getByRole("button", { name: "계좌이동 등록" }));
+    const submitButton = screen.getByRole("button", { name: "준비 중" });
+    expect(submitButton).toBeDisabled();
+    expect(
+      screen.getByText(/계좌이동 저장 기능은 준비 중입니다/)
+    ).toBeInTheDocument();
 
-    await waitFor(() => expect(transactionApi.createTransfer).toHaveBeenCalled());
-    const payload = vi.mocked(transactionApi.createTransfer).mock.calls[0][0];
-    expect(payload.from_account_id).toBe(1);
-    expect(payload.to_account_id).toBe(2);
-    expect(payload.amount).toBe(10000);
-    await waitFor(() => expect(onSuccess).toHaveBeenCalled());
+    await user.click(submitButton);
+    expect(transactionApi.createTransfer).not.toHaveBeenCalled();
   });
 });

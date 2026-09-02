@@ -11,6 +11,10 @@ import { getTodayInTimezone } from "../../shared/utils/date";
 import { STALE_TIME } from "../../shared/constants/queryConfig";
 import { toSupportErrorMessage } from "../../shared/api/apiError";
 
+// 백엔드 계좌이동 API(#389)가 배포되기 전까지, 화면/흐름만 먼저 노출하고
+// 실제 저장은 막아둔다. #389 배포 후 true로 바꾸면 된다.
+const BACKEND_TRANSFER_API_READY = false;
+
 function createSchema(today: string) {
   return z
     .object({
@@ -143,6 +147,8 @@ export const TransferForm: React.FC<TransferFormProps> = ({
     setApiError("");
     mutation.reset();
 
+    if (!BACKEND_TRANSFER_API_READY) return;
+
     const parsed = schema.safeParse({
       from_account_id: fromAccountId,
       to_account_id: toAccountId,
@@ -177,6 +183,7 @@ export const TransferForm: React.FC<TransferFormProps> = ({
   }
 
   const canSubmit =
+    BACKEND_TRANSFER_API_READY &&
     !isSaving &&
     !isLoading &&
     !insufficientBalance &&
@@ -345,6 +352,15 @@ export const TransferForm: React.FC<TransferFormProps> = ({
         maxLength={200}
       />
 
+      {!BACKEND_TRANSFER_API_READY && (
+        <div
+          className="rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] px-4 py-3 text-sm text-[var(--color-text-secondary)]"
+          role="status"
+        >
+          계좌이동 저장 기능은 준비 중입니다. 화면 미리보기만 가능하며, 지금은 등록/수정이 저장되지 않습니다.
+        </div>
+      )}
+
       {apiError && (
         <div
           className="rounded-xl border border-[var(--color-danger)] bg-[var(--color-danger-soft)] px-4 py-3 text-sm text-[var(--color-danger)]"
@@ -355,7 +371,13 @@ export const TransferForm: React.FC<TransferFormProps> = ({
       )}
 
       <Button type="submit" disabled={!canSubmit} className="mt-2">
-        {mutation.isPending ? "저장 중..." : isEditMode ? "수정 완료" : "계좌이동 등록"}
+        {!BACKEND_TRANSFER_API_READY
+          ? "준비 중"
+          : mutation.isPending
+            ? "저장 중..."
+            : isEditMode
+              ? "수정 완료"
+              : "계좌이동 등록"}
       </Button>
     </form>
   );
