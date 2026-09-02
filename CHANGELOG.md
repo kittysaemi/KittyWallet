@@ -1,3 +1,10 @@
+## [1.40.2](https://github.com/kittysaemi/KittyWallet/compare/v1.40.1...v1.40.2) (2026-09-02)
+
+
+### Bug Fixes
+
+* **transactions:** 계좌이동 통계 제외 자동화 및 정합성 가드 추가 ([#389](https://github.com/kittysaemi/KittyWallet/issues/389) 후속) ([a4bb075](https://github.com/kittysaemi/KittyWallet/commit/a4bb0750d3cb0f274bdb4b1a2c411142e6a9ffad)), closes [#399](https://github.com/kittysaemi/KittyWallet/issues/399)
+
 ## [1.40.1](https://github.com/kittysaemi/KittyWallet/compare/v1.40.0...v1.40.1) (2026-09-02)
 
 
