@@ -268,6 +268,7 @@ model Transaction {
   installmentSeq       Int?            @map("installment_seq")
   installmentTotalCount Int?           @map("installment_total_count")
   interest             Int             @default(0)
+  transferGroupId      String?         @map("transfer_group_id")
   deletedYn            Boolean         @default(false) @map("deleted_yn")
   syncedAt             DateTime?       @map("synced_at")
   createdAt            DateTime        @default(now()) @map("created_at")
@@ -291,6 +292,7 @@ model Transaction {
   @@index([syncedAt])
   @@index([deletedYn])
   @@index([installmentId])
+  @@index([transferGroupId])
   @@map("TRANSACTION")
 }
 
