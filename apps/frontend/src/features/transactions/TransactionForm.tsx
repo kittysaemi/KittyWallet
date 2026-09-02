@@ -200,6 +200,8 @@ interface TransactionFormProps {
   readOnly?: boolean;
   futureInstallment?: boolean;
   receiptDraft?: { fields: { transactionDate?: { value: string }; totalAmount?: { value: number } }; items: Array<{ value: string }> };
+  /** 지갑별 거래내역 화면에서 진입 시, 등록할 지갑을 고정하기 위한 값(수정 모드에서는 무시됨) */
+  lockedWallet?: { walletType: "ACCOUNT" | "CARD"; walletId: number };
 }
 
 export const TransactionForm: React.FC<TransactionFormProps> = ({
@@ -209,9 +211,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   readOnly = false,
   futureInstallment = false,
   receiptDraft,
-  onCreated
+  onCreated,
+  lockedWallet
 }) => {
   const isEditMode = !!transactionId;
+  const isWalletLocked = !isEditMode && !!lockedWallet;
   const queryClient = useQueryClient();
   const timezone = useTimezone();
   const today = React.useMemo(() => getTodayInTimezone(timezone), [timezone]);
@@ -220,13 +224,16 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const [txType, setTxType] = React.useState<"INCOME" | "EXPENSE">(
     initialData?.transaction_type ?? "EXPENSE"
   );
-  const [walletId, setWalletId] = React.useState<number>(initialData?.wallet_id ?? 0);
+  const [walletId, setWalletId] = React.useState<number>(
+    initialData?.wallet_id ?? lockedWallet?.walletId ?? 0
+  );
   const [walletType, setWalletType] = React.useState<"ACCOUNT" | "CARD">(
-    initialData?.wallet_type ?? "ACCOUNT"
+    initialData?.wallet_type ?? lockedWallet?.walletType ?? "ACCOUNT"
   );
   const [walletKey, setWalletKey] = React.useState<string>(() => {
-    if (!initialData) return "";
-    return `${initialData.wallet_type}-${initialData.wallet_id}`;
+    if (initialData) return `${initialData.wallet_type}-${initialData.wallet_id}`;
+    if (lockedWallet) return `${lockedWallet.walletType}-${lockedWallet.walletId}`;
+    return "";
   });
   const [categoryId, setCategoryId] = React.useState<number>(initialData?.category_id ?? 0);
   const [amountStr, setAmountStr] = React.useState<string>(
@@ -716,11 +723,16 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           onChange={handleWalletSelect}
           error={errors.wallet_id || errors.wallet_type}
           iconMap={iconMap}
-          disabled={isSaving || isLoading || isInstallmentTx}
+          disabled={isSaving || isLoading || isInstallmentTx || isWalletLocked}
         />
         {isInstallmentTx && (
           <p className="text-xs text-[var(--color-text-secondary)]">
             할부 거래는 결제 수단을 변경할 수 없습니다. 전체 삭제 후 다시 등록해 주세요.
+          </p>
+        )}
+        {isWalletLocked && (
+          <p className="text-xs text-[var(--color-text-secondary)]">
+            이 지갑에서 진입해 지갑이 고정되어 있습니다.
           </p>
         )}
         {walletType === "ACCOUNT" &&

@@ -76,6 +76,13 @@ export const transactionApi = {
   },
 
   // 계좌이동 — 백엔드 API(#389)와 합의된 스펙. 백엔드 미구현 시 요청은 실패한다.
+  getTransfer: async (transferGroupId: string): Promise<ApiResponse<TransferResult>> => {
+    const res = await apiClient.get<ApiResponse<TransferResult>>(
+      `/transactions/transfer/${transferGroupId}`
+    );
+    return res.data;
+  },
+
   createTransfer: async (
     data: CreateTransferRequest
   ): Promise<ApiResponse<TransferResult>> => {
