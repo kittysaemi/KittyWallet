@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { BarChart2, Camera, ClipboardPaste, FileImage, Home, PenLine, Plus, Search, Settings2, X } from "lucide-react";
+import { ArrowLeftRight, BarChart2, Camera, ClipboardPaste, FileImage, Home, PenLine, Plus, Search, Settings2, X } from "lucide-react";
 import { FilePickerReceiptImageSource, WebCameraReceiptImageSource } from "../receipt/receiptImageSource";
 
 export const BottomNav: React.FC = () => {
@@ -37,6 +37,11 @@ export const BottomNav: React.FC = () => {
   const startTransaction = (source?: "text") => {
     setIsEntrySheetOpen(false);
     navigate(source ? `/transactions/new?receiptSource=${source}` : "/transactions/new");
+  };
+
+  const startTransfer = () => {
+    setIsEntrySheetOpen(false);
+    navigate("/transfer/new");
   };
 
   const handleCameraClick = async () => {
@@ -145,6 +150,14 @@ export const BottomNav: React.FC = () => {
               >
                 <ClipboardPaste size={20} className="text-[var(--color-primary)]" />
                 <span className="text-sm font-semibold text-[var(--color-text-primary)]">텍스트 입력</span>
+              </button>
+              <button
+                type="button"
+                onClick={startTransfer}
+                className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-[var(--color-border-primary)] px-4 text-left hover:bg-[var(--color-bg-secondary)]"
+              >
+                <ArrowLeftRight size={20} className="text-[var(--color-primary)]" />
+                <span className="text-sm font-semibold text-[var(--color-text-primary)]">계좌이동</span>
               </button>
             </div>
             <button

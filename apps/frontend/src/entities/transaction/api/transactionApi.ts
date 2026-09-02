@@ -4,13 +4,16 @@ import type {
   ConvertToInstallmentRequest,
   CreateTransactionRequest,
   CreateTransactionResult,
+  CreateTransferRequest,
   DeleteTransactionResult,
   TransactionDetailItem,
   TransactionItem,
   TransactionListData,
   TransactionListParams,
+  TransferResult,
   UpdateTransactionRequest,
-  UpdateTransactionResult
+  UpdateTransactionResult,
+  UpdateTransferRequest
 } from "../model/transaction.types";
 
 export const transactionApi = {
@@ -69,6 +72,30 @@ export const transactionApi = {
       `/transactions/${id}/convert-to-installment`,
       data
     );
+    return res.data;
+  },
+
+  // 계좌이동 — 백엔드 API(#389)와 합의된 스펙. 백엔드 미구현 시 요청은 실패한다.
+  createTransfer: async (
+    data: CreateTransferRequest
+  ): Promise<ApiResponse<TransferResult>> => {
+    const res = await apiClient.post<ApiResponse<TransferResult>>("/transactions/transfer", data);
+    return res.data;
+  },
+
+  updateTransfer: async (
+    transferGroupId: string,
+    data: UpdateTransferRequest
+  ): Promise<ApiResponse<TransferResult>> => {
+    const res = await apiClient.patch<ApiResponse<TransferResult>>(
+      `/transactions/transfer/${transferGroupId}`,
+      data
+    );
+    return res.data;
+  },
+
+  deleteTransfer: async (transferGroupId: string): Promise<ApiResponse<null>> => {
+    const res = await apiClient.delete<ApiResponse<null>>(`/transactions/transfer/${transferGroupId}`);
     return res.data;
   }
 };

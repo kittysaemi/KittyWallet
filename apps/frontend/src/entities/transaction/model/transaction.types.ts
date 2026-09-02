@@ -117,4 +117,33 @@ export interface ConvertToInstallmentRequest {
   timezone?: string;
 }
 
+export interface CreateTransferRequest {
+  from_account_id: number;
+  to_account_id: number;
+  amount: number;
+  transaction_date: string;
+  memo?: string;
+  timezone?: string;
+}
+
+export interface UpdateTransferRequest {
+  from_account_id?: number;
+  to_account_id?: number;
+  amount?: number;
+  transaction_date?: string;
+  memo?: string | null;
+  timezone?: string;
+}
+
+export interface TransferResult {
+  transfer_group_id: string;
+  from_transaction_id: number;
+  to_transaction_id: number;
+  from_account_id: number;
+  to_account_id: number;
+  amount: number;
+  transaction_date: string;
+  updated_at: string;
+}
+
 export type { ApiResponse };
