@@ -26,6 +26,8 @@ function makeTx(overrides: Record<string, unknown> = {}) {
     installmentId: null,
     installmentSeq: null,
     installmentTotalCount: null,
+    interest: 0,
+    transferGroupId: null,
     deletedYn: false,
     syncedAt: new Date("2026-06-20T03:00:00Z"),
     createdAt: new Date("2026-06-20T03:00:00Z"),
@@ -311,6 +313,89 @@ describe("TransactionsService - 카드할부", () => {
       expect(callArg.originalAmount).toBe(120000);
       expect(callArg.installmentMonths).toBe(3);
       expect(callArg.purchaseDate).toEqual(new Date("2026-06-20"));
+    });
+  });
+});
+
+describe("TransactionsService - 계좌이동 정합성 가드 (#389 후속)", () => {
+  let service: TransactionsService;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    service = new TransactionsService(mockRepo);
+  });
+
+  describe("updateTransaction", () => {
+    it("transferGroupId가 있는 거래는 TRANSFER_005 에러로 거부하고 실제 수정은 수행하지 않는다", async () => {
+      const linkedTx = makeTx({
+        transactionId: 1n,
+        walletType: "ACCOUNT",
+        transactionType: "EXPENSE",
+        transferGroupId: "transfer-group-1"
+      });
+      (mockRepo.findById as jest.Mock).mockResolvedValue(linkedTx);
+
+      await expect(
+        service.updateTransaction({ transactionId: 1n, userId: 1n, amount: 5000 })
+      ).rejects.toMatchObject({ code: "TRANSFER_005" });
+
+      expect(mockRepo.findOwnedAccount).not.toHaveBeenCalled();
+      expect(mockRepo.findOwnedCard).not.toHaveBeenCalled();
+      expect(mockRepo.updateWithBalances).not.toHaveBeenCalled();
+    });
+
+    it("transferGroupId가 없는 일반 거래는 기존과 동일하게 수정된다 (회귀 방지)", async () => {
+      const normalTx = makeTx({
+        transactionId: 2n,
+        walletType: "CARD",
+        transactionType: "EXPENSE",
+        amount: makeDecimal(40000),
+        transferGroupId: null
+      });
+      (mockRepo.findById as jest.Mock).mockResolvedValue(normalTx);
+      (mockRepo.findCard as jest.Mock).mockResolvedValue({ cardId: 1n, useYn: true, deletedYn: false });
+      (mockRepo.updateWithBalances as jest.Mock).mockResolvedValue(
+        makeTx({ transactionId: 2n, walletType: "CARD", transactionType: "EXPENSE", amount: makeDecimal(50000) })
+      );
+
+      const result = await service.updateTransaction({ transactionId: 2n, userId: 1n, amount: 50000 });
+
+      expect(mockRepo.updateWithBalances).toHaveBeenCalledTimes(1);
+      expect(result.amount).toBe(50000);
+    });
+  });
+
+  describe("deleteTransaction", () => {
+    it("transferGroupId가 있는 거래는 TRANSFER_005 에러로 거부하고 실제 삭제는 수행하지 않는다", async () => {
+      const linkedTx = makeTx({
+        transactionId: 3n,
+        walletType: "ACCOUNT",
+        transactionType: "INCOME",
+        transferGroupId: "transfer-group-2"
+      });
+      (mockRepo.findById as jest.Mock).mockResolvedValue(linkedTx);
+
+      await expect(service.deleteTransaction(3n, 1n)).rejects.toMatchObject({ code: "TRANSFER_005" });
+
+      expect(mockRepo.softDeleteWithBalance).not.toHaveBeenCalled();
+    });
+
+    it("transferGroupId가 없는 일반 거래는 기존과 동일하게 삭제된다 (회귀 방지)", async () => {
+      const normalTx = makeTx({
+        transactionId: 4n,
+        walletType: "CARD",
+        transactionType: "EXPENSE",
+        transferGroupId: null
+      });
+      (mockRepo.findById as jest.Mock).mockResolvedValue(normalTx);
+      (mockRepo.softDeleteWithBalance as jest.Mock).mockResolvedValue(
+        makeTx({ transactionId: 4n, deletedYn: true })
+      );
+
+      const result = await service.deleteTransaction(4n, 1n);
+
+      expect(mockRepo.softDeleteWithBalance).toHaveBeenCalledTimes(1);
+      expect(result.deleted_yn).toBe(true);
     });
   });
 });
