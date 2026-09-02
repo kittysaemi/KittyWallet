@@ -12,3 +12,6 @@ test-results/
 !.env.*.example
 *.log
 .DS_Store
+
+# 이슈 #392: 계좌금액이동 마이그레이션 스크립트가 생성하는 리포트(실사용자 거래 데이터 포함) — 커밋 금지
+apps/backend/scripts/account-transfer-migration/reports/
