@@ -1,3 +1,10 @@
+# [1.41.0](https://github.com/kittysaemi/KittyWallet/compare/v1.40.2...v1.41.0) (2026-09-03)
+
+
+### Features
+
+* **#387:** 계좌이동 저장 기능 활성화 (BACKEND_TRANSFER_API_READY 플래그 제거) ([#404](https://github.com/kittysaemi/KittyWallet/issues/404)) ([3cf1385](https://github.com/kittysaemi/KittyWallet/commit/3cf1385fc2630f8eeca131c3a582bfb821cff315)), closes [#387](https://github.com/kittysaemi/KittyWallet/issues/387) [#389](https://github.com/kittysaemi/KittyWallet/issues/389)
+
 ## [1.40.2](https://github.com/kittysaemi/KittyWallet/compare/v1.40.1...v1.40.2) (2026-09-02)
 
 
