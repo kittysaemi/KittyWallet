@@ -15,6 +15,16 @@
 | 3단계 | 확정/애매/미매칭 3분류 | ✅ 완료 (dry-run 리포트에 포함) |
 | 4단계 | 사람 검토 후 승인된 확정 건만 `transferGroupId` 백필 | ⛔ **스크립트만 작성, 실행하지 않음** |
 
+> **2026-09-02 병합 전 리뷰에서 지적된 blocker 3건은 이 버전에서 반영됨** (PR #397 자체에는
+> 반영되지 않은 채 머지되어, 운영 반영 전 이 세션에서 후속 수정함):
+> 1. `03-backfill.ts`가 승인분 전체를 하나의 인터랙티브 트랜잭션으로 묶어 처리하도록 변경 —
+>    도중 어떤 쌍이 실패해도 이미 반영된 앞쪽 쌍까지 전부 롤백된다(all-or-nothing).
+> 2. 반영 직전 재검증 항목에 `userId`, `categoryId`, `walletType=ACCOUNT`, `transactionType`,
+>    `transactionDate`, expense/income 간 userId 일치·walletId 불일치를 추가하고, 승인 파일
+>    내 동일 transactionId 중복 사용을 사전 차단하도록 보강.
+> 3. `06-validate-groups.ts`를 신규 추가 — 백필 후 각 `transferGroupId` 그룹이 정확히
+>    EXPENSE 1 + INCOME 1, 동일 user/date/amount/category, 서로 다른 계좌로 구성됐는지 검증.
+
 > **4단계(`03-backfill.ts`)는 절대 이 PR에서 실행되지 않았다.**
 > `Transaction.transferGroupId` 필드는 이슈 #388(스키마 변경, 별도 세션에서 병렬 진행 중)이
 > 아직 스키마에 추가하는 중이라 이 저장소의 Prisma 스키마에는 존재하지 않는다.
@@ -29,7 +39,8 @@
 > 4. **DB 백업**
 > 5. **스테이징 환경**에서 동일 절차(백필 + 04/05 검증 스크립트)로 먼저 검증
 > 6. 스테이징 검증 통과 후에만 운영 DB에 `03-backfill.ts --confirm --acknowledge-backup` 실행
-> 7. `04-snapshot.ts after` + `05-compare-snapshots.ts`로 백필 전/후 무결성 대조 및 결과 첨부
+> 7. `04-snapshot.ts after` + `05-compare-snapshots.ts`로 백필 전/후 무결성 대조,
+>    `06-validate-groups.ts`로 그룹 구조 검증 및 결과 첨부
 
 ## 매칭 규칙 (이슈 #392 본문 기준)
 
@@ -66,6 +77,7 @@
 | `03-backfill.ts` | 4단계 — 승인된 확정 건 `transferGroupId` 백필 | **있음** (`--confirm` 없이는 미리보기만) |
 | `04-snapshot.ts` | 안전장치 — 무결성 스냅샷(건수/잔액/합계) | 없음 (읽기 전용) |
 | `05-compare-snapshots.ts` | 안전장치 — 백필 전/후 스냅샷 대조 | 없음 (파일 비교만) |
+| `06-validate-groups.ts` | 안전장치 — transferGroupId 그룹 구조 검증 | 없음 (읽기 전용) |
 | `matcher.ts` | 매칭 알고리즘 (순수 함수, 단위 테스트 대상) | - |
 | `types.ts`, `db.ts`, `report-writer.ts` | 공용 타입/Prisma 클라이언트/리포트 출력 | - |
 
@@ -104,6 +116,10 @@ npx ts-node --transpile-only \
   scripts/account-transfer-migration/05-compare-snapshots.ts \
   scripts/account-transfer-migration/reports/integrity-snapshot-before.json \
   scripts/account-transfer-migration/reports/integrity-snapshot-after.json
+
+# 안전장치: transferGroupId 그룹 구조 검증 (백필 후)
+DATABASE_URL="postgresql://..." npx ts-node --transpile-only \
+  scripts/account-transfer-migration/06-validate-groups.ts
 ```
 
 `--transpile-only`를 쓰는 이유: `03-backfill.ts`는 아직 스키마에 없는 `transferGroupId`
@@ -119,12 +135,20 @@ npx ts-node --transpile-only \
   - `information_schema`로 `transferGroupId` 컬럼 존재를 확인 후에만 진행
   - `--confirm` 없이는 아무 것도 쓰지 않고 무엇을 반영할지 미리보기만 출력
   - `--confirm`을 줘도 `--acknowledge-backup`(백업 완료 확인) 없이는 즉시 에러로 중단
-  - 각 쌍을 반영하기 전 현재 DB 상태(삭제 여부, 금액, 계좌, 기존 `transferGroupId` 유무)를
-    승인 시점 데이터와 대조해 어긋나면 기본적으로 전체 중단(`--skip-mismatches`로만 우회 가능)
+  - 승인 파일 내 동일 transactionId 중복 사용을 DB 접근 전에 사전 차단
+  - 각 쌍을 반영하기 전 현재 DB 상태(삭제 여부, 금액, 계좌, `userId`/`categoryId`/`walletType`/
+    `transactionType`/`transactionDate`, expense·income 간 userId 일치·walletId 불일치, 기존
+    `transferGroupId` 유무)를 승인 시점 데이터와 대조해 어긋나면 기본적으로 전체 중단
+    (`--skip-mismatches`로만 우회 가능)
+  - **승인분 전체를 하나의 인터랙티브 트랜잭션으로 처리**해 all-or-nothing을 보장함 — 도중
+    어떤 쌍이 실패해도 이미 반영된 앞쪽 쌍까지 전부 롤백되어 "일부만 반영된 상태"가 남지 않음
   - `transferGroupId` 외 컬럼은 절대 SET하지 않음(`updatedAt` 포함 — 기존 컬럼 값 불변 원칙)
   - 반영 내역을 감사 로그 파일로 저장
 - `04-snapshot.ts` / `05-compare-snapshots.ts`로 백필 전/후 거래 건수·계좌별 잔액·카테고리별
   합계가 완전히 동일한지 기계적으로 검증 (하나라도 다르면 실패 종료)
+- `06-validate-groups.ts`로 백필 후 각 `transferGroupId` 그룹이 정확히 EXPENSE 1 + INCOME 1,
+  동일 user/date/amount/category, 서로 다른 계좌로 구성됐는지 검증 (건수/잔액 대조만으로는
+  "그룹은 채워졌지만 잘못된 상대와 묶인" 경우를 잡을 수 없어 별도로 필요)
 
 ## 로컬 검증 (더미 데이터)
 
