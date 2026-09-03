@@ -1,3 +1,10 @@
+## [1.41.1](https://github.com/kittysaemi/KittyWallet/compare/v1.41.0...v1.41.1) (2026-09-03)
+
+
+### Bug Fixes
+
+* **#392:** 계좌이동 백필 all-or-nothing 트랜잭션 + 검증 보강 ([#406](https://github.com/kittysaemi/KittyWallet/issues/406)) ([480db89](https://github.com/kittysaemi/KittyWallet/commit/480db898bdb5f68b87ab9a9e75f27f1ce8e2d8d5)), closes [#392](https://github.com/kittysaemi/KittyWallet/issues/392) [#392](https://github.com/kittysaemi/KittyWallet/issues/392) [#397](https://github.com/kittysaemi/KittyWallet/issues/397) [#392](https://github.com/kittysaemi/KittyWallet/issues/392)
+
 # [1.41.0](https://github.com/kittysaemi/KittyWallet/compare/v1.40.2...v1.41.0) (2026-09-03)
 
 
