@@ -1,3 +1,10 @@
+# [1.43.0](https://github.com/kittysaemi/KittyWallet/compare/v1.42.0...v1.43.0) (2026-09-04)
+
+
+### Features
+
+* **#409:** 계좌이동 화면 UX 개선 (아이콘/잔액표시/상세뷰/삭제계좌 처리) ([#411](https://github.com/kittysaemi/KittyWallet/issues/411)) ([ff8f580](https://github.com/kittysaemi/KittyWallet/commit/ff8f58090265cc1b3c34f29c40a3352d5b0a6196)), closes [#409](https://github.com/kittysaemi/KittyWallet/issues/409) [#409](https://github.com/kittysaemi/KittyWallet/issues/409)
+
 # [1.42.0](https://github.com/kittysaemi/KittyWallet/compare/v1.41.2...v1.42.0) (2026-09-04)
 
 
