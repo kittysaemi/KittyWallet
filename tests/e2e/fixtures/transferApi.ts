@@ -220,8 +220,18 @@ export async function installTransferE2EFixtures(page: Page) {
       const pair = transactions.filter((t) => t.transfer_group_id === transferGroupId);
 
       if (method === "GET") {
-        const from = pair.find((t) => t.transaction_type === "EXPENSE")!;
-        const to = pair.find((t) => t.transaction_type === "INCOME")!;
+        const from = pair.find((t) => t.transaction_type === "EXPENSE");
+        const to = pair.find((t) => t.transaction_type === "INCOME");
+        if (!from || !to) {
+          // 삭제 직후 캐시 무효화로 재조회가 한 번 더 들어올 수 있다(#353) — 실제 백엔드는 이
+          // 경우 정상적으로 에러 응답을 반환하므로(TRANSFER_005 등), mock도 크래시 대신 에러로 응답한다.
+          await fulfillJson(route, 404, {
+            success: false,
+            data: null,
+            error: { code: "TRANSFER_005", message: "계좌이동 짝 거래를 찾을 수 없습니다." }
+          });
+          return;
+        }
         await fulfillJson(route, 200, success({
           transfer_group_id: transferGroupId,
           from_transaction_id: from.transaction_id,
