@@ -1,3 +1,10 @@
+## [1.41.2](https://github.com/kittysaemi/KittyWallet/compare/v1.41.1...v1.41.2) (2026-09-04)
+
+
+### Bug Fixes
+
+* **#353:** 지갑 거래내역 탐색 상태 유지 및 계좌이동 삭제 UX 개선 ([#408](https://github.com/kittysaemi/KittyWallet/issues/408)) ([fe42aa3](https://github.com/kittysaemi/KittyWallet/commit/fe42aa32ee4d48701eb395b34b6b17cdbe96b2f3)), closes [#353](https://github.com/kittysaemi/KittyWallet/issues/353) [#353](https://github.com/kittysaemi/KittyWallet/issues/353) [#353](https://github.com/kittysaemi/KittyWallet/issues/353) [#353](https://github.com/kittysaemi/KittyWallet/issues/353)
+
 ## [1.41.1](https://github.com/kittysaemi/KittyWallet/compare/v1.41.0...v1.41.1) (2026-09-03)
 
 
