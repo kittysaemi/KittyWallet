@@ -1,6 +1,6 @@
 import React from "react";
 import { STALE_TIME, GC_TIME, RETRY, QUERY_LIMIT } from "../../shared/constants/queryConfig";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation, useNavigationType } from "react-router-dom";
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { ArrowLeftRight, ChevronLeft, ChevronRight, Loader2, PenLine, Plus, RefreshCw, WifiOff } from "lucide-react";
 import { accountApi } from "../../entities/account/api/accountApi";
@@ -11,9 +11,21 @@ import { iconApi } from "../../entities/icon/api/iconApi";
 import type { IconItem } from "../../entities/icon/model/icon.types";
 import { TransactionReadOnlyRow } from "../../entities/transaction/ui/TransactionReadOnlyRow";
 import { useTimezone } from "../../shared/hooks/useTimezone";
-import { getTodayInTimezone, getWeekRange, formatWeekLabel } from "../../shared/utils/date";
+import { getTodayInTimezone, getWeekRange, formatWeekLabel, toDateValue } from "../../shared/utils/date";
 
 type PeriodType = "year" | "month" | "week";
+
+// 상세화면으로 이동했다가 뒤로(Back) 돌아왔을 때, 항목을 선택하던 시점의 기간/스크롤 위치를
+// 복원하기 위한 모듈 스코프 저장소. 지갑(계좌/카드)마다 별도로 관리해야 하므로 walletType:walletId를
+// key로 사용한다. TransactionsPage의 `_savedTxState` 패턴을 window scroll 기반으로 옮긴 것이다.
+interface SavedWalletTxState {
+  key: string;
+  periodType: PeriodType;
+  baseDateStr: string;
+  scrollY: number;
+  pageCount: number;
+}
+let _savedWalletTxState: SavedWalletTxState | null = null;
 
 function fmt(n: number): string {
   return n.toLocaleString("ko-KR");
@@ -29,10 +41,19 @@ interface WalletTransactionsPageProps {
 const WalletTransactionsPage: React.FC<WalletTransactionsPageProps> = ({ walletType }) => {
   const { walletId } = useParams<{ walletId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const navigationType = useNavigationType();
   const timezone = useTimezone();
   const todayStr = getTodayInTimezone(timezone);
   const isOffline = !navigator.onLine;
   const [isEntryExpanded, setIsEntryExpanded] = React.useState(false);
+
+  // 상세화면에서 Back(브라우저 뒤로가기 포함)으로 돌아온 경우(POP)에만 이전 상태를 복원한다.
+  // 다른 화면에서 새로 진입한 경우(PUSH)는 항상 초기 위치("이번 달")에서 시작한다.
+  const stateKey = `${walletType}:${walletId}`;
+  const [pendingRestore] = React.useState<SavedWalletTxState | null>(() =>
+    navigationType === "POP" && _savedWalletTxState?.key === stateKey ? _savedWalletTxState : null
+  );
 
   function handleAddClick() {
     if (walletType === "CARD") {
@@ -47,10 +68,18 @@ const WalletTransactionsPage: React.FC<WalletTransactionsPageProps> = ({ walletT
     return new Date(y, m - 1, d);
   }, [todayStr]);
 
-  React.useEffect(() => { window.scrollTo(0, 0); }, []);
+  // 새로 진입한 경우(PUSH)에는 항상 최상단에서 시작한다(브라우저의 자동 스크롤 복원 방지).
+  // Back으로 돌아온 경우(pendingRestore)는 아래 스크롤 복원 effect가 데이터 로드 후 처리한다.
+  React.useLayoutEffect(() => {
+    if (!pendingRestore) window.scrollTo(0, 0);
+  }, [pendingRestore]);
 
-  const [periodType, setPeriodType] = React.useState<PeriodType>("month");
+  const [periodType, setPeriodType] = React.useState<PeriodType>(pendingRestore?.periodType ?? "month");
   const [baseDate, setBaseDate] = React.useState(() => {
+    if (pendingRestore?.baseDateStr) {
+      const [y, m, d] = pendingRestore.baseDateStr.split("-").map(Number);
+      return new Date(y, m - 1, d);
+    }
     const [y, m, d] = todayStr.split("-").map(Number);
     return new Date(y, m - 1, d);
   });
@@ -157,6 +186,38 @@ const WalletTransactionsPage: React.FC<WalletTransactionsPageProps> = ({ walletT
 
   const items = txQuery.data?.pages.flatMap((p) => p.data?.items ?? []) ?? [];
   const periodExpense = txQuery.data?.pages[0]?.data?.period_summary?.total_expense ?? 0;
+
+  // Back으로 복원하는 경우: 저장된 스크롤 위치가 첫 페이지보다 더 아래(더보기로 추가 로드된
+  // 페이지)에 있었을 수 있으므로, 해당 개수만큼 페이지를 먼저 채운 뒤에 스크롤을 복원한다.
+  const restoreAppliedRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!pendingRestore || restoreAppliedRef.current) return;
+    if (!txQuery.isSuccess) return;
+    const loadedPages = txQuery.data?.pages.length ?? 0;
+    if (loadedPages < pendingRestore.pageCount) {
+      if (txQuery.hasNextPage && !txQuery.isFetchingNextPage) void txQuery.fetchNextPage();
+      return;
+    }
+    restoreAppliedRef.current = true;
+    window.scrollTo(0, pendingRestore.scrollY);
+  }, [pendingRestore, txQuery.isSuccess, txQuery.data, txQuery.hasNextPage, txQuery.isFetchingNextPage]);
+
+  // 현재 기간/스크롤 위치를 계속 저장해두어, 상세화면으로 이동했다가 Back으로 돌아왔을 때
+  // 복원할 수 있도록 한다(선택 시점 기준). NavLayout 밖에서 렌더링되어 window scroll을 사용한다.
+  React.useEffect(() => {
+    const save = () => {
+      _savedWalletTxState = {
+        key: stateKey,
+        periodType,
+        baseDateStr: toDateValue(baseDate),
+        scrollY: window.scrollY,
+        pageCount: txQuery.data?.pages.length ?? 1,
+      };
+    };
+    window.addEventListener("scroll", save, { passive: true });
+    save();
+    return () => window.removeEventListener("scroll", save);
+  }, [stateKey, periodType, baseDate, txQuery.data]);
 
   function movePeriod(dir: -1 | 1) {
     setBaseDate((cur) => {
@@ -360,7 +421,7 @@ const WalletTransactionsPage: React.FC<WalletTransactionsPageProps> = ({ walletT
                   iconMap={iconMap}
                   categoryIconMap={categoryIconMap}
                   showWallet={false}
-                  state={{ editable: true }}
+                  state={{ editable: true, returnTo: `${location.pathname}${location.search}` }}
                 />
               ))}
             </div>

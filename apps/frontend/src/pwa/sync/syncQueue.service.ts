@@ -1,6 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { syncApi } from "../../entities/sync/api/syncApi";
 import type { SyncUploadItemRequest, SyncUploadItemResult } from "../../entities/sync/model/sync.types";
+import { invalidateTransactionRelatedQueries } from "../../entities/transaction/lib/invalidateTransactionQueries";
 import { invalidateTransactionCaches } from "../cache/cacheInvalidation";
 import { getOrCreateSyncClient, updateSyncClientLastSyncedAt } from "../indexed-db/repositories/syncClient.repository";
 import { addSyncHistory } from "../indexed-db/repositories/syncHistory.repository";
@@ -115,9 +116,7 @@ export async function runSyncQueue(queryClient?: QueryClient): Promise<void> {
     );
 
     await updateSyncClientLastSyncedAt(client.client_id, data.last_synced_at);
-    void queryClient?.invalidateQueries({ queryKey: ["transactions"] });
-    void queryClient?.invalidateQueries({ queryKey: ["dashboard"] });
-    void queryClient?.invalidateQueries({ queryKey: ["accounts"] });
+    if (queryClient) invalidateTransactionRelatedQueries(queryClient);
     void invalidateTransactionCaches();
 
     const hasFailed = data.items.some((item) => !isSuccess(item));

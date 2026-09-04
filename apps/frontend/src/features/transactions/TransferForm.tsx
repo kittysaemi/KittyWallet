@@ -1,8 +1,9 @@
 import React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDownUp, ChevronDown } from "lucide-react";
+import { ArrowDownUp, ChevronDown, Info } from "lucide-react";
 import { z } from "zod";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
+import { invalidateTransactionRelatedQueries } from "../../entities/transaction/lib/invalidateTransactionQueries";
 import { accountApi } from "../../entities/account/api/accountApi";
 import { Button } from "../../shared/ui/Button";
 import { Input } from "../../shared/ui/Input";
@@ -92,11 +93,7 @@ export const TransferForm: React.FC<TransferFormProps> = ({
   }
 
   const invalidateAfterMutation = () => {
-    void queryClient.invalidateQueries({ queryKey: ["transactions"] });
-    void queryClient.invalidateQueries({ queryKey: ["transactions-position"] });
-    void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-    void queryClient.invalidateQueries({ queryKey: ["accounts"] });
-    void queryClient.invalidateQueries({ queryKey: ["statistics"] });
+    invalidateTransactionRelatedQueries(queryClient);
   };
 
   const createMutation = useMutation({
@@ -192,6 +189,17 @@ export const TransferForm: React.FC<TransferFormProps> = ({
 
   return (
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
+      {/* 계좌이동 주의사항 안내 (#353) */}
+      {!isEditMode && (
+        <div className="flex items-start gap-2 rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] px-4 py-3">
+          <Info size={14} className="mt-0.5 shrink-0 text-[var(--color-text-secondary)]" />
+          <p className="text-xs text-[var(--color-text-secondary)]">
+            계좌이동은 출금 내역과 입금 내역이 함께 등록됩니다. 삭제할 때도 두 내역이 함께 삭제되니
+            참고해주세요.
+          </p>
+        </div>
+      )}
+
       {/* 보내는 계좌 */}
       <div className="flex flex-col gap-1.5">
         <p className="text-sm font-medium text-[var(--color-text-secondary)]">보내는 계좌</p>

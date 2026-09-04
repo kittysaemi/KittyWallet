@@ -2,7 +2,7 @@ import type { PropsWithChildren } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, createMemoryRouter, RouterProvider, useLocation, useNavigate } from "react-router-dom";
 import WalletTransactionsPage from "./WalletTransactionsPage";
 import { accountApi } from "../../entities/account/api/accountApi";
 import { cardApi } from "../../entities/card/api/cardApi";
@@ -250,6 +250,36 @@ describe("WalletTransactionsPage — ACCOUNT", () => {
     await waitFor(() => expect(mockedTransactionApi.getTransactions).toHaveBeenCalled());
   });
 
+  it("navigates to the detail page with editable + returnTo state", async () => {
+    mockedTransactionApi.getTransactions.mockResolvedValue(makeTxPage([makeTx(1)], 1));
+
+    const StateProbe = () => {
+      const location = useLocation();
+      const state = location.state as { editable?: boolean; returnTo?: string } | null;
+      return <div>상세내역 화면 (editable: {String(!!state?.editable)}, returnTo: {state?.returnTo ?? "none"})</div>;
+    };
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } }
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={["/accounts/1/transactions"]}>
+          <Routes>
+            <Route path="/accounts/:walletId/transactions" element={<WalletTransactionsPage walletType="ACCOUNT" />} />
+            <Route path="/transactions/:id" element={<StateProbe />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+
+    await userEvent.click(await screen.findByText("식비"));
+    expect(
+      await screen.findByText("상세내역 화면 (editable: true, returnTo: /accounts/1/transactions)")
+    ).toBeInTheDocument();
+  });
+
   it("shows 더보기 button when more pages exist", async () => {
     mockedTransactionApi.getTransactions.mockResolvedValue({
       success: true,
@@ -300,5 +330,119 @@ describe("WalletTransactionsPage — CARD", () => {
 
     expect(await screen.findByText("거래 내역이 없습니다")).toBeInTheDocument();
     expect(screen.getByText("선택한 기간에 해당 카드의 거래가 없어요.")).toBeInTheDocument();
+  });
+});
+
+// 상세화면으로 이동했다가 Back(=POP 네비게이션)으로 돌아왔을 때, 선택 시점의 기간(년/월/주 및
+// 기준 날짜)과 스크롤 위치가 유지되는지 검증한다. 상세화면의 실제 "뒤로" 버튼도 navigate(-1)을
+// 호출하므로, 여기서는 그 동작을 흉내내는 최소한의 스텁으로 실제 POP 네비게이션을 재현한다.
+describe("WalletTransactionsPage — 상세화면 Back 시 기간/스크롤 복원", () => {
+  const DetailBackStub = () => {
+    const navigate = useNavigate();
+    return (
+      <button type="button" onClick={() => navigate(-1)}>
+        뒤로(상세)
+      </button>
+    );
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    Object.defineProperty(window.navigator, "onLine", { configurable: true, value: true });
+    Object.defineProperty(window, "scrollY", { value: 0, configurable: true });
+    mockedAccountApi.getAccounts.mockResolvedValue(ACCOUNTS_DATA);
+    mockedCategoryApi.getCategories.mockResolvedValue(EMPTY_CATEGORIES);
+    mockedIconApi.getIcons.mockResolvedValue(EMPTY_ICONS);
+  });
+
+  it("restores the previously selected period(주) and scroll position after Back from the detail page", async () => {
+    mockedTransactionApi.getTransactions.mockResolvedValue(makeTxPage([makeTx(1)], 1));
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } }
+    });
+
+    const router = createMemoryRouter(
+      [
+        { path: "/accounts/:walletId/transactions", element: <WalletTransactionsPage walletType="ACCOUNT" /> },
+        { path: "/transactions/:id", element: <DetailBackStub /> }
+      ],
+      { initialEntries: ["/accounts/1/transactions"] }
+    );
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    );
+
+    // 기본값(월)으로 로드된 뒤, "주" 탭으로 전환한다.
+    await screen.findByText("식비");
+    await userEvent.click(screen.getByRole("button", { name: "주" }));
+    await waitFor(() => {
+      const lastCall = mockedTransactionApi.getTransactions.mock.calls.at(-1)?.[0];
+      // 주 단위 조회는 시작일-종료일 차이가 6일이어야 한다(월 단위 조회와 구분하기 위한 확인).
+      const diffDays =
+        lastCall &&
+        (new Date(lastCall.end_date!).getTime() - new Date(lastCall.start_date!).getTime()) / 86_400_000;
+      expect(diffDays).toBe(6);
+    });
+    const weekCallArgs = mockedTransactionApi.getTransactions.mock.calls.at(-1)?.[0];
+
+    // 사용자가 아래로 스크롤한 상태에서 항목을 선택했다고 가정한다.
+    const scrollToSpy = vi.spyOn(window, "scrollTo").mockImplementation(() => undefined);
+    Object.defineProperty(window, "scrollY", { value: 420, configurable: true });
+    window.dispatchEvent(new Event("scroll"));
+
+    // 상세화면으로 이동(PUSH) 후 다시 Back(POP)으로 돌아온다.
+    await userEvent.click(screen.getByText("식비"));
+    await userEvent.click(await screen.findByRole("button", { name: "뒤로(상세)" }));
+
+    // 지갑 거래내역 화면으로 돌아왔는지 확인.
+    await screen.findByText("식비");
+
+    // 스크롤 위치가 선택 시점 값(420)으로 복원되어야 한다.
+    await waitFor(() => {
+      expect(scrollToSpy).toHaveBeenCalledWith(0, 420);
+    });
+
+    // 기간이 "월"로 리셋되지 않고 "주" 조회가 다시 수행되어야 한다(같은 날짜 범위).
+    await waitFor(() => {
+      const lastCall = mockedTransactionApi.getTransactions.mock.calls.at(-1)?.[0];
+      expect(lastCall?.start_date).toBe(weekCallArgs?.start_date);
+      expect(lastCall?.end_date).toBe(weekCallArgs?.end_date);
+    });
+  });
+
+  it("does not restore state and scrolls to top on a fresh (PUSH) entry", async () => {
+    // 다른 walletId를 사용해, 앞 테스트에서 모듈 스코프에 남아있는 저장 상태(key="ACCOUNT:1")와
+    // 우연히 겹치지 않도록 한다. (실제 앱에서는 페이지 새로고침마다 모듈이 새로 로드되므로 이런
+    // 겹침이 발생하지 않지만, 같은 테스트 파일 안에서는 모듈이 재사용되기 때문에 분리가 필요하다.)
+    mockedTransactionApi.getTransactions.mockResolvedValue(makeTxPage([makeTx(1)], 1));
+    const scrollToSpy = vi.spyOn(window, "scrollTo").mockImplementation(() => undefined);
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } }
+    });
+
+    render(<WalletTransactionsPage walletType="ACCOUNT" />, {
+      wrapper: ({ children }: PropsWithChildren) => (
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter initialEntries={["/accounts/9/transactions"]}>
+            <Routes>
+              <Route path="/accounts/:walletId/transactions" element={children} />
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>
+      )
+    });
+
+    await screen.findByText("식비");
+    expect(scrollToSpy).toHaveBeenCalledWith(0, 0);
+    // 기본 기간(월)으로 조회되어야 한다(주 단위가 아님).
+    const lastCall = mockedTransactionApi.getTransactions.mock.calls.at(-1)?.[0];
+    const diffDays =
+      lastCall && (new Date(lastCall.end_date!).getTime() - new Date(lastCall.start_date!).getTime()) / 86_400_000;
+    expect(diffDays).not.toBe(6);
   });
 });
