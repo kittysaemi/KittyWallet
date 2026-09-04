@@ -1,3 +1,10 @@
+# [1.42.0](https://github.com/kittysaemi/KittyWallet/compare/v1.41.2...v1.42.0) (2026-09-04)
+
+
+### Features
+
+* **#409:** 계좌이동 응답에 계좌명/삭제여부 필드 추가 ([#410](https://github.com/kittysaemi/KittyWallet/issues/410)) ([020b4c2](https://github.com/kittysaemi/KittyWallet/commit/020b4c2745f1c07fb21e25695440d6f19b85363a)), closes [#409](https://github.com/kittysaemi/KittyWallet/issues/409) [#409](https://github.com/kittysaemi/KittyWallet/issues/409) [#409](https://github.com/kittysaemi/KittyWallet/issues/409)
+
 ## [1.41.2](https://github.com/kittysaemi/KittyWallet/compare/v1.41.1...v1.41.2) (2026-09-04)
 
 
