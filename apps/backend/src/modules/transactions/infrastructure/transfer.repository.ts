@@ -68,11 +68,17 @@ export class TransferRepository {
     await tx.$queryRaw`SELECT transaction_id FROM "TRANSACTION" WHERE transaction_id IN (${Prisma.join(sortedIds)}) FOR UPDATE`;
   }
 
+  /** 삭제된(deletedYn: true) 계좌도 포함해 조회한다 — 계좌이동 응답에 삭제된 계좌의 이름을 표시하기 위함. */
   findAccountsByIds(client: PrismaClientOrTx, accountIds: bigint[], userId: bigint): Promise<Account[]> {
     if (accountIds.length === 0) return Promise.resolve([]);
     return client.account.findMany({
       where: { accountId: { in: accountIds }, userId }
     });
+  }
+
+  /** 트랜잭션 밖(읽기 전용 조회)에서 삭제된 계좌를 포함해 계좌를 조회한다. */
+  findAccountsByIdsReadOnly(accountIds: bigint[], userId: bigint): Promise<Account[]> {
+    return this.findAccountsByIds(this.prisma, accountIds, userId);
   }
 
   findAccountLedger(
