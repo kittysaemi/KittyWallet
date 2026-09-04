@@ -1,12 +1,17 @@
 import React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDownUp, ChevronDown, Info } from "lucide-react";
+import { ArrowDownUp, ChevronDown, Circle, Info } from "lucide-react";
 import { z } from "zod";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import { invalidateTransactionRelatedQueries } from "../../entities/transaction/lib/invalidateTransactionQueries";
+import { TRANSFER_CATEGORY_NAME } from "../../entities/transaction/lib/isTransfer";
 import { accountApi } from "../../entities/account/api/accountApi";
+import type { AccountItem } from "../../entities/account/model/account.types";
+import { categoryApi } from "../../entities/category/api/categoryApi";
+import { iconApi } from "../../entities/icon/api/iconApi";
 import { Button } from "../../shared/ui/Button";
 import { Input } from "../../shared/ui/Input";
+import { IconRenderer } from "../../shared/ui/IconRenderer";
 import { useTimezone } from "../../shared/hooks/useTimezone";
 import { getTodayInTimezone } from "../../shared/utils/date";
 import { STALE_TIME } from "../../shared/constants/queryConfig";
@@ -35,7 +40,11 @@ function createSchema(today: string) {
 export interface TransferFormInitialData {
   transfer_group_id: string;
   from_account_id: number;
+  from_account_name?: string;
+  from_account_deleted?: boolean;
   to_account_id: number;
+  to_account_name?: string;
+  to_account_deleted?: boolean;
   amount: number;
   transaction_date: string;
   memo?: string | null;
@@ -47,6 +56,68 @@ interface TransferFormProps {
   /** 지갑별 거래내역 화면에서 진입 시, 보내는 계좌를 고정하기 위한 값 */
   lockedFromAccountId?: number;
 }
+
+interface BalanceProjection {
+  currentBalance: number;
+  projectedBalance: number;
+  isInsufficient: boolean;
+  displayBalance: number;
+}
+
+/**
+ * 계좌이동 방향(from/to)과 수정 모드 여부에 따라 계좌의 현재/예상 잔액을 계산한다.
+ * 수정 모드에서 해당 계좌가 원래 거래의 상대 계좌와 같으면, 원래 거래 효과를 되돌린
+ * 잔액(base)부터 다시 계산해 "수정 중인 금액 변경"이 이중으로 반영되지 않도록 한다.
+ */
+function computeBalanceProjection(
+  account: AccountItem,
+  amount: number,
+  direction: "from" | "to",
+  isEditingSameAccount: boolean,
+  initialAmount: number
+): BalanceProjection {
+  const currentBalance = account.current_balance ?? 0;
+  const base = isEditingSameAccount
+    ? direction === "from"
+      ? currentBalance + initialAmount
+      : currentBalance - initialAmount
+    : currentBalance;
+  const projectedBalance = direction === "from" ? base - amount : base + amount;
+  const minAllowed = account.allow_negative_balance ? -account.negative_balance_limit : 0;
+  const isInsufficient = direction === "from" && amount > 0 && projectedBalance < minAllowed;
+  const displayBalance = amount > 0 ? projectedBalance : currentBalance;
+  return { currentBalance, projectedBalance, isInsufficient, displayBalance };
+}
+
+const AccountBalanceHint: React.FC<{
+  account: AccountItem | undefined;
+  amount: number;
+  direction: "from" | "to";
+  isEditingSameAccount: boolean;
+  initialAmount: number;
+}> = ({ account, amount, direction, isEditingSameAccount, initialAmount }) => {
+  if (!account) {
+    return <p className="text-xs text-[var(--color-text-secondary)]">계좌를 선택해주세요.</p>;
+  }
+  if (account.current_balance === null) return null;
+
+  const { isInsufficient, displayBalance } = computeBalanceProjection(
+    account,
+    amount,
+    direction,
+    isEditingSameAccount,
+    initialAmount
+  );
+  const label = amount > 0 ? "이동 후 예상 잔액" : "현재 잔액";
+  const textColor = isInsufficient ? "text-[var(--color-danger)]" : "text-[var(--color-text-secondary)]";
+
+  return (
+    <p className={`text-xs ${textColor}`}>
+      {account.account_name} {label} {displayBalance.toLocaleString()}원
+      {isInsufficient && " - 잔액/한도를 초과해서 등록할 수 없습니다"}
+    </p>
+  );
+};
 
 export const TransferForm: React.FC<TransferFormProps> = ({
   onSuccess,
@@ -74,6 +145,10 @@ export const TransferForm: React.FC<TransferFormProps> = ({
   const [apiError, setApiError] = React.useState<string>("");
 
   const isFromLocked = !isEditMode && !!lockedFromAccountId;
+  // 수정 모드에서 보내는/받는 계좌 중 하나라도 삭제된 계좌면, 삭제된 지갑이 얽힌 거래는
+  // 수정을 막는 기존 관례(단건 거래의 walletDeleted 처리)를 그대로 따라 폼 전체를 읽기 전용으로 전환한다.
+  const isReadOnly =
+    isEditMode && (!!initialData?.from_account_deleted || !!initialData?.to_account_deleted);
 
   const accountsQuery = useQuery({
     queryKey: ["accounts"],
@@ -81,12 +156,29 @@ export const TransferForm: React.FC<TransferFormProps> = ({
     staleTime: STALE_TIME.REALTIME,
     refetchOnMount: "always"
   });
+  const categoriesQuery = useQuery({
+    queryKey: ["categories", "active"],
+    queryFn: () => categoryApi.getCategories(true),
+    staleTime: STALE_TIME.MEDIUM
+  });
+  const iconsQuery = useQuery({
+    queryKey: ["icons", "select"],
+    queryFn: () => iconApi.getIcons(true),
+    staleTime: STALE_TIME.LONG
+  });
 
   const accounts = accountsQuery.data?.data?.items ?? [];
   const toOptions = accounts.filter((a) => a.account_id !== fromAccountId);
 
+  const transferCategory = categoriesQuery.data?.data?.items.find(
+    (c) => c.category_name === TRANSFER_CATEGORY_NAME
+  );
+  const transferIcon = transferCategory
+    ? iconsQuery.data?.data?.items.find((icon) => icon.icon_id === transferCategory.icon_id)
+    : undefined;
+
   function handleSwap() {
-    if (isFromLocked) return;
+    if (isFromLocked || isReadOnly) return;
     setFromAccountId(toAccountId);
     setToAccountId(fromAccountId);
     setErrors({});
@@ -116,23 +208,24 @@ export const TransferForm: React.FC<TransferFormProps> = ({
   });
 
   const mutation = isEditMode ? updateMutation : createMutation;
-  const isSaving = mutation.isPending;
+  const isSaving = mutation.isPending || isReadOnly;
   const isLoading = accountsQuery.isLoading;
+
+  const amount = amountStr ? parseInt(amountStr.replace(/,/g, ""), 10) : 0;
+  const initialAmount = initialData?.amount ?? 0;
+  // 방향 전환 후에도 항상 "현재 선택된 계좌가 원래 from/to였는지"를 다시 계산해야
+  // 스왑 직후 두 안내가 즉시 올바른 계좌 기준으로 갱신된다.
+  const isEditingSameFrom = isEditMode && initialData?.from_account_id === fromAccountId;
+  const isEditingSameTo = isEditMode && initialData?.to_account_id === toAccountId;
 
   // 시점(날짜) 기준 잔액 검증은 백엔드 API(#389) 연동 후 서버 응답을 그대로 사용할 예정.
   // 백엔드가 준비되기 전까지는 "현재 잔액" 기준으로 근사 검증하여 등록 버튼을 막는다.
   const insufficientBalance = React.useMemo(() => {
     const acct = accounts.find((a) => a.account_id === fromAccountId);
     if (!acct || acct.current_balance === null) return false;
-    const amount = amountStr ? parseInt(amountStr.replace(/,/g, ""), 10) : 0;
-    if (amount <= 0) return false;
-    const minAllowed = acct.allow_negative_balance ? -acct.negative_balance_limit : 0;
-    const isEditingSameFrom = isEditMode && initialData?.from_account_id === acct.account_id;
-    const initialDelta = isEditingSameFrom && initialData ? initialData.amount : 0;
-    const baseBalance = acct.current_balance + initialDelta;
-    const projectedBalance = baseBalance - amount;
-    return projectedBalance < minAllowed;
-  }, [accounts, fromAccountId, amountStr, isEditMode, initialData]);
+    return computeBalanceProjection(acct, amount, "from", isEditingSameFrom, initialAmount)
+      .isInsufficient;
+  }, [accounts, fromAccountId, amount, isEditingSameFrom, initialAmount]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -183,12 +276,41 @@ export const TransferForm: React.FC<TransferFormProps> = ({
     !!amountStr;
 
   const selectedFromAccount = accounts.find((a) => a.account_id === fromAccountId);
+  const selectedToAccount = accounts.find((a) => a.account_id === toAccountId);
 
   const selectClass =
     "w-full appearance-none min-h-11 rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 py-2 pr-9 text-base text-[var(--color-text-primary)] transition focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-soft)] disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-secondary)]";
+  const deletedAccountClass =
+    "flex min-h-11 items-center rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] px-3 py-2 text-base text-[var(--color-text-secondary)]";
 
   return (
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
+      {/* 계좌이동 아이콘 + 라벨 (#409) */}
+      <div className="flex items-center gap-2">
+        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-bg-secondary)]">
+          {transferIcon ? (
+            <IconRenderer
+              providerType={transferIcon.provider_type}
+              providerKey={transferIcon.provider_key}
+              size={18}
+              className="text-[var(--color-text-primary)]"
+            />
+          ) : (
+            <Circle size={18} className="text-[var(--color-text-primary)]" />
+          )}
+        </span>
+        <span className="text-sm font-medium text-[var(--color-text-primary)]">계좌금액이동</span>
+      </div>
+
+      {/* 삭제된 계좌가 포함된 수정 건은 읽기 전용으로 전환 (#409) */}
+      {isReadOnly && (
+        <div className="rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] px-4 py-3">
+          <p className="text-sm text-[var(--color-text-secondary)]">
+            삭제된 계좌가 포함된 내역이라 수정이 불가능합니다.
+          </p>
+        </div>
+      )}
+
       {/* 계좌이동 주의사항 안내 (#353) */}
       {!isEditMode && (
         <div className="flex items-start gap-2 rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] px-4 py-3">
@@ -203,30 +325,34 @@ export const TransferForm: React.FC<TransferFormProps> = ({
       {/* 보내는 계좌 */}
       <div className="flex flex-col gap-1.5">
         <p className="text-sm font-medium text-[var(--color-text-secondary)]">보내는 계좌</p>
-        <div className="relative">
-          <select
-            value={fromAccountId || ""}
-            disabled={isSaving || isLoading || isFromLocked}
-            onChange={(e) => {
-              const id = Number(e.target.value);
-              setFromAccountId(id);
-              if (toAccountId === id) setToAccountId(0);
-              setErrors((err) => ({ ...err, from_account_id: "", to_account_id: "" }));
-            }}
-            className={selectClass}
-          >
-            <option value="">{isLoading ? "불러오는 중..." : "계좌 선택"}</option>
-            {accounts.map((a) => (
-              <option key={a.account_id} value={a.account_id}>
-                {a.account_name}
-              </option>
-            ))}
-          </select>
-          <ChevronDown
-            size={16}
-            className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-text-secondary)]"
-          />
-        </div>
+        {initialData?.from_account_deleted ? (
+          <div className={deletedAccountClass}>{initialData.from_account_name} [삭제됨]</div>
+        ) : (
+          <div className="relative">
+            <select
+              value={fromAccountId || ""}
+              disabled={isSaving || isLoading || isFromLocked}
+              onChange={(e) => {
+                const id = Number(e.target.value);
+                setFromAccountId(id);
+                if (toAccountId === id) setToAccountId(0);
+                setErrors((err) => ({ ...err, from_account_id: "", to_account_id: "" }));
+              }}
+              className={selectClass}
+            >
+              <option value="">{isLoading ? "불러오는 중..." : "계좌 선택"}</option>
+              {accounts.map((a) => (
+                <option key={a.account_id} value={a.account_id}>
+                  {a.account_name}
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              size={16}
+              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-text-secondary)]"
+            />
+          </div>
+        )}
         {isFromLocked && (
           <p className="text-xs text-[var(--color-text-secondary)]">
             이 지갑에서 진입해 보내는 계좌가 고정되어 있습니다.
@@ -234,6 +360,15 @@ export const TransferForm: React.FC<TransferFormProps> = ({
         )}
         {errors.from_account_id && (
           <p className="text-xs text-[var(--color-danger)]">{errors.from_account_id}</p>
+        )}
+        {!initialData?.from_account_deleted && (
+          <AccountBalanceHint
+            account={selectedFromAccount}
+            amount={amount}
+            direction="from"
+            isEditingSameAccount={isEditingSameFrom}
+            initialAmount={initialAmount}
+          />
         )}
       </div>
 
@@ -253,30 +388,43 @@ export const TransferForm: React.FC<TransferFormProps> = ({
       {/* 받는 계좌 */}
       <div className="flex flex-col gap-1.5">
         <p className="text-sm font-medium text-[var(--color-text-secondary)]">받는 계좌</p>
-        <div className="relative">
-          <select
-            value={toAccountId || ""}
-            disabled={isSaving || isLoading}
-            onChange={(e) => {
-              setToAccountId(Number(e.target.value));
-              setErrors((err) => ({ ...err, to_account_id: "" }));
-            }}
-            className={selectClass}
-          >
-            <option value="">{isLoading ? "불러오는 중..." : "계좌 선택"}</option>
-            {toOptions.map((a) => (
-              <option key={a.account_id} value={a.account_id}>
-                {a.account_name}
-              </option>
-            ))}
-          </select>
-          <ChevronDown
-            size={16}
-            className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-text-secondary)]"
-          />
-        </div>
+        {initialData?.to_account_deleted ? (
+          <div className={deletedAccountClass}>{initialData.to_account_name} [삭제됨]</div>
+        ) : (
+          <div className="relative">
+            <select
+              value={toAccountId || ""}
+              disabled={isSaving || isLoading}
+              onChange={(e) => {
+                setToAccountId(Number(e.target.value));
+                setErrors((err) => ({ ...err, to_account_id: "" }));
+              }}
+              className={selectClass}
+            >
+              <option value="">{isLoading ? "불러오는 중..." : "계좌 선택"}</option>
+              {toOptions.map((a) => (
+                <option key={a.account_id} value={a.account_id}>
+                  {a.account_name}
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              size={16}
+              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-text-secondary)]"
+            />
+          </div>
+        )}
         {errors.to_account_id && (
           <p className="text-xs text-[var(--color-danger)]">{errors.to_account_id}</p>
+        )}
+        {!initialData?.to_account_deleted && (
+          <AccountBalanceHint
+            account={selectedToAccount}
+            amount={amount}
+            direction="to"
+            isEditingSameAccount={isEditingSameTo}
+            initialAmount={initialAmount}
+          />
         )}
       </div>
 
@@ -300,30 +448,6 @@ export const TransferForm: React.FC<TransferFormProps> = ({
         disabled={isSaving}
         autoComplete="off"
       />
-
-      {/* 예상 잔액 (보내는 계좌 기준) */}
-      {selectedFromAccount && selectedFromAccount.current_balance !== null && (
-        (() => {
-          const amount = amountStr ? parseInt(amountStr.replace(/,/g, ""), 10) : 0;
-          const isEditingSameFrom = isEditMode && initialData?.from_account_id === selectedFromAccount.account_id;
-          const initialDelta = isEditingSameFrom && initialData ? initialData.amount : 0;
-          const baseBalance = selectedFromAccount.current_balance + initialDelta;
-          const projectedBalance = baseBalance - amount;
-          const minAllowed = selectedFromAccount.allow_negative_balance
-            ? -selectedFromAccount.negative_balance_limit
-            : 0;
-          const isInsufficient = amount > 0 && projectedBalance < minAllowed;
-          const textColor = isInsufficient
-            ? "text-[var(--color-danger)]"
-            : "text-[var(--color-text-secondary)]";
-          return (
-            <p className={`-mt-3 text-xs ${textColor}`}>
-              이동 후 보내는 계좌 예상 잔액: {projectedBalance.toLocaleString()}원
-              {isInsufficient && " - 잔액/한도를 초과해서 등록할 수 없습니다"}
-            </p>
-          );
-        })()
-      )}
 
       {/* 날짜 */}
       <Input

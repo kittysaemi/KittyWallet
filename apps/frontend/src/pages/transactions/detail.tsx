@@ -1,10 +1,11 @@
 import React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
-import { ChevronLeft, Circle, Pencil, RefreshCw, Trash2 } from "lucide-react";
+import { ArrowRight, ChevronLeft, Circle, Pencil, RefreshCw, Trash2 } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import { invalidateTransactionRelatedQueries } from "../../entities/transaction/lib/invalidateTransactionQueries";
+import { isTransferTransaction } from "../../entities/transaction/lib/isTransfer";
 import { invalidateTransactionCaches } from "../../pwa/cache/cacheInvalidation";
 import { addOfflineTransaction } from "../../pwa/indexed-db/repositories/offlineTransaction.repository";
 import { enqueueSyncItem } from "../../pwa/indexed-db/repositories/syncQueue.repository";
@@ -50,7 +51,7 @@ function getIcon(
 
 interface RowProps {
   label: string;
-  value: string;
+  value: React.ReactNode;
   icon?: React.ReactNode;
 }
 const Row: React.FC<RowProps> = ({ label, value, icon }) => (
@@ -146,6 +147,18 @@ const TransactionDetailPage: React.FC = () => {
     enabled: !!id
   });
 
+  const tx = txQuery.data?.data;
+  const isTransfer = !!tx && isTransferTransaction(tx);
+  const transferGroupId = tx?.transfer_group_id ?? null;
+
+  // transfer_group_id가 없는 레거시 계좌이동 거래(카테고리명 폴백으로만 판별된 경우)는 조회할 수 없어
+  // "이동 경로" Row를 생략한다 — enabled: !!transferGroupId.
+  const transferQuery = useQuery({
+    queryKey: ["transfer", transferGroupId],
+    queryFn: () => transactionApi.getTransfer(transferGroupId as string),
+    enabled: !!transferGroupId
+  });
+
   const iconsQuery = useQuery({
     queryKey: ["icons", "select"],
     queryFn: () => iconApi.getIcons(true),
@@ -171,8 +184,6 @@ const TransactionDetailPage: React.FC = () => {
     staleTime: STALE_TIME.MEDIUM,
     enabled: txQuery.data?.data?.wallet_type === "CARD"
   });
-
-  const tx = txQuery.data?.data;
 
   const handleDelete = async () => {
     setDeleteError("");
@@ -231,12 +242,17 @@ const TransactionDetailPage: React.FC = () => {
   }, [tx, accountsQuery.data, cardsQuery.data]);
 
   const isIncome = tx?.transaction_type === "INCOME";
-  const gradient = isIncome
-    ? "linear-gradient(160deg, #7DD3FC 0%, #38BDF8 100%)"
-    : "linear-gradient(160deg, var(--color-primary) 0%, #F98DD9 100%)";
-  const heroShadow = isIncome
-    ? "0 6px 24px rgba(56,189,248,0.35)"
-    : "0 6px 24px rgba(253,165,227,0.40)";
+  const gradient = isTransfer
+    ? "linear-gradient(160deg, var(--color-text-caption) 0%, var(--color-text-secondary) 100%)"
+    : isIncome
+      ? "linear-gradient(160deg, #7DD3FC 0%, #38BDF8 100%)"
+      : "linear-gradient(160deg, var(--color-primary) 0%, #F98DD9 100%)";
+  const heroShadow = isTransfer
+    ? "0 6px 24px rgba(111,91,103,0.28)"
+    : isIncome
+      ? "0 6px 24px rgba(56,189,248,0.35)"
+      : "0 6px 24px rgba(253,165,227,0.40)";
+  const transfer = transferQuery.data?.data;
 
   return (
     <>
@@ -379,8 +395,22 @@ const TransactionDetailPage: React.FC = () => {
             <div className="divide-y divide-[var(--color-border-secondary)] pb-2">
               <Row
                 label="거래 유형"
-                value={isIncome ? "수입" : "지출"}
+                value={isTransfer ? "계좌이동" : isIncome ? "수입" : "지출"}
               />
+              {isTransfer && transfer && (
+                <Row
+                  label="이동 경로"
+                  value={
+                    <span className="inline-flex items-center gap-1">
+                      {transfer.from_account_name}
+                      {transfer.from_account_deleted ? " [삭제됨]" : ""}
+                      <ArrowRight size={14} className="shrink-0 text-[var(--color-text-secondary)]" />
+                      {transfer.to_account_name}
+                      {transfer.to_account_deleted ? " [삭제됨]" : ""}
+                    </span>
+                  }
+                />
+              )}
               <Row
                 label="지갑"
                 value={`${tx.wallet_name} (${tx.wallet_type === "ACCOUNT" ? "계좌" : "카드"})${tx.wallet_deleted ? " [삭제됨]" : ""}`}
