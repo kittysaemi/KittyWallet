@@ -2,7 +2,7 @@ import type { PropsWithChildren } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import TransactionDetailPage from "./detail";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import { accountApi } from "../../entities/account/api/accountApi";
@@ -74,6 +74,33 @@ const renderDetail = (locationState?: Record<string, unknown>) => {
   return render(<TransactionDetailPage />, { wrapper: Wrapper });
 };
 
+// 편집화면으로 넘어갈 때 location.state의 returnTo가 실제로 전달되는지 확인하기 위한 헬퍼.
+// edit 라우트 엘리먼트가 자신이 받은 location.state.returnTo 값을 화면에 그대로 출력한다.
+const EditRouteStateProbe = () => {
+  const location = useLocation();
+  const returnTo = (location.state as { returnTo?: string } | null)?.returnTo;
+  return <div>거래 수정 화면 (returnTo: {returnTo ?? "none"})</div>;
+};
+
+const renderDetailWithEditProbe = (locationState?: Record<string, unknown>) => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } }
+  });
+
+  const Wrapper = ({ children }: PropsWithChildren) => (
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={[{ pathname: "/transactions/1", state: locationState }]}>
+        <Routes>
+          <Route path="/transactions/:id" element={children} />
+          <Route path="/transactions/:id/edit" element={<EditRouteStateProbe />} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>
+  );
+
+  return render(<TransactionDetailPage />, { wrapper: Wrapper });
+};
+
 describe("TransactionDetailPage — edit icon visibility", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -120,5 +147,23 @@ describe("TransactionDetailPage — edit icon visibility", () => {
 
     expect(await screen.findByLabelText("거래 삭제")).toBeInTheDocument();
     expect(screen.queryByLabelText("거래 수정")).not.toBeInTheDocument();
+  });
+
+  it("forwards returnTo to the edit page (e.g. 지갑 거래내역 화면 경로) so it can navigate back there after saving", async () => {
+    mockedTransactionApi.getTransaction.mockResolvedValue({ success: true, data: makeTx(), error: null });
+
+    renderDetailWithEditProbe({ editable: true, returnTo: "/accounts/1/transactions" });
+
+    await userEvent.click(await screen.findByLabelText("거래 수정"));
+    expect(await screen.findByText("거래 수정 화면 (returnTo: /accounts/1/transactions)")).toBeInTheDocument();
+  });
+
+  it("does not pass a returnTo when the detail page itself was not given one", async () => {
+    mockedTransactionApi.getTransaction.mockResolvedValue({ success: true, data: makeTx(), error: null });
+
+    renderDetailWithEditProbe({ editable: true });
+
+    await userEvent.click(await screen.findByLabelText("거래 수정"));
+    expect(await screen.findByText("거래 수정 화면 (returnTo: none)")).toBeInTheDocument();
   });
 });

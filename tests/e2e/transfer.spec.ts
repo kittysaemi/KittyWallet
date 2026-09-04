@@ -53,7 +53,8 @@ test("E2E-TRANSFER-001 계좌이동 생성 → 라벨 노출 → 상세 → 수�
   await page.getByRole("button", { name: "보내는 계좌와 받는 계좌 서로 바꾸기" }).click();
   await expect(editFrom).toHaveValue("2002");
   await page.getByRole("button", { name: "수정 완료" }).click();
-  await expect(page).toHaveURL(/\/kittywallet\/transactions$/);
+  // 이슈 #353: 수정 완료 후에는 원래 진입했던 지갑 거래내역 화면(여기서는 2001 계좌)으로 복귀한다.
+  await expect(page).toHaveURL(/\/kittywallet\/accounts\/2001\/transactions$/);
 
   // 방향이 바뀌었으므로 2001은 이제 받는 계좌(입금), 2002는 보내는 계좌(출금)
   await page.goto("/kittywallet/accounts/2001/transactions");
@@ -66,7 +67,8 @@ test("E2E-TRANSFER-001 계좌이동 생성 → 라벨 노출 → 상세 → 수�
   await page.getByRole("button", { name: "거래 수정" }).click();
   await page.getByRole("button", { name: "거래 삭제" }).click();
   await page.getByRole("button", { name: "삭제", exact: true }).click();
-  await expect(page).toHaveURL(/\/kittywallet\/transactions$/);
+  // 이슈 #353: 삭제 완료 후에도 원래 진입했던 지갑 거래내역 화면(여기서는 2002 계좌)으로 복귀한다.
+  await expect(page).toHaveURL(/\/kittywallet\/accounts\/2002\/transactions$/);
 
   await page.goto("/kittywallet/accounts/2001/transactions");
   await expect(page.getByText("계좌이동", { exact: true })).toHaveCount(0);

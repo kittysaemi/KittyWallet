@@ -4,6 +4,7 @@ import { AxiosError } from "axios";
 import { ChevronLeft, Circle, Pencil, RefreshCw, Trash2 } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
+import { invalidateTransactionRelatedQueries } from "../../entities/transaction/lib/invalidateTransactionQueries";
 import { invalidateTransactionCaches } from "../../pwa/cache/cacheInvalidation";
 import { addOfflineTransaction } from "../../pwa/indexed-db/repositories/offlineTransaction.repository";
 import { enqueueSyncItem } from "../../pwa/indexed-db/repositories/syncQueue.repository";
@@ -111,7 +112,9 @@ const TransactionDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const editable = Boolean((location.state as { editable?: boolean } | null)?.editable);
+  const detailState = location.state as { editable?: boolean; returnTo?: string } | null;
+  const editable = Boolean(detailState?.editable);
+  const returnTo = detailState?.returnTo;
   const queryClient = useQueryClient();
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
   const [deleteError, setDeleteError] = React.useState("");
@@ -120,11 +123,7 @@ const TransactionDetailPage: React.FC = () => {
   const deleteMutation = useMutation({
     mutationFn: () => transactionApi.deleteTransaction(Number(id)),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-      void queryClient.invalidateQueries({ queryKey: ["accounts"] });
-      void queryClient.invalidateQueries({ queryKey: ["cards"] });
-      void queryClient.invalidateQueries({ queryKey: ["statistics"] });
+      invalidateTransactionRelatedQueries(queryClient);
       void invalidateTransactionCaches();
       navigate("/transactions", { replace: true });
     },
@@ -201,11 +200,7 @@ const TransactionDetailPage: React.FC = () => {
           payload
         });
         usePwaStore.getState().setSyncStatus("pending_sync");
-        void queryClient.invalidateQueries({ queryKey: ["transactions"] });
-        void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-        void queryClient.invalidateQueries({ queryKey: ["accounts"] });
-        void queryClient.invalidateQueries({ queryKey: ["cards"] });
-        void queryClient.invalidateQueries({ queryKey: ["statistics"] });
+        invalidateTransactionRelatedQueries(queryClient);
         void invalidateTransactionCaches();
         navigate("/transactions", { replace: true });
       } catch {
@@ -265,7 +260,7 @@ const TransactionDetailPage: React.FC = () => {
             {editable && tx && !tx.wallet_deleted && (
               <button
                 type="button"
-                onClick={() => navigate(`/transactions/${id}/edit`)}
+                onClick={() => navigate(`/transactions/${id}/edit`, returnTo ? { state: { returnTo } } : undefined)}
                 className="flex h-9 w-9 items-center justify-center rounded-xl text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-secondary)]"
                 aria-label="거래 수정"
               >

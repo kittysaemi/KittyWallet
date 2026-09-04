@@ -1,9 +1,10 @@
 import React from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { ChevronLeft, Trash2 } from "lucide-react";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
+import { invalidateTransactionRelatedQueries } from "../../entities/transaction/lib/invalidateTransactionQueries";
 import { addOfflineTransaction } from "../../pwa/indexed-db/repositories/offlineTransaction.repository";
 import { enqueueSyncItem } from "../../pwa/indexed-db/repositories/syncQueue.repository";
 import { usePwaStore } from "../../pwa/state/pwa.store";
@@ -20,11 +21,17 @@ const DeleteConfirmDialog: React.FC<{
   isDeleting: boolean;
   errorMessage?: string;
   installmentTotalCount?: number | null;
-}> = ({ onConfirm, onCancel, isDeleting, errorMessage, installmentTotalCount }) => (
+  isTransfer?: boolean;
+}> = ({ onConfirm, onCancel, isDeleting, errorMessage, installmentTotalCount, isTransfer }) => (
   <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 pb-8 sm:items-center sm:pb-0">
     <div className="w-full max-w-[400px] rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] p-6 shadow-xl">
       <h2 className="mb-2 text-base font-bold text-[var(--color-text-primary)]">거래 삭제</h2>
-      {installmentTotalCount != null ? (
+      {isTransfer ? (
+        <p className="mb-4 text-sm text-[var(--color-text-secondary)]">
+          이 거래는 계좌이동으로, 출금·입금 내역이 함께 등록되어 있습니다. 삭제하면 두 내역이 모두
+          삭제되며, 복구할 수 없습니다.
+        </p>
+      ) : installmentTotalCount != null ? (
         <p className="mb-4 text-sm text-[var(--color-text-secondary)]">
           할부 거래를 삭제하면{" "}
           <span className="font-semibold text-[var(--color-danger)]">{installmentTotalCount}개월 전체 할부 내역</span>
@@ -65,9 +72,15 @@ const DeleteConfirmDialog: React.FC<{
 const TransactionEditPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const timezone = useTimezone();
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
+
+  // 상세화면의 편집(연필) 아이콘을 통해 진입한 경우, 원래 목록 화면(지갑 거래내역 등)으로
+  // 정확히 복귀할 수 있도록 상세화면이 전달한 returnTo 경로를 사용한다. 없으면(예: 거래
+  // 목록에서 항목을 눌러 상세화면을 거치지 않고 바로 진입한 경우) 기존처럼 /transactions로 이동한다.
+  const returnTo = (location.state as { returnTo?: string } | null)?.returnTo;
 
   const transactionQuery = useQuery({
     queryKey: ["transactions", "detail", id],
@@ -90,13 +103,9 @@ const TransactionEditPage: React.FC = () => {
       await transactionApi.deleteTransaction(Number(id));
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-      void queryClient.invalidateQueries({ queryKey: ["accounts"] });
-      void queryClient.invalidateQueries({ queryKey: ["cards"] });
-      void queryClient.invalidateQueries({ queryKey: ["statistics"] });
+      invalidateTransactionRelatedQueries(queryClient);
       void invalidateTransactionCaches();
-      navigate("/transactions", { replace: true });
+      navigate(returnTo ?? "/transactions", { replace: true });
     },
     onError: (err: unknown) => {
       const code =
@@ -160,13 +169,9 @@ const TransactionEditPage: React.FC = () => {
           payload
         });
         usePwaStore.getState().setSyncStatus("pending_sync");
-        void queryClient.invalidateQueries({ queryKey: ["transactions"] });
-        void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-        void queryClient.invalidateQueries({ queryKey: ["accounts"] });
-        void queryClient.invalidateQueries({ queryKey: ["cards"] });
-        void queryClient.invalidateQueries({ queryKey: ["statistics"] });
+        invalidateTransactionRelatedQueries(queryClient);
         void invalidateTransactionCaches();
-        navigate("/transactions", { replace: true });
+        navigate(returnTo ?? "/transactions", { replace: true });
       } catch {
         setDeleteError("오프라인 삭제 저장에 실패했습니다. 다시 시도해주세요.");
       }
@@ -274,7 +279,7 @@ const TransactionEditPage: React.FC = () => {
                     transaction_date: transferDetailQuery.data.data.transaction_date,
                     memo: transaction.memo
                   }}
-                  onSuccess={() => navigate("/transactions", { replace: true })}
+                  onSuccess={() => navigate(returnTo ?? "/transactions", { replace: true })}
                 />
               </div>
             ) : (
@@ -289,7 +294,7 @@ const TransactionEditPage: React.FC = () => {
               <TransactionForm
                 initialData={transaction}
                 transactionId={transaction.transaction_id}
-                onSuccess={() => navigate("/transactions", { replace: true })}
+                onSuccess={() => navigate(returnTo ?? "/transactions", { replace: true })}
                 readOnly={walletDeleted}
                 futureInstallment={isFutureInstallment}
               />
@@ -305,6 +310,7 @@ const TransactionEditPage: React.FC = () => {
           isDeleting={deleteMutation.isPending}
           errorMessage={deleteError}
           installmentTotalCount={transaction.installment_total_count}
+          isTransfer={!!transferGroupId}
         />
       )}
     </>

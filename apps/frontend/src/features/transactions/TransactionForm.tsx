@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, Circle } from "lucide-react";
 import { z } from "zod";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
+import { invalidateTransactionRelatedQueries } from "../../entities/transaction/lib/invalidateTransactionQueries";
 import { invalidateTransactionCaches } from "../../pwa/cache/cacheInvalidation";
 import { addOfflineTransaction } from "../../pwa/indexed-db/repositories/offlineTransaction.repository";
 import { enqueueSyncItem } from "../../pwa/indexed-db/repositories/syncQueue.repository";
@@ -318,12 +319,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const createMutation = useMutation({
     mutationFn: transactionApi.createTransaction,
     onSuccess: (_result, variables) => {
-      void queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      void queryClient.invalidateQueries({ queryKey: ["transactions-position"] });
-      void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-      void queryClient.invalidateQueries({ queryKey: ["accounts"] });
-      void queryClient.invalidateQueries({ queryKey: ["cards"] });
-      void queryClient.invalidateQueries({ queryKey: ["statistics"] });
+      invalidateTransactionRelatedQueries(queryClient);
       void invalidateTransactionCaches();
       onCreated?.({ transaction_date: variables.transaction_date, amount: variables.amount, ...(variables.memo ? { memo: variables.memo } : {}) });
       onSuccess();
@@ -335,12 +331,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     mutationFn: (data: Parameters<typeof transactionApi.updateTransaction>[1]) =>
       transactionApi.updateTransaction(transactionId!, data),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      void queryClient.invalidateQueries({ queryKey: ["transactions-position"] });
-      void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-      void queryClient.invalidateQueries({ queryKey: ["accounts"] });
-      void queryClient.invalidateQueries({ queryKey: ["cards"] });
-      void queryClient.invalidateQueries({ queryKey: ["statistics"] });
+      invalidateTransactionRelatedQueries(queryClient);
       void invalidateTransactionCaches();
       onSuccess();
     },
@@ -351,11 +342,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     mutationFn: (months: number) =>
       transactionApi.convertToInstallment(transactionId!, { installment_months: months, timezone }),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      void queryClient.invalidateQueries({ queryKey: ["transactions-position"] });
-      void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-      void queryClient.invalidateQueries({ queryKey: ["cards"] });
-      void queryClient.invalidateQueries({ queryKey: ["statistics"] });
+      invalidateTransactionRelatedQueries(queryClient);
       void invalidateTransactionCaches();
       onSuccess();
     },
@@ -422,7 +409,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               payload: { interest: interestAmount }
             });
             usePwaStore.getState().setSyncStatus("pending_sync");
-            void queryClient.invalidateQueries({ queryKey: ["transactions"] });
+            invalidateTransactionRelatedQueries(queryClient);
             onSuccess();
           } catch {
             setApiError(formatSupportError(CLIENT_ERROR_CODES.offline));
@@ -481,12 +468,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             payload: { ...parsed.data, ...installmentPayload }
           });
           usePwaStore.getState().setSyncStatus("pending_sync");
-          void queryClient.invalidateQueries({ queryKey: ["transactions"] });
-          void queryClient.invalidateQueries({ queryKey: ["transactions-position"] });
-          void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-          void queryClient.invalidateQueries({ queryKey: ["accounts"] });
-          void queryClient.invalidateQueries({ queryKey: ["cards"] });
-          void queryClient.invalidateQueries({ queryKey: ["statistics"] });
+          invalidateTransactionRelatedQueries(queryClient);
           onSuccess();
         } catch {
           setApiError(formatSupportError(CLIENT_ERROR_CODES.offline));
