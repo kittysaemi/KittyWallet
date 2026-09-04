@@ -274,7 +274,11 @@ const TransactionEditPage: React.FC = () => {
                   initialData={{
                     transfer_group_id: transferGroupId,
                     from_account_id: transferDetailQuery.data.data.from_account_id,
+                    from_account_name: transferDetailQuery.data.data.from_account_name,
+                    from_account_deleted: transferDetailQuery.data.data.from_account_deleted,
                     to_account_id: transferDetailQuery.data.data.to_account_id,
+                    to_account_name: transferDetailQuery.data.data.to_account_name,
+                    to_account_deleted: transferDetailQuery.data.data.to_account_deleted,
                     amount: transferDetailQuery.data.data.amount,
                     transaction_date: transferDetailQuery.data.data.transaction_date,
                     memo: transaction.memo
