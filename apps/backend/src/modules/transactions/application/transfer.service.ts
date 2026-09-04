@@ -42,10 +42,21 @@ export interface TransferResult {
   from_transaction_id: number;
   to_transaction_id: number;
   from_account_id: number;
+  from_account_name: string;
+  from_account_deleted: boolean;
   to_account_id: number;
+  to_account_name: string;
+  to_account_deleted: boolean;
   amount: number;
   transaction_date: string;
   updated_at: string;
+}
+
+interface TransferAccountInfo {
+  fromName: string;
+  fromDeleted: boolean;
+  toName: string;
+  toDeleted: boolean;
 }
 
 @Injectable()
@@ -74,8 +85,8 @@ export class TransferService {
     const transferGroupId = randomUUID();
 
     try {
-      const { fromTransaction, toTransaction } = await this.transferRepository.runInTransaction(
-        async (tx) => {
+      const { fromTransaction, toTransaction, fromAccountName, toAccountName } =
+        await this.transferRepository.runInTransaction(async (tx) => {
           const accountIds = [command.fromAccountId, command.toAccountId];
           await this.transferRepository.lockAccounts(tx, accountIds);
 
@@ -90,7 +101,7 @@ export class TransferService {
             { transactionType: "EXPENSE", amount: command.amount, transactionDate }
           ]);
 
-          return this.transferRepository.createTransferPair(tx, {
+          const pair = await this.transferRepository.createTransferPair(tx, {
             userId: command.userId,
             categoryId: category.categoryId,
             fromAccountId: fromAccount.accountId,
@@ -101,10 +112,21 @@ export class TransferService {
             transferGroupId,
             now
           });
-        }
-      );
 
-      return this.toTransferResult(fromTransaction, toTransaction);
+          return {
+            ...pair,
+            fromAccountName: fromAccount.accountName,
+            toAccountName: toAccount.accountName
+          };
+        });
+
+      // 방금 선택한 계좌이므로 삭제되었을 수 없다(항상 false).
+      return this.toTransferResult(fromTransaction, toTransaction, {
+        fromName: fromAccountName,
+        fromDeleted: false,
+        toName: toAccountName,
+        toDeleted: false
+      });
     } catch (err) {
       return this.mapError(err);
     }
@@ -135,8 +157,8 @@ export class TransferService {
     }
 
     try {
-      const { fromTransaction, toTransaction } = await this.transferRepository.runInTransaction(
-        async (tx) => {
+      const { fromTransaction, toTransaction, fromAccountName, toAccountName } =
+        await this.transferRepository.runInTransaction(async (tx) => {
           const pairRows = await this.transferRepository.findTransferPair(
             tx,
             command.userId,
@@ -181,7 +203,7 @@ export class TransferService {
           );
           const accountMap = this.toAccountMap(accounts);
           const newFromAccount = this.assertActiveAccount(accountMap.get(newFromAccountId.toString()));
-          this.assertActiveAccount(accountMap.get(newToAccountId.toString()));
+          const newToAccount = this.assertActiveAccount(accountMap.get(newToAccountId.toString()));
 
           const excludeIds = [oldFromTx.transactionId, oldToTx.transactionId];
 
@@ -214,7 +236,7 @@ export class TransferService {
 
           const hasMemoUpdate = command.memo !== undefined;
 
-          return this.transferRepository.updateTransferPair(
+          const pair = await this.transferRepository.updateTransferPair(
             tx,
             {
               fromTransactionId: oldFromTx.transactionId,
@@ -228,10 +250,21 @@ export class TransferService {
             },
             balanceChanges
           );
-        }
-      );
 
-      return this.toTransferResult(fromTransaction, toTransaction);
+          return {
+            ...pair,
+            fromAccountName: newFromAccount.accountName,
+            toAccountName: newToAccount.accountName
+          };
+        });
+
+      // 갱신 시점에 활성(active) 계좌임이 검증된 계좌이므로 삭제되었을 수 없다(항상 false).
+      return this.toTransferResult(fromTransaction, toTransaction, {
+        fromName: fromAccountName,
+        fromDeleted: false,
+        toName: toAccountName,
+        toDeleted: false
+      });
     } catch (err) {
       return this.mapError(err);
     }
@@ -297,7 +330,19 @@ export class TransferService {
     }
 
     const [fromTx, toTx] = this.splitPair(pairRows);
-    return this.toTransferResult(fromTx, toTx);
+
+    // 계좌이동 조회는 삭제된 계좌를 참조할 수 있으므로, 삭제된 계좌도 포함해 이름/삭제여부를 함께 반환한다.
+    const accounts = await this.transferRepository.findAccountsByIdsReadOnly(
+      this.uniqueIds([fromTx.walletId, toTx.walletId]),
+      userId
+    );
+    const accountMap = this.toAccountMap(accounts);
+
+    return this.toTransferResult(
+      fromTx,
+      toTx,
+      this.buildAccountInfo(accountMap, fromTx.walletId, toTx.walletId)
+    );
   }
 
   private toAccountMap(accounts: Account[]): Map<string, Account> {
@@ -404,14 +449,37 @@ export class TransferService {
       .map(([accountId, delta]) => ({ accountId: BigInt(accountId), delta }));
   }
 
-  private toTransferResult(fromTx: Transaction, toTx: Transaction): TransferResult {
+  private buildAccountInfo(
+    accountMap: Map<string, Account>,
+    fromAccountId: bigint,
+    toAccountId: bigint
+  ): TransferAccountInfo {
+    const fromAccount = accountMap.get(fromAccountId.toString());
+    const toAccount = accountMap.get(toAccountId.toString());
+    return {
+      fromName: fromAccount?.accountName ?? "",
+      fromDeleted: fromAccount?.deletedYn ?? true,
+      toName: toAccount?.accountName ?? "",
+      toDeleted: toAccount?.deletedYn ?? true
+    };
+  }
+
+  private toTransferResult(
+    fromTx: Transaction,
+    toTx: Transaction,
+    accountInfo: TransferAccountInfo
+  ): TransferResult {
     const updatedAt = fromTx.updatedAt > toTx.updatedAt ? fromTx.updatedAt : toTx.updatedAt;
     return {
       transfer_group_id: fromTx.transferGroupId!,
       from_transaction_id: Number(fromTx.transactionId),
       to_transaction_id: Number(toTx.transactionId),
       from_account_id: Number(fromTx.walletId),
+      from_account_name: accountInfo.fromName,
+      from_account_deleted: accountInfo.fromDeleted,
       to_account_id: Number(toTx.walletId),
+      to_account_name: accountInfo.toName,
+      to_account_deleted: accountInfo.toDeleted,
       amount: fromTx.amount.toNumber(),
       transaction_date: fromTx.transactionDate.toISOString().split("T")[0],
       updated_at: updatedAt.toISOString()

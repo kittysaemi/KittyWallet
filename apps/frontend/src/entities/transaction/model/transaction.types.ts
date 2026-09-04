@@ -142,7 +142,11 @@ export interface TransferResult {
   from_transaction_id: number;
   to_transaction_id: number;
   from_account_id: number;
+  from_account_name: string;
+  from_account_deleted: boolean;
   to_account_id: number;
+  to_account_name: string;
+  to_account_deleted: boolean;
   amount: number;
   transaction_date: string;
   updated_at: string;

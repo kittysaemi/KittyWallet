@@ -61,3 +61,35 @@ describe("TransferRepository - findOrCreateTransferCategory (#389 후속)", () =
     expect(tx.categoryUserSetting.upsert).not.toHaveBeenCalled();
   });
 });
+
+describe("TransferRepository - findAccountsByIds / findAccountsByIdsReadOnly", () => {
+  let repository: TransferRepository;
+  let prisma: { account: { findMany: jest.Mock } };
+
+  beforeEach(() => {
+    prisma = { account: { findMany: jest.fn() } };
+    repository = new TransferRepository(prisma as unknown as PrismaService);
+  });
+
+  it("deletedYn 필터 없이 계좌를 조회한다(삭제된 계좌도 포함해 이름을 표시하기 위함)", async () => {
+    prisma.account.findMany.mockResolvedValue([]);
+
+    await repository.findAccountsByIds(prisma as unknown as PrismaService, [1n, 2n], 1n);
+
+    expect(prisma.account.findMany).toHaveBeenCalledWith({
+      where: { accountId: { in: [1n, 2n] }, userId: 1n }
+    });
+  });
+
+  it("findAccountsByIdsReadOnly는 트랜잭션 없이 findAccountsByIds를 위임 호출한다", async () => {
+    const accounts = [{ accountId: 2n, accountName: "삭제된계좌", deletedYn: true }];
+    prisma.account.findMany.mockResolvedValue(accounts);
+
+    const result = await repository.findAccountsByIdsReadOnly([2n], 1n);
+
+    expect(result).toBe(accounts);
+    expect(prisma.account.findMany).toHaveBeenCalledWith({
+      where: { accountId: { in: [2n] }, userId: 1n }
+    });
+  });
+});

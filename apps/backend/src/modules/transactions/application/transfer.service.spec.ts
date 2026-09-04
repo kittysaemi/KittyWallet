@@ -58,6 +58,7 @@ const mockRepo = {
   lockAccounts: jest.fn(),
   lockTransactions: jest.fn(),
   findAccountsByIds: jest.fn(),
+  findAccountsByIdsReadOnly: jest.fn(),
   findAccountLedger: jest.fn(),
   findTransferPair: jest.fn(),
   findTransferPairReadOnly: jest.fn(),
@@ -86,10 +87,10 @@ describe("TransferService", () => {
       transactionDate: "2026-06-20"
     };
 
-    it("계좌이동 짝 거래를 생성하고 결과를 반환한다", async () => {
+    it("계좌이동 짝 거래를 생성하고 결과를 반환한다(계좌명 포함, 삭제여부는 항상 false)", async () => {
       (mockRepo.findAccountsByIds as jest.Mock).mockResolvedValue([
-        makeAccount({ accountId: 1n, initialBalance: makeDecimal(50000) }),
-        makeAccount({ accountId: 2n })
+        makeAccount({ accountId: 1n, accountName: "월급통장", initialBalance: makeDecimal(50000) }),
+        makeAccount({ accountId: 2n, accountName: "비상금통장" })
       ]);
       (mockRepo.findOrCreateTransferCategory as jest.Mock).mockResolvedValue({
         categoryId: 9n,
@@ -117,7 +118,11 @@ describe("TransferService", () => {
         from_transaction_id: 101,
         to_transaction_id: 102,
         from_account_id: 1,
+        from_account_name: "월급통장",
+        from_account_deleted: false,
         to_account_id: 2,
+        to_account_name: "비상금통장",
+        to_account_deleted: false,
         amount: 10000
       });
       expect(mockRepo.createTransferPair).toHaveBeenCalledTimes(1);
@@ -278,6 +283,35 @@ describe("TransferService", () => {
       );
     });
 
+    it("계좌명을 함께 반환하고, 활성 계좌 검증을 통과했으므로 삭제여부는 항상 false다", async () => {
+      (mockRepo.findTransferPair as jest.Mock).mockResolvedValue([
+        makeTransferTx({ transactionId: 101n, walletId: 1n, transactionType: "EXPENSE" }),
+        makeTransferTx({ transactionId: 102n, walletId: 2n, transactionType: "INCOME" })
+      ]);
+      (mockRepo.findAccountsByIds as jest.Mock).mockResolvedValue([
+        makeAccount({ accountId: 1n, accountName: "월급통장", initialBalance: makeDecimal(50000) }),
+        makeAccount({ accountId: 2n, accountName: "비상금통장" })
+      ]);
+      (mockRepo.updateTransferPair as jest.Mock).mockResolvedValue({
+        fromTransaction: makeTransferTx({ transactionId: 101n, amount: makeDecimal(20000) }),
+        toTransaction: makeTransferTx({
+          transactionId: 102n,
+          walletId: 2n,
+          transactionType: "INCOME",
+          amount: makeDecimal(20000)
+        })
+      });
+
+      const result = await service.updateTransfer({ ...baseCommand, amount: 20000 });
+
+      expect(result).toMatchObject({
+        from_account_name: "월급통장",
+        from_account_deleted: false,
+        to_account_name: "비상금통장",
+        to_account_deleted: false
+      });
+    });
+
     it("받는 계좌를 다른 계좌로 바꾸면 기존 받는 계좌도 과거 날짜 기준으로 재검증한다", async () => {
       (mockRepo.findTransferPair as jest.Mock).mockResolvedValue([
         makeTransferTx({ transactionId: 101n, walletId: 1n, transactionType: "EXPENSE" }),
@@ -384,10 +418,14 @@ describe("TransferService", () => {
   });
 
   describe("getTransfer", () => {
-    it("짝 거래를 조회해 TransferResult 형태로 반환한다", async () => {
+    it("짝 거래를 조회해 TransferResult 형태로 반환한다(계좌명 포함, 삭제 안 됨)", async () => {
       (mockRepo.findTransferPairReadOnly as jest.Mock).mockResolvedValue([
         makeTransferTx({ transactionId: 101n, walletId: 1n, transactionType: "EXPENSE" }),
         makeTransferTx({ transactionId: 102n, walletId: 2n, transactionType: "INCOME" })
+      ]);
+      (mockRepo.findAccountsByIdsReadOnly as jest.Mock).mockResolvedValue([
+        makeAccount({ accountId: 1n, accountName: "월급통장" }),
+        makeAccount({ accountId: 2n, accountName: "비상금통장" })
       ]);
 
       const result = await service.getTransfer(1n, "group-1");
@@ -395,8 +433,50 @@ describe("TransferService", () => {
       expect(result).toMatchObject({
         transfer_group_id: "group-1",
         from_account_id: 1,
+        from_account_name: "월급통장",
+        from_account_deleted: false,
         to_account_id: 2,
+        to_account_name: "비상금통장",
+        to_account_deleted: false,
         amount: 10000
+      });
+      expect(mockRepo.findAccountsByIdsReadOnly).toHaveBeenCalledWith([1n, 2n], 1n);
+    });
+
+    it("삭제된 계좌를 참조하는 경우에도 계좌명을 함께 반환하고 삭제여부를 true로 표시한다", async () => {
+      (mockRepo.findTransferPairReadOnly as jest.Mock).mockResolvedValue([
+        makeTransferTx({ transactionId: 101n, walletId: 1n, transactionType: "EXPENSE" }),
+        makeTransferTx({ transactionId: 102n, walletId: 2n, transactionType: "INCOME" })
+      ]);
+      (mockRepo.findAccountsByIdsReadOnly as jest.Mock).mockResolvedValue([
+        makeAccount({ accountId: 1n, accountName: "월급통장" }),
+        makeAccount({ accountId: 2n, accountName: "삭제된계좌", deletedYn: true })
+      ]);
+
+      const result = await service.getTransfer(1n, "group-1");
+
+      expect(result).toMatchObject({
+        from_account_name: "월급통장",
+        from_account_deleted: false,
+        to_account_name: "삭제된계좌",
+        to_account_deleted: true
+      });
+    });
+
+    it("계좌 조회 결과에 없는 계좌(레코드 자체가 없는 경우)는 빈 이름과 삭제됨으로 처리한다", async () => {
+      (mockRepo.findTransferPairReadOnly as jest.Mock).mockResolvedValue([
+        makeTransferTx({ transactionId: 101n, walletId: 1n, transactionType: "EXPENSE" }),
+        makeTransferTx({ transactionId: 102n, walletId: 2n, transactionType: "INCOME" })
+      ]);
+      (mockRepo.findAccountsByIdsReadOnly as jest.Mock).mockResolvedValue([
+        makeAccount({ accountId: 1n, accountName: "월급통장" })
+      ]);
+
+      const result = await service.getTransfer(1n, "group-1");
+
+      expect(result).toMatchObject({
+        to_account_name: "",
+        to_account_deleted: true
       });
     });
 
