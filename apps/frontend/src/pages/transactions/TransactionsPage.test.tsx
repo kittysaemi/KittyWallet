@@ -2,7 +2,7 @@ import type { PropsWithChildren } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import TransactionsPage from ".";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import { categoryApi } from "../../entities/category/api/categoryApi";
@@ -357,5 +357,60 @@ describe("TransactionsPage — 기본 진입 시 오늘 위치로 스크롤", ()
     expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith(
       expect.objectContaining({ block: "start" })
     );
+  });
+});
+
+// 새로고침(F5)해도 이전에 보던 기간(연/월)이 유지되어야 한다(#353). 연/월을 URL 쿼리
+// 파라미터로 옮겼으므로, 마운트 시 URL에서 그대로 읽어오는지와, 이전/다음 달 이동 시 URL에
+// 반영되는지를 검증한다.
+describe("TransactionsPage — 새로고침(F5) 시 기간 유지", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    Object.defineProperty(window.navigator, "onLine", { configurable: true, value: true });
+    mockedCategoryApi.getCategories.mockResolvedValue(emptyCategories);
+    mockedIconApi.getIcons.mockResolvedValue(emptyIcons);
+  });
+
+  it("reads year/month from the URL on mount (simulates surviving a page reload)", async () => {
+    mockedTransactionApi.getTransactions.mockResolvedValue(emptyTransactions);
+
+    render(<TransactionsPage />, {
+      wrapper: createWrapper(["/transactions?year=2025&month=3"])
+    });
+
+    await waitFor(() => {
+      const call = mockedTransactionApi.getTransactions.mock.calls.find(([p]) => p?.limit === 20)?.[0];
+      expect(call).toMatchObject({ start_date: "2025-03-01", end_date: "2025-03-31" });
+    });
+  });
+
+  it("syncs the URL when moving to a different month, so a later reload keeps the same period", async () => {
+    mockedTransactionApi.getTransactions.mockResolvedValue(emptyTransactions);
+
+    const LocationProbe = () => {
+      const location = useLocation();
+      return <div data-testid="loc">{location.pathname}{location.search}</div>;
+    };
+
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={["/transactions"]}>
+          <TransactionsPage />
+          <LocationProbe />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+
+    await screen.findByText("거래 내역이 없습니다");
+    expect(screen.getByTestId("loc")).toHaveTextContent("/transactions");
+    expect(screen.getByTestId("loc")).not.toHaveTextContent("?");
+
+    await userEvent.click(screen.getByRole("button", { name: "이전 달" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("loc").textContent).toMatch(/\?year=\d{4}&month=\d{1,2}/);
+    });
   });
 });

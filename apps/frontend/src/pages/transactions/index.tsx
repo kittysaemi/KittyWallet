@@ -1,7 +1,7 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Clock, RefreshCw, WifiOff } from "lucide-react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import type { TransactionItem } from "../../entities/transaction/model/transaction.types";
 import { isTransferTransaction } from "../../entities/transaction/lib/isTransfer";
@@ -193,22 +193,33 @@ const PendingTransactionCard: React.FC<PendingTransactionCardProps> = ({
   );
 };
 
+// 상세화면(POP=뒤로가기)에서 돌아왔을 때 이전에 보던 페이지/스크롤 위치를 복원하기 위한
+// 모듈 스코프 저장소. 연/월은 새로고침에도 살아남아야 하므로 URL 쿼리 파라미터(year, month)로
+// 옮겼고, 이 저장소에는 새로고침 시 굳이 유지할 필요가 없는 page/scrollTop만 남긴다.
 let _savedTxState: { year: number; month: number; page: number; scrollTop?: number } | null = null;
 
 const TransactionsPage: React.FC = () => {
   const timezone = useTimezone();
   const todayStr = getTodayInTimezone(timezone);
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const highlightDate = (location.state as { highlightDate?: string; reset?: boolean } | null)?.highlightDate;
 
   const [year, setYear] = React.useState(() => {
     const state = location.state as { reset?: boolean; highlightDate?: string } | null;
     if (state?.reset) _savedTxState = null;
     if (state?.highlightDate) { _savedTxState = null; return parseInt(state.highlightDate.slice(0, 4), 10); }
+    const urlYear = searchParams.get("year");
+    if (urlYear && /^\d{4}$/.test(urlYear)) return parseInt(urlYear, 10);
     return _savedTxState?.year ?? parseInt(todayStr.slice(0, 4), 10);
   });
   const [month, setMonth] = React.useState(() => {
     if (highlightDate) return parseInt(highlightDate.slice(5, 7), 10);
+    const urlMonth = searchParams.get("month");
+    if (urlMonth) {
+      const m = parseInt(urlMonth, 10);
+      if (m >= 1 && m <= 12) return m;
+    }
     return _savedTxState?.month ?? parseInt(todayStr.slice(5, 7), 10);
   });
   const [page, setPage] = React.useState(_savedTxState?.page ?? 1);
@@ -227,6 +238,27 @@ const TransactionsPage: React.FC = () => {
   // 한 번만 계산해서 고정한다(실행 후 false로 바꾸는 방식은 두 번째 실행에서 폴백 분기로 빠져
   // 방금 옮긴 스크롤을 다시 0으로 되돌려버린다).
   const wasFreshEntry = React.useRef(!highlightDate && _savedTxState === null).current;
+
+  // 연/월은 새로고침(F5)에도 유지되어야 하므로 URL 쿼리 파라미터에 동기화한다. 최초 마운트
+  // 시점에는 실행하지 않는다 — 거래 등록 후 복귀(highlightDate)나 "최근 내역 더보기"(reset)
+  // 진입 시 URL이 정확히 `/transactions`로 끝나야 하는 화면(E2E, 대시보드 진입)이 있기 때문에,
+  // 사용자가 실제로 기간을 이동(이전/다음 달, 기간 이동 바텀시트)한 뒤부터만 URL에 반영한다.
+  const yearMonthMountedRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!yearMonthMountedRef.current) {
+      yearMonthMountedRef.current = true;
+      return;
+    }
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("year", String(year));
+        next.set("month", String(month));
+        return next;
+      },
+      { replace: true }
+    );
+  }, [year, month, setSearchParams]);
 
   const positionQuery = useQuery({
     queryKey: ["transactions-position", year, month, highlightDate],
