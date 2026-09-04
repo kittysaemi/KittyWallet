@@ -12,7 +12,7 @@ import { iconApi } from "../../entities/icon/api/iconApi";
 import type { TransactionDetailItem } from "../../entities/transaction/model/transaction.types";
 
 vi.mock("../../entities/transaction/api/transactionApi", () => ({
-  transactionApi: { getTransaction: vi.fn(), deleteTransaction: vi.fn() }
+  transactionApi: { getTransaction: vi.fn(), deleteTransaction: vi.fn(), getTransfer: vi.fn() }
 }));
 vi.mock("../../entities/account/api/accountApi", () => ({
   accountApi: { getAccounts: vi.fn() }
@@ -165,5 +165,149 @@ describe("TransactionDetailPage — edit icon visibility", () => {
 
     await userEvent.click(await screen.findByLabelText("거래 수정"));
     expect(await screen.findByText("거래 수정 화면 (returnTo: none)")).toBeInTheDocument();
+  });
+});
+
+describe("TransactionDetailPage — 계좌이동 표시 (#409)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockedCategoryApi.getCategories.mockResolvedValue(EMPTY_CATEGORIES);
+    mockedIconApi.getIcons.mockResolvedValue(EMPTY_ICONS);
+    mockedAccountApi.getAccounts.mockResolvedValue(EMPTY_ACCOUNTS);
+    mockedCardApi.getCards.mockResolvedValue(EMPTY_CARDS);
+  });
+
+  const transferResult = {
+    transfer_group_id: "tg-1",
+    from_transaction_id: 101,
+    to_transaction_id: 102,
+    from_account_id: 1,
+    from_account_name: "생활통장",
+    from_account_deleted: false,
+    to_account_id: 2,
+    to_account_name: "저축통장",
+    to_account_deleted: false,
+    amount: 30000,
+    transaction_date: "2026-06-01",
+    updated_at: "2026-06-01T00:00:00Z"
+  };
+
+  it("shows '계좌이동' as the transaction type (not 지출) when viewing the 출금 side", async () => {
+    mockedTransactionApi.getTransaction.mockResolvedValue({
+      success: true,
+      data: makeTx({
+        transaction_id: 101,
+        category_name: "계좌금액이동",
+        transaction_type: "EXPENSE",
+        transfer_group_id: "tg-1"
+      }),
+      error: null
+    });
+    mockedTransactionApi.getTransfer.mockResolvedValue({ success: true, data: transferResult, error: null });
+
+    renderDetail();
+
+    expect(await screen.findByText("계좌이동")).toBeInTheDocument();
+    expect(screen.queryByText("지출")).not.toBeInTheDocument();
+    expect(mockedTransactionApi.getTransfer).toHaveBeenCalledWith("tg-1");
+  });
+
+  it("shows the 이동 경로 row (from → to) when viewing the 출금 side", async () => {
+    mockedTransactionApi.getTransaction.mockResolvedValue({
+      success: true,
+      data: makeTx({
+        transaction_id: 101,
+        category_name: "계좌금액이동",
+        transaction_type: "EXPENSE",
+        transfer_group_id: "tg-1"
+      }),
+      error: null
+    });
+    mockedTransactionApi.getTransfer.mockResolvedValue({ success: true, data: transferResult, error: null });
+
+    renderDetail();
+
+    const label = await screen.findByText("이동 경로");
+    const row = label.closest("div");
+    expect(row?.textContent).toContain("생활통장");
+    expect(row?.textContent).toContain("저축통장");
+  });
+
+  it("shows the 이동 경로 row in the same from → to order when viewing the 입금 side", async () => {
+    mockedTransactionApi.getTransaction.mockResolvedValue({
+      success: true,
+      data: makeTx({
+        transaction_id: 102,
+        wallet_id: 2,
+        wallet_name: "저축통장",
+        category_name: "계좌금액이동",
+        transaction_type: "INCOME",
+        transfer_group_id: "tg-1"
+      }),
+      error: null
+    });
+    mockedTransactionApi.getTransfer.mockResolvedValue({ success: true, data: transferResult, error: null });
+
+    renderDetail();
+
+    expect(await screen.findByText("계좌이동")).toBeInTheDocument();
+    expect(screen.queryByText("수입")).not.toBeInTheDocument();
+    expect(await screen.findByText("이동 경로")).toBeInTheDocument();
+    // from_account_id가 항상 "보낸 계좌"를 가리키므로 입금 쪽에서 봐도 순서는 그대로 생활통장 → 저축통장
+    const row = (await screen.findByText("이동 경로")).closest("div");
+    expect(row?.textContent).toContain("생활통장");
+    expect(row?.textContent).toContain("저축통장");
+    expect(row?.textContent?.indexOf("생활통장")).toBeLessThan(row?.textContent?.indexOf("저축통장") ?? -1);
+  });
+
+  it("appends [삭제됨] to a deleted account's name in 이동 경로", async () => {
+    mockedTransactionApi.getTransaction.mockResolvedValue({
+      success: true,
+      data: makeTx({
+        transaction_id: 101,
+        category_name: "계좌금액이동",
+        transaction_type: "EXPENSE",
+        transfer_group_id: "tg-1"
+      }),
+      error: null
+    });
+    mockedTransactionApi.getTransfer.mockResolvedValue({
+      success: true,
+      data: { ...transferResult, to_account_deleted: true },
+      error: null
+    });
+
+    renderDetail();
+
+    expect(await screen.findByText(/저축통장 \[삭제됨\]/)).toBeInTheDocument();
+  });
+
+  it("omits the 이동 경로 row for a legacy transfer without transfer_group_id (category-name fallback)", async () => {
+    mockedTransactionApi.getTransaction.mockResolvedValue({
+      success: true,
+      data: makeTx({
+        category_name: "계좌금액이동",
+        transaction_type: "EXPENSE",
+        transfer_group_id: null
+      }),
+      error: null
+    });
+
+    renderDetail();
+
+    expect(await screen.findByText("계좌이동")).toBeInTheDocument();
+    expect(mockedTransactionApi.getTransfer).not.toHaveBeenCalled();
+    expect(screen.queryByText("이동 경로")).not.toBeInTheDocument();
+  });
+
+  it("shows 수입/지출 as before for a non-transfer transaction", async () => {
+    mockedTransactionApi.getTransaction.mockResolvedValue({ success: true, data: makeTx(), error: null });
+
+    renderDetail();
+
+    expect(await screen.findByText("지출")).toBeInTheDocument();
+    expect(screen.queryByText("계좌이동")).not.toBeInTheDocument();
+    expect(screen.queryByText("이동 경로")).not.toBeInTheDocument();
+    expect(mockedTransactionApi.getTransfer).not.toHaveBeenCalled();
   });
 });
