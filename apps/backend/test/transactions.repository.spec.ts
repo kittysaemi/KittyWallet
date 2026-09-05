@@ -1,8 +1,95 @@
 import { PrismaService } from "../src/database/prisma.service";
 import {
   CreateInstallmentInput,
+  FindTransactionsCondition,
   TransactionsRepository
 } from "../src/modules/transactions/infrastructure/transactions.repository";
+
+// 거래내역 목록 필터 조립(#353). buildWhere는 private이라 findMany를 통해 실제로 Prisma에
+// 전달되는 where 절을 검증한다.
+describe("TransactionsRepository.findMany where clause", () => {
+  const findManyMock = jest.fn().mockResolvedValue([]);
+  const prisma = {
+    transaction: { findMany: findManyMock }
+  } as unknown as PrismaService;
+  const repository = new TransactionsRepository(prisma);
+
+  const baseCondition: FindTransactionsCondition = { userId: BigInt(1) };
+
+  const whereOf = async (condition: FindTransactionsCondition) => {
+    await repository.findMany(condition, 1, 20, [{ transactionDate: "desc" }]);
+    return findManyMock.mock.calls.at(-1)![0].where;
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("filters by an IN clause when multiple category ids are given", async () => {
+    const where = await whereOf({
+      ...baseCondition,
+      categoryIds: [BigInt(1), BigInt(2)]
+    });
+
+    expect(where.categoryId).toEqual({ in: [BigInt(1), BigInt(2)] });
+  });
+
+  it("prefers the multi-select category ids over the single category id", async () => {
+    const where = await whereOf({
+      ...baseCondition,
+      categoryId: BigInt(9),
+      categoryIds: [BigInt(1)]
+    });
+
+    expect(where.categoryId).toEqual({ in: [BigInt(1)] });
+  });
+
+  it("keeps the single category id filter working for callers that send only that", async () => {
+    const where = await whereOf({ ...baseCondition, categoryId: BigInt(9) });
+
+    expect(where.categoryId).toBe(BigInt(9));
+  });
+
+  it("matches multi-selected wallets as (type, id) pairs so ACCOUNT:1 and CARD:1 stay distinct", async () => {
+    const where = await whereOf({
+      ...baseCondition,
+      walletRefs: [
+        { walletType: "ACCOUNT", walletId: BigInt(1) },
+        { walletType: "CARD", walletId: BigInt(1) }
+      ]
+    });
+
+    expect(where.OR).toEqual([
+      { walletType: "ACCOUNT", walletId: BigInt(1) },
+      { walletType: "CARD", walletId: BigInt(1) }
+    ]);
+    expect(where.walletType).toBeUndefined();
+    expect(where.walletId).toBeUndefined();
+  });
+
+  it("keeps the single wallet_type/wallet_id filter working for callers that send only those", async () => {
+    const where = await whereOf({
+      ...baseCondition,
+      walletType: "CARD",
+      walletId: BigInt(3)
+    });
+
+    expect(where).toMatchObject({ walletType: "CARD", walletId: BigInt(3) });
+    expect(where.OR).toBeUndefined();
+  });
+
+  it("excludes installment transactions when excludeInstallment is set", async () => {
+    const where = await whereOf({ ...baseCondition, excludeInstallment: true });
+
+    expect(where.installmentId).toBeNull();
+  });
+
+  it("does not touch installmentId when excludeInstallment is not set", async () => {
+    const where = await whereOf(baseCondition);
+
+    expect("installmentId" in where).toBe(false);
+  });
+});
 
 describe("TransactionsRepository.createInstallmentWithTransactions", () => {
   const tx = {
