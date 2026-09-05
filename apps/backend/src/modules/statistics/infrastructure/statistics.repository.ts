@@ -9,6 +9,8 @@ export interface StatisticsCondition {
   walletType?: WalletType;
   walletId?: bigint;
   transactionType?: TransactionType;
+  /** true이면 할부 거래(installmentId가 있는 거래)를 집계에서 완전히 제외한다. */
+  excludeInstallment?: boolean;
 }
 
 export interface TransactionTypeAmountGroup {
@@ -64,7 +66,8 @@ export class StatisticsRepository {
       },
       ...(condition.walletType ? { walletType: condition.walletType } : {}),
       ...(condition.walletId ? { walletId: condition.walletId } : {}),
-      ...(condition.transactionType ? { transactionType: condition.transactionType } : {})
+      ...(condition.transactionType ? { transactionType: condition.transactionType } : {}),
+      ...(condition.excludeInstallment ? { installmentId: null } : {})
     };
   }
 

@@ -286,6 +286,48 @@ describe("StatisticsService", () => {
     ]);
   });
 
+  it("달력 히트맵 집계 시 할부 거래를 제외하도록 요청한다", async () => {
+    statisticsRepository.groupDailyAmountsByTransactionType.mockResolvedValue([]);
+
+    await service.getCalendarStatistics({ userId: BigInt(1), month: "2026-06" });
+
+    expect(statisticsRepository.groupDailyAmountsByTransactionType).toHaveBeenCalledWith(
+      expect.objectContaining({
+        transactionType: "EXPENSE",
+        excludeInstallment: true
+      })
+    );
+  });
+
+  it("할부 거래가 제외된 일별 합계만 달력 히트맵에 반영한다", async () => {
+    // repository가 excludeInstallment 조건으로 할부 거래를 걸러낸 결과를 가정한다.
+    // 2026-06-01에 일반 지출 30,000 + 할부 회차 50,000이 있어도 30,000만 남는다.
+    statisticsRepository.groupDailyAmountsByTransactionType.mockResolvedValue([
+      {
+        transactionDate: new Date("2026-06-01T00:00:00.000Z"),
+        transactionType: "EXPENSE",
+        amount: decimal(30000),
+        transactionCount: 1
+      }
+    ]);
+
+    const result = await service.getCalendarStatistics({ userId: BigInt(1), month: "2026-06" });
+
+    expect(result.daily_items).toEqual([{ date: "2026-06-01", expense_amount: 30000 }]);
+    expect(result.max_daily_expense).toBe(30000);
+  });
+
+  it("월간/기간 통계는 할부 제외 조건을 사용하지 않는다", async () => {
+    statisticsRepository.groupAmountsByTransactionType.mockResolvedValue([]);
+    statisticsRepository.groupDailyAmountsByTransactionType.mockResolvedValue([]);
+
+    await service.getMonthlyStatistics({ userId: BigInt(1), month: "2026-06" });
+
+    expect(statisticsRepository.groupDailyAmountsByTransactionType).toHaveBeenCalledWith(
+      expect.not.objectContaining({ excludeInstallment: true })
+    );
+  });
+
   it("returns empty calendar when no expense data", async () => {
     statisticsRepository.groupDailyAmountsByTransactionType.mockResolvedValue([]);
 

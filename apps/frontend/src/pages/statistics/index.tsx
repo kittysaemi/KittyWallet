@@ -465,7 +465,10 @@ const HeatmapContent: React.FC<{
     enabled: selectedDate != null,
     staleTime: STALE_TIME.SHORT
   });
-  const selectedTransactions = selectedTransactionsQuery.data?.data?.items ?? [];
+  // 히트맵 일별 합계가 할부를 제외하므로, 상세 목록에서도 할부 거래를 제외해 합계와 목록을 일치시킨다.
+  const selectedTransactions = (selectedTransactionsQuery.data?.data?.items ?? []).filter(
+    (item: TransactionItem) => item.installment_id == null
+  );
 
   if (isLoading) return <TabSkeleton />;
   if (isError) return <ErrorCard onRetry={onRetry} />;

@@ -96,6 +96,40 @@ describe("StatisticsRepository", () => {
     expect(expense?.amount.toNumber()).toBe(10500);
   });
 
+  it("excludeInstallment가 true이면 할부 거래를 집계에서 제외한다", async () => {
+    prisma.transaction.groupBy.mockResolvedValue([]);
+
+    await repository.groupDailyAmountsByTransactionType({
+      userId: BigInt(1),
+      startDate: new Date("2026-06-01T00:00:00.000Z"),
+      endDate: new Date("2026-06-30T00:00:00.000Z"),
+      transactionType: TransactionType.EXPENSE,
+      excludeInstallment: true
+    });
+
+    expect(prisma.transaction.groupBy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ installmentId: null })
+      })
+    );
+  });
+
+  it("excludeInstallment가 없으면 installmentId 조건을 추가하지 않는다", async () => {
+    prisma.transaction.groupBy.mockResolvedValue([]);
+
+    await repository.groupDailyAmountsByTransactionType({
+      userId: BigInt(1),
+      startDate: new Date("2026-06-01T00:00:00.000Z"),
+      endDate: new Date("2026-06-30T00:00:00.000Z")
+    });
+
+    expect(prisma.transaction.groupBy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.not.objectContaining({ installmentId: expect.anything() })
+      })
+    );
+  });
+
   it("통계 집계는 Transaction.amount와 interest만 사용하며 CardInstallment.originalAmount를 직접 조회하지 않는다", async () => {
     prisma.transaction.groupBy.mockResolvedValue([]);
 

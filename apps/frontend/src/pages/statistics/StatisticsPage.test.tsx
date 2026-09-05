@@ -6,6 +6,7 @@ import { MemoryRouter } from "react-router-dom";
 import StatisticsPage from ".";
 import { statisticsApi } from "../../entities/statistics/api/statisticsApi";
 import { iconApi } from "../../entities/icon/api/iconApi";
+import { transactionApi } from "../../entities/transaction/api/transactionApi";
 
 vi.mock("../../entities/statistics/api/statisticsApi", () => ({
   statisticsApi: {
@@ -27,8 +28,15 @@ vi.mock("../../entities/icon/api/iconApi", () => ({
   }
 }));
 
+vi.mock("../../entities/transaction/api/transactionApi", () => ({
+  transactionApi: {
+    getTransactions: vi.fn()
+  }
+}));
+
 const mockedStatisticsApi = vi.mocked(statisticsApi);
 const mockedIconApi = vi.mocked(iconApi);
+const mockedTransactionApi = vi.mocked(transactionApi);
 
 HTMLCanvasElement.prototype.getContext = vi.fn(() => ({
   canvas: document.createElement("canvas"),
@@ -162,6 +170,52 @@ const CALENDAR_DATA = {
   error: null
 };
 
+const DAY_TRANSACTIONS_DATA = {
+  success: true,
+  data: {
+    items: [
+      {
+        transaction_id: 1,
+        wallet_type: "ACCOUNT" as const,
+        wallet_id: 1,
+        wallet_name: "우리은행",
+        wallet_deleted: false,
+        category_id: 1,
+        category_name: "식비",
+        transaction_type: "EXPENSE" as const,
+        amount: 40000,
+        memo: null,
+        transaction_date: "2026-06-01",
+        created_at: "2026-06-01T00:00:00.000Z",
+        updated_at: "2026-06-01T00:00:00.000Z"
+      },
+      {
+        transaction_id: 2,
+        wallet_type: "CARD" as const,
+        wallet_id: 2,
+        wallet_name: "신한카드",
+        wallet_deleted: false,
+        category_id: 2,
+        category_name: "가전",
+        transaction_type: "EXPENSE" as const,
+        amount: 100000,
+        memo: null,
+        transaction_date: "2026-06-01",
+        created_at: "2026-06-01T00:00:00.000Z",
+        updated_at: "2026-06-01T00:00:00.000Z",
+        installment_id: 77,
+        installment_seq: 1,
+        installment_total_count: 3,
+        installment_original_amount: 300000
+      }
+    ],
+    page: 1,
+    limit: 100,
+    total_count: 2
+  },
+  error: null
+};
+
 const SANKEY_DATA = {
   success: true,
   data: {
@@ -230,6 +284,7 @@ describe("StatisticsPage", () => {
     mockedStatisticsApi.getSankeyIncomeStatistics.mockResolvedValue(SANKEY_INCOME_DATA);
     mockedStatisticsApi.getCategoryExpenseStatistics.mockResolvedValue(CATEGORY_EXPENSE_DATA);
     mockedIconApi.getIcons.mockResolvedValue(ICON_EMPTY);
+    mockedTransactionApi.getTransactions.mockResolvedValue(DAY_TRANSACTIONS_DATA);
   });
 
   it("renders spending tab with monthly summary and chart", async () => {
@@ -333,6 +388,21 @@ describe("StatisticsPage", () => {
 
     await waitFor(() => expect(mockedStatisticsApi.getCalendarStatistics).toHaveBeenCalled());
     expect(await screen.findByLabelText("달력 히트맵")).toBeInTheDocument();
+  });
+
+  it("달력히트맵 일자 상세 목록에서 할부 거래를 제외한다", async () => {
+    render(<StatisticsPage />, { wrapper: createWrapper() });
+
+    await userEvent.click(await screen.findByRole("button", { name: "달력히트맵" }));
+    await screen.findByLabelText("달력 히트맵");
+
+    await userEvent.click(screen.getByRole("button", { name: /^1일/ }));
+
+    await waitFor(() => expect(mockedTransactionApi.getTransactions).toHaveBeenCalled());
+
+    // 일반 지출은 노출되고, 할부 회차 거래는 노출되지 않는다.
+    expect(await screen.findByText("식비/우리은행")).toBeInTheDocument();
+    expect(screen.queryByText("가전/신한카드")).not.toBeInTheDocument();
   });
 
   it("switches to 소비흐름 tab and renders expense Sankey diagram", async () => {

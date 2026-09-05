@@ -260,13 +260,16 @@ export class StatisticsService {
   async getCalendarStatistics(command: GetVisualizationCommand) {
     const month = command.month ?? getTodayInTimezone().slice(0, 7);
     const { startDate, endDate } = this.parseMonth(month);
+    // 달력 히트맵은 할부 거래를 집계 대상에서 완전히 제외한다.
+    // (카테고리 통계처럼 원금으로 재집계하지 않고, 할부 거래 자체를 노출하지 않는다.)
     const dailyGroups = await this.statisticsRepository.groupDailyAmountsByTransactionType({
       userId: command.userId,
       startDate,
       endDate,
       walletType: this.toWalletType(command.walletType),
       walletId: command.walletId,
-      transactionType: TransactionType.EXPENSE
+      transactionType: TransactionType.EXPENSE,
+      excludeInstallment: true
     });
 
     const dailyMap = new Map<string, number>();
