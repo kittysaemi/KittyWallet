@@ -21,6 +21,7 @@ import { Input } from "../../shared/ui/Input";
 import { useTimezone } from "../../shared/hooks/useTimezone";
 import { getTodayInTimezone } from "../../shared/utils/date";
 import { STALE_TIME } from "../../shared/constants/queryConfig";
+import { KOREAN_TEXT_INPUT_PROPS, NUMERIC_TEXT_INPUT_PROPS } from "../../shared/constants/inputIme";
 import { CLIENT_ERROR_CODES, formatSupportError, toSupportErrorMessage } from "../../shared/api/apiError";
 
 function createSchema(today: string, skipFutureDateCheck = false) {
@@ -607,7 +608,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             }}
             error={errors.interest}
             disabled={isSaving}
-            autoComplete="off"
+            {...NUMERIC_TEXT_INPUT_PROPS}
           />
         </>
       ) : (
@@ -628,7 +629,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           }}
           error={errors.amount}
           disabled={isSaving}
-          autoComplete="off"
+          {...NUMERIC_TEXT_INPUT_PROPS}
         />
       )}
 
@@ -797,6 +798,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         error={errors.memo}
         disabled={isSaving}
         maxLength={200}
+        autoComplete="off"
+        {...KOREAN_TEXT_INPUT_PROPS}
       />
 
       {/* API 에러 */}

@@ -9,6 +9,7 @@ import type { IconItem } from "../../entities/icon/model/icon.types";
 import { IconSelect } from "../icons/IconSelect";
 import { Button } from "../../shared/ui/Button";
 import { Input } from "../../shared/ui/Input";
+import { KOREAN_TEXT_INPUT_PROPS } from "../../shared/constants/inputIme";
 import { toSupportErrorMessage } from "../../shared/api/apiError";
 
 const createSchema = z.object({
@@ -126,6 +127,8 @@ export const CardForm: React.FC<CardFormProps> = ({ mode, card }) => {
         placeholder="예: 신한카드"
         error={fieldErrors.card_name}
         maxLength={15}
+        autoComplete="off"
+        {...KOREAN_TEXT_INPUT_PROPS}
       />
 
       <div className="flex flex-col gap-2">

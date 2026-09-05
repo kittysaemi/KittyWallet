@@ -69,6 +69,18 @@ describe("TransferForm", () => {
     expect(screen.getByLabelText("메모 (선택)")).toBeInTheDocument();
   });
 
+  it("메모 필드에 한글 IME 힌트 속성이 적용된다 (#353)", async () => {
+    render(<TransferForm onSuccess={vi.fn()} />, { wrapper: createWrapper() });
+    const memo = await screen.findByLabelText("메모 (선택)");
+    // 숫자 키패드(TYPE_CLASS_NUMBER) 필드에서 넘어올 때 EditorInfo에 라틴 전용 힌트가
+    // 섞이지 않도록 대문자 변환/자동 교정/맞춤법 검사를 끈다.
+    expect(memo).toHaveAttribute("lang", "ko");
+    expect(memo).toHaveAttribute("inputmode", "text");
+    expect(memo).toHaveAttribute("autocapitalize", "off");
+    expect(memo).toHaveAttribute("autocorrect", "off");
+    expect(memo).toHaveAttribute("spellcheck", "false");
+  });
+
   it("계좌이동 카테고리 상태와 무관하게 고정 아이콘과 라벨을 폼 상단에 표시한다 (#409)", async () => {
     render(<TransferForm onSuccess={vi.fn()} />, { wrapper: createWrapper() });
     expect(await screen.findByText("계좌금액이동")).toBeInTheDocument();

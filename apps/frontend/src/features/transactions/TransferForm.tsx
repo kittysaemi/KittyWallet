@@ -13,6 +13,7 @@ import { IconRenderer } from "../../shared/ui/IconRenderer";
 import { useTimezone } from "../../shared/hooks/useTimezone";
 import { getTodayInTimezone } from "../../shared/utils/date";
 import { STALE_TIME } from "../../shared/constants/queryConfig";
+import { KOREAN_TEXT_INPUT_PROPS, NUMERIC_TEXT_INPUT_PROPS } from "../../shared/constants/inputIme";
 import { toSupportErrorMessage } from "../../shared/api/apiError";
 
 function createSchema(today: string) {
@@ -422,7 +423,7 @@ export const TransferForm: React.FC<TransferFormProps> = ({
         }}
         error={errors.amount}
         disabled={isSaving}
-        autoComplete="off"
+        {...NUMERIC_TEXT_INPUT_PROPS}
       />
 
       {/* 날짜 */}
@@ -451,6 +452,8 @@ export const TransferForm: React.FC<TransferFormProps> = ({
         error={errors.memo}
         disabled={isSaving}
         maxLength={200}
+        autoComplete="off"
+        {...KOREAN_TEXT_INPUT_PROPS}
       />
 
       {apiError && (

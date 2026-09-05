@@ -123,3 +123,26 @@ describe("TransactionForm - 카드할부 UI 노출 규칙", () => {
     expect((screen.getByLabelText("할부 개월수") as HTMLSelectElement).value).toBe("");
   });
 });
+
+describe("TransactionForm - 모바일 IME 힌트 (#353)", () => {
+  it("메모 필드에 한글 IME 힌트 속성이 적용된다", async () => {
+    render(<TransactionForm onSuccess={vi.fn()} />, { wrapper: createWrapper() });
+    const memo = await screen.findByLabelText("메모 (선택)");
+    // 금액(inputmode=numeric, TYPE_CLASS_NUMBER)에서 메모(TYPE_CLASS_TEXT)로 포커스가
+    // 옮겨갈 때 EditorInfo에 라틴 전용 힌트가 섞이지 않도록 한다.
+    expect(memo).toHaveAttribute("lang", "ko");
+    expect(memo).toHaveAttribute("inputmode", "text");
+    expect(memo).toHaveAttribute("autocapitalize", "off");
+    expect(memo).toHaveAttribute("autocorrect", "off");
+    expect(memo).toHaveAttribute("spellcheck", "false");
+  });
+
+  it("금액 필드는 숫자 키패드를 유지하면서 라틴 입력 보조 기능을 끈다", async () => {
+    render(<TransactionForm onSuccess={vi.fn()} />, { wrapper: createWrapper() });
+    const amount = await screen.findByLabelText("금액");
+    expect(amount).toHaveAttribute("inputmode", "numeric");
+    expect(amount).toHaveAttribute("autocapitalize", "off");
+    expect(amount).toHaveAttribute("autocorrect", "off");
+    expect(amount).toHaveAttribute("autocomplete", "off");
+  });
+});

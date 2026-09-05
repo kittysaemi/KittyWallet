@@ -9,6 +9,7 @@ import type { IconItem } from "../../entities/icon/model/icon.types";
 import { IconSelect } from "../icons/IconSelect";
 import { Button } from "../../shared/ui/Button";
 import { Input } from "../../shared/ui/Input";
+import { KOREAN_TEXT_INPUT_PROPS, NUMERIC_TEXT_INPUT_PROPS } from "../../shared/constants/inputIme";
 import { toSupportErrorMessage } from "../../shared/api/apiError";
 
 const createSchema = z.object({
@@ -137,6 +138,8 @@ export const AccountForm: React.FC<AccountFormProps> = ({ mode, account }) => {
         placeholder="예: 생활비 통장"
         error={fieldErrors.account_name}
         maxLength={15}
+        autoComplete="off"
+        {...KOREAN_TEXT_INPUT_PROPS}
       />
 
       {!isEdit && (
@@ -156,6 +159,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({ mode, account }) => {
           }}
           placeholder="0"
           error={fieldErrors.initial_balance}
+          {...NUMERIC_TEXT_INPUT_PROPS}
         />
       )}
 

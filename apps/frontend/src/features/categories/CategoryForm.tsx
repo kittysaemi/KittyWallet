@@ -6,6 +6,7 @@ import { categoryApi } from "../../entities/category/api/categoryApi";
 import type { IconItem } from "../../entities/icon/model/icon.types";
 import { Button } from "../../shared/ui/Button";
 import { Input } from "../../shared/ui/Input";
+import { KOREAN_TEXT_INPUT_PROPS } from "../../shared/constants/inputIme";
 import { IconSelect } from "../icons/IconSelect";
 import { toSupportErrorMessage } from "../../shared/api/apiError";
 
@@ -100,6 +101,8 @@ export const CategoryForm: React.FC = () => {
         error={fieldErrors.category_name}
         maxLength={15}
         disabled={isPending}
+        autoComplete="off"
+        {...KOREAN_TEXT_INPUT_PROPS}
       />
 
       <div className="flex flex-col gap-2">
