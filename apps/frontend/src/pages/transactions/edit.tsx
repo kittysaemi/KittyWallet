@@ -82,6 +82,20 @@ const TransactionEditPage: React.FC = () => {
   // 목록에서 항목을 눌러 상세화면을 거치지 않고 바로 진입한 경우) 기존처럼 /transactions로 이동한다.
   const returnTo = (location.state as { returnTo?: string } | null)?.returnTo;
 
+  // 저장/삭제 완료 시 목록 화면으로 돌아간다(#353). returnTo가 있다는 것은 항상 목록(push) ->
+  // 상세(push) -> 수정(push) 경로로 왔다는 뜻이므로, 2단계를 그대로 되돌아가면(navigate(-2))
+  // 정확히 그 목록 화면(returnTo와 같은 경로)에 도달하면서 상세화면은 히스토리에서 건너뛴다.
+  // 수정 자체는 push를 유지해야(취소 시 상세로 되돌아갈 수 있어야 함) 하므로, 여기서 완료
+  // 시점에만 상세를 건너뛰도록 처리한다. returnTo가 없으면(목록에서 상세 없이 바로 진입)
+  // 되돌아갈 상세화면 자체가 없으므로 기존처럼 교체 이동한다.
+  function goToListAfterCompletion() {
+    if (returnTo) {
+      navigate(-2);
+    } else {
+      navigate("/transactions", { replace: true });
+    }
+  }
+
   const transactionQuery = useQuery({
     queryKey: ["transactions", "detail", id],
     queryFn: () => transactionApi.getTransaction(Number(id)),
@@ -105,7 +119,7 @@ const TransactionEditPage: React.FC = () => {
     onSuccess: () => {
       invalidateTransactionRelatedQueries(queryClient);
       void invalidateTransactionCaches();
-      navigate(returnTo ?? "/transactions", { replace: true });
+      goToListAfterCompletion();
     },
     onError: (err: unknown) => {
       const code =
@@ -171,7 +185,7 @@ const TransactionEditPage: React.FC = () => {
         usePwaStore.getState().setSyncStatus("pending_sync");
         invalidateTransactionRelatedQueries(queryClient);
         void invalidateTransactionCaches();
-        navigate(returnTo ?? "/transactions", { replace: true });
+        goToListAfterCompletion();
       } catch {
         setDeleteError("오프라인 삭제 저장에 실패했습니다. 다시 시도해주세요.");
       }
@@ -283,7 +297,7 @@ const TransactionEditPage: React.FC = () => {
                     transaction_date: transferDetailQuery.data.data.transaction_date,
                     memo: transaction.memo
                   }}
-                  onSuccess={() => navigate(returnTo ?? "/transactions", { replace: true })}
+                  onSuccess={goToListAfterCompletion}
                 />
               </div>
             ) : (
@@ -298,7 +312,7 @@ const TransactionEditPage: React.FC = () => {
               <TransactionForm
                 initialData={transaction}
                 transactionId={transaction.transaction_id}
-                onSuccess={() => navigate(returnTo ?? "/transactions", { replace: true })}
+                onSuccess={goToListAfterCompletion}
                 readOnly={walletDeleted}
                 futureInstallment={isFutureInstallment}
               />
