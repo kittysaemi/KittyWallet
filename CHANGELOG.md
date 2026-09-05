@@ -1,3 +1,10 @@
+# [1.45.0](https://github.com/kittysaemi/KittyWallet/compare/v1.44.4...v1.45.0) (2026-09-05)
+
+
+### Features
+
+* **transactions:** 거래내역 카테고리/지갑 다중 선택 및 할부 제외 필터 추가 ([#418](https://github.com/kittysaemi/KittyWallet/issues/418)) ([9609432](https://github.com/kittysaemi/KittyWallet/commit/9609432873a2ff86dda5f811423cd64ba379ead1)), closes [#353](https://github.com/kittysaemi/KittyWallet/issues/353)
+
 ## [1.44.4](https://github.com/kittysaemi/KittyWallet/compare/v1.44.3...v1.44.4) (2026-09-05)
 
 
