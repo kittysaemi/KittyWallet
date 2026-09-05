@@ -10,6 +10,7 @@ describe("StatisticsService", () => {
   const statisticsRepository = {
     groupAmountsByTransactionType: jest.fn(),
     groupDailyAmountsByTransactionType: jest.fn(),
+    groupDailyExpenseAmountsByInstallmentOrigin: jest.fn(),
     groupAmountsByCategory: jest.fn(),
     groupCategoryAmountsByInstallmentOrigin: jest.fn(),
     groupExpensesByWalletAndCategory: jest.fn(),
@@ -271,9 +272,9 @@ describe("StatisticsService", () => {
   });
 
   it("returns calendar statistics with max daily expense", async () => {
-    statisticsRepository.groupDailyAmountsByTransactionType.mockResolvedValue([
-      { transactionDate: new Date("2026-06-01T00:00:00.000Z"), transactionType: "EXPENSE", amount: decimal(30000), transactionCount: 1 },
-      { transactionDate: new Date("2026-06-03T00:00:00.000Z"), transactionType: "EXPENSE", amount: decimal(80000), transactionCount: 2 }
+    statisticsRepository.groupDailyExpenseAmountsByInstallmentOrigin.mockResolvedValue([
+      { transactionDate: new Date("2026-06-01T00:00:00.000Z"), amount: decimal(30000) },
+      { transactionDate: new Date("2026-06-03T00:00:00.000Z"), amount: decimal(80000) }
     ]);
 
     const result = await service.getCalendarStatistics({ userId: BigInt(1), month: "2026-06" });
@@ -286,8 +287,49 @@ describe("StatisticsService", () => {
     ]);
   });
 
-  it("returns empty calendar when no expense data", async () => {
+  it("달력 히트맵은 할부 원금 기준 일별 집계를 사용한다", async () => {
+    statisticsRepository.groupDailyExpenseAmountsByInstallmentOrigin.mockResolvedValue([]);
+
+    await service.getCalendarStatistics({ userId: BigInt(1), month: "2026-06" });
+
+    expect(
+      statisticsRepository.groupDailyExpenseAmountsByInstallmentOrigin
+    ).toHaveBeenCalledWith(expect.objectContaining({ transactionType: "EXPENSE" }));
+    // 회차별로 중복 집계되는 기존 일별 집계는 더 이상 사용하지 않는다.
+    expect(statisticsRepository.groupDailyAmountsByTransactionType).not.toHaveBeenCalled();
+  });
+
+  it("할부를 구매일에 원금으로 1회만 반영한 일별 합계를 달력 히트맵에 노출한다", async () => {
+    // 6/1: 일반 지출 30,000 + 6/1 구매한 3개월 할부 원금 300,000 = 330,000
+    // 7/1, 8/1 회차分은 repository 2-pass 집계에서 이미 빠져 있다.
+    statisticsRepository.groupDailyExpenseAmountsByInstallmentOrigin.mockResolvedValue([
+      { transactionDate: new Date("2026-06-01T00:00:00.000Z"), amount: decimal(330000) },
+      { transactionDate: new Date("2026-06-03T00:00:00.000Z"), amount: decimal(80000) }
+    ]);
+
+    const result = await service.getCalendarStatistics({ userId: BigInt(1), month: "2026-06" });
+
+    expect(result.daily_items).toEqual([
+      { date: "2026-06-01", expense_amount: 330000 },
+      { date: "2026-06-03", expense_amount: 80000 }
+    ]);
+    expect(result.max_daily_expense).toBe(330000);
+  });
+
+  it("월간 통계는 기존 일별 집계를 그대로 사용한다", async () => {
+    statisticsRepository.groupAmountsByTransactionType.mockResolvedValue([]);
     statisticsRepository.groupDailyAmountsByTransactionType.mockResolvedValue([]);
+
+    await service.getMonthlyStatistics({ userId: BigInt(1), month: "2026-06" });
+
+    expect(statisticsRepository.groupDailyAmountsByTransactionType).toHaveBeenCalled();
+    expect(
+      statisticsRepository.groupDailyExpenseAmountsByInstallmentOrigin
+    ).not.toHaveBeenCalled();
+  });
+
+  it("returns empty calendar when no expense data", async () => {
+    statisticsRepository.groupDailyExpenseAmountsByInstallmentOrigin.mockResolvedValue([]);
 
     const result = await service.getCalendarStatistics({ userId: BigInt(1), month: "2026-06" });
 

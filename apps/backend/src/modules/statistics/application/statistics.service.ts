@@ -260,7 +260,9 @@ export class StatisticsService {
   async getCalendarStatistics(command: GetVisualizationCommand) {
     const month = command.month ?? getTodayInTimezone().slice(0, 7);
     const { startDate, endDate } = this.parseMonth(month);
-    const dailyGroups = await this.statisticsRepository.groupDailyAmountsByTransactionType({
+    // 달력 히트맵은 할부 회차를 매달 중복 집계하지 않고, 최초 구매일에 원금 기준으로 1회만 집계한다.
+    // (카테고리 통계 #369와 동일한 2-pass 방식)
+    const dailyGroups = await this.statisticsRepository.groupDailyExpenseAmountsByInstallmentOrigin({
       userId: command.userId,
       startDate,
       endDate,
