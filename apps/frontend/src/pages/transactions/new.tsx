@@ -131,10 +131,15 @@ const TransactionNewPage: React.FC = () => {
             }}
             onSuccess={() => {
               if (returnTo) {
-                navigate(returnTo);
+                // replace: true — 등록화면을 지갑 화면으로 교체해야, 등록 완료 후 "뒤로가기"를
+                // 눌렀을 때 이미 제출된 등록화면이 다시 나타나지 않는다(#353).
+                navigate(returnTo, { replace: true });
                 return;
               }
-              navigate("/transactions", { state: { highlightDate: lastCreatedDateRef.current } });
+              navigate("/transactions", {
+                replace: true,
+                state: { highlightDate: lastCreatedDateRef.current }
+              });
             }}
           />
         </div>
