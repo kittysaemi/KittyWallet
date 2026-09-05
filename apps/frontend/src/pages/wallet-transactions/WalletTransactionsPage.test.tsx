@@ -281,6 +281,82 @@ describe("WalletTransactionsPage — ACCOUNT", () => {
     ).toBeInTheDocument();
   });
 
+  it("navigates to 계좌이동 등록 with fromAccountId + returnTo state (#409)", async () => {
+    mockedTransactionApi.getTransactions.mockResolvedValue(makeTxPage());
+
+    const TransferStateProbe = () => {
+      const location = useLocation();
+      const state = location.state as { returnTo?: string } | null;
+      return (
+        <div>
+          계좌이동 등록 화면 (search: {location.search}, returnTo: {state?.returnTo ?? "none"})
+        </div>
+      );
+    };
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } }
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={["/accounts/1/transactions"]}>
+          <Routes>
+            <Route path="/accounts/:walletId/transactions" element={<WalletTransactionsPage walletType="ACCOUNT" />} />
+            <Route path="/transfer/new" element={<TransferStateProbe />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+
+    await userEvent.click(await screen.findByRole("button", { name: "거래등록/계좌이동" }));
+    await userEvent.click(await screen.findByRole("button", { name: "계좌이동" }));
+
+    expect(
+      await screen.findByText(
+        "계좌이동 등록 화면 (search: ?fromAccountId=1, returnTo: /accounts/1/transactions)"
+      )
+    ).toBeInTheDocument();
+  });
+
+  it("navigates to 거래등록 with walletId + returnTo state (#409)", async () => {
+    mockedTransactionApi.getTransactions.mockResolvedValue(makeTxPage());
+
+    const NewTransactionStateProbe = () => {
+      const location = useLocation();
+      const state = location.state as { returnTo?: string } | null;
+      return (
+        <div>
+          거래 등록 화면 (search: {location.search}, returnTo: {state?.returnTo ?? "none"})
+        </div>
+      );
+    };
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } }
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={["/accounts/1/transactions"]}>
+          <Routes>
+            <Route path="/accounts/:walletId/transactions" element={<WalletTransactionsPage walletType="ACCOUNT" />} />
+            <Route path="/transactions/new" element={<NewTransactionStateProbe />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+
+    await userEvent.click(await screen.findByRole("button", { name: "거래등록/계좌이동" }));
+    await userEvent.click(await screen.findByRole("button", { name: "거래등록" }));
+
+    expect(
+      await screen.findByText(
+        "거래 등록 화면 (search: ?walletType=ACCOUNT&walletId=1, returnTo: /accounts/1/transactions)"
+      )
+    ).toBeInTheDocument();
+  });
+
   it("shows 더보기 button when more pages exist", async () => {
     mockedTransactionApi.getTransactions.mockResolvedValue({
       success: true,
@@ -331,6 +407,43 @@ describe("WalletTransactionsPage — CARD", () => {
 
     expect(await screen.findByText("거래 내역이 없습니다")).toBeInTheDocument();
     expect(screen.getByText("선택한 기간에 해당 카드의 거래가 없어요.")).toBeInTheDocument();
+  });
+
+  it("navigates to 거래등록 with walletId + returnTo state (#409)", async () => {
+    mockedTransactionApi.getTransactions.mockResolvedValue(makeTxPageWithSummary(0));
+
+    const NewTransactionStateProbe = () => {
+      const location = useLocation();
+      const state = location.state as { returnTo?: string } | null;
+      return (
+        <div>
+          거래 등록 화면 (search: {location.search}, returnTo: {state?.returnTo ?? "none"})
+        </div>
+      );
+    };
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } }
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={["/cards/2/transactions"]}>
+          <Routes>
+            <Route path="/cards/:walletId/transactions" element={<WalletTransactionsPage walletType="CARD" />} />
+            <Route path="/transactions/new" element={<NewTransactionStateProbe />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+
+    await userEvent.click(await screen.findByRole("button", { name: "거래등록" }));
+
+    expect(
+      await screen.findByText(
+        "거래 등록 화면 (search: ?walletType=CARD&walletId=2, returnTo: /cards/2/transactions)"
+      )
+    ).toBeInTheDocument();
   });
 });
 
