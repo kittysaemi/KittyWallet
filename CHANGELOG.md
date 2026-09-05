@@ -1,3 +1,10 @@
+## [1.44.1](https://github.com/kittysaemi/KittyWallet/compare/v1.44.0...v1.44.1) (2026-09-05)
+
+
+### Bug Fixes
+
+* **#353:** 대시보드 최근 내역 6개 고정 표시 및 계좌이동 제외를 쿼리 단계로 이동 ([#413](https://github.com/kittysaemi/KittyWallet/issues/413)) ([3f88089](https://github.com/kittysaemi/KittyWallet/commit/3f88089df55294d62fbd2b0cd557a70ed66accbd)), closes [#353](https://github.com/kittysaemi/KittyWallet/issues/353) [#353](https://github.com/kittysaemi/KittyWallet/issues/353)
+
 # [1.44.0](https://github.com/kittysaemi/KittyWallet/compare/v1.43.0...v1.44.0) (2026-09-05)
 
 
