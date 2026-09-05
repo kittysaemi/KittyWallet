@@ -1,3 +1,10 @@
+# [1.44.0](https://github.com/kittysaemi/KittyWallet/compare/v1.43.0...v1.44.0) (2026-09-05)
+
+
+### Features
+
+* **#353:** 일반 거래내역 화면 새로고침 버그 수정 + 필터 바(카테고리/지갑/수입-지출/일) + 기간 이동 바텀시트 ([#412](https://github.com/kittysaemi/KittyWallet/issues/412)) ([33b010a](https://github.com/kittysaemi/KittyWallet/commit/33b010a40f8213e13590b1599b5b678918f618b0)), closes [#353](https://github.com/kittysaemi/KittyWallet/issues/353) [#353](https://github.com/kittysaemi/KittyWallet/issues/353) [#353](https://github.com/kittysaemi/KittyWallet/issues/353)
+
 # [1.43.0](https://github.com/kittysaemi/KittyWallet/compare/v1.42.0...v1.43.0) (2026-09-04)
 
 
