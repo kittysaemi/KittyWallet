@@ -1,3 +1,4 @@
+import { StrictMode } from "react";
 import type { PropsWithChildren } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
@@ -444,5 +445,90 @@ describe("WalletTransactionsPage — 상세화면 Back 시 기간/스크롤 복�
     const diffDays =
       lastCall && (new Date(lastCall.end_date!).getTime() - new Date(lastCall.start_date!).getTime()) / 86_400_000;
     expect(diffDays).not.toBe(6);
+  });
+});
+
+// 새로고침(F5)해도 이전에 보던 기간(년/월/주 탭 및 기준 날짜)이 유지되어야 한다(#353).
+// periodType/baseDate를 URL 쿼리 파라미터(period, date)로 옮겼으므로, 그 값이 담긴 URL로
+// 처음 마운트하는 것만으로(POP 네비게이션이나 모듈 메모리 없이) 올바른 기간이 조회되는지
+// 검증한다 — 이는 실제 브라우저 새로고침과 동일한 상황이다(모듈 메모리는 항상 비어있고,
+// 브라우저가 같은 URL을 다시 요청한다).
+describe("WalletTransactionsPage — 새로고침(F5) 시 기간 유지", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    Object.defineProperty(window.navigator, "onLine", { configurable: true, value: true });
+    mockedAccountApi.getAccounts.mockResolvedValue(ACCOUNTS_DATA);
+    mockedCategoryApi.getCategories.mockResolvedValue(EMPTY_CATEGORIES);
+    mockedIconApi.getIcons.mockResolvedValue(EMPTY_ICONS);
+  });
+
+  it("reads periodType/baseDate from the URL on a fresh mount instead of resetting to the current month", async () => {
+    mockedTransactionApi.getTransactions.mockResolvedValue(makeTxPage());
+
+    render(<WalletTransactionsPage walletType="ACCOUNT" />, {
+      wrapper: ({ children }: PropsWithChildren) => {
+        const queryClient = new QueryClient({
+          defaultOptions: { queries: { retry: false }, mutations: { retry: false } }
+        });
+        return (
+          <QueryClientProvider client={queryClient}>
+            <MemoryRouter initialEntries={["/accounts/1/transactions?period=year&date=2026-03-15"]}>
+              <Routes>
+                <Route path="/accounts/:walletId/transactions" element={children} />
+              </Routes>
+            </MemoryRouter>
+          </QueryClientProvider>
+        );
+      }
+    });
+
+    await waitFor(() => {
+      const lastCall = mockedTransactionApi.getTransactions.mock.calls.at(-1)?.[0];
+      expect(lastCall).toMatchObject({ start_date: "2026-01-01", end_date: "2026-12-31" });
+    });
+
+    expect(await screen.findByRole("button", { name: "년" })).toHaveClass("bg-[var(--color-primary)]");
+  });
+
+  // 회귀 테스트(#353 후속): 개발 서버/E2E는 <React.StrictMode>로 감싸져 있어 effect가 마운트 시
+  // 두 번 실행된다. "최초 마운트에는 스킵" 플래그를 단순 boolean으로만 구현하면, 첫 번째 실행에서
+  // 이미 플래그가 true로 바뀌어 두 번째 실행이 "진짜 변경"으로 오인되어 URL에 ?period=&date=가
+  // 붙어버렸다(TransactionsPage의 동일한 버그와 같은 원인). "마지막으로 URL에 반영한 기간" 값을
+  // 비교해서만 실제로 갱신하도록 고쳤다.
+  it("does not add a period/date query even when effects double-invoke under StrictMode (dev/E2E parity)", async () => {
+    mockedTransactionApi.getTransactions.mockResolvedValue(makeTxPage());
+
+    const LocationProbe = () => {
+      const location = useLocation();
+      return <div data-testid="loc">{location.pathname}{location.search}</div>;
+    };
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } }
+    });
+
+    render(
+      <StrictMode>
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter initialEntries={["/accounts/1/transactions"]}>
+            <Routes>
+              <Route
+                path="/accounts/:walletId/transactions"
+                element={
+                  <>
+                    <WalletTransactionsPage walletType="ACCOUNT" />
+                    <LocationProbe />
+                  </>
+                }
+              />
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>
+      </StrictMode>
+    );
+
+    expect(await screen.findByText("지갑 거래내역")).toBeInTheDocument();
+    expect(screen.getByTestId("loc")).toHaveTextContent("/accounts/1/transactions");
+    expect(screen.getByTestId("loc")).not.toHaveTextContent("?");
   });
 });

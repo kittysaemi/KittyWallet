@@ -1,8 +1,9 @@
+import { StrictMode } from "react";
 import type { PropsWithChildren } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import TransactionsPage from ".";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import { categoryApi } from "../../entities/category/api/categoryApi";
@@ -292,7 +293,7 @@ describe("TransactionsPage — highlightDate (거래 등록 후 복귀)", () => 
     });
 
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    queryClient.setQueryData(["transactions", 2026, 8, 1], {
+    queryClient.setQueryData(["transactions", 2026, 8, 1, {}], {
       success: true,
       data: { items: staleItems, total_count: staleItems.length, page: 1, limit: 20 },
       error: null
@@ -357,5 +358,304 @@ describe("TransactionsPage — 기본 진입 시 오늘 위치로 스크롤", ()
     expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith(
       expect.objectContaining({ block: "start" })
     );
+  });
+});
+
+// 새로고침(F5)해도 이전에 보던 기간(연/월)이 유지되어야 한다(#353). 연/월을 URL 쿼리
+// 파라미터로 옮겼으므로, 마운트 시 URL에서 그대로 읽어오는지와, 이전/다음 달 이동 시 URL에
+// 반영되는지를 검증한다.
+describe("TransactionsPage — 새로고침(F5) 시 기간 유지", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    Object.defineProperty(window.navigator, "onLine", { configurable: true, value: true });
+    mockedCategoryApi.getCategories.mockResolvedValue(emptyCategories);
+    mockedIconApi.getIcons.mockResolvedValue(emptyIcons);
+  });
+
+  it("reads year/month from the URL on mount (simulates surviving a page reload)", async () => {
+    mockedTransactionApi.getTransactions.mockResolvedValue(emptyTransactions);
+
+    render(<TransactionsPage />, {
+      wrapper: createWrapper(["/transactions?year=2025&month=3"])
+    });
+
+    await waitFor(() => {
+      const call = mockedTransactionApi.getTransactions.mock.calls.find(([p]) => p?.limit === 20)?.[0];
+      expect(call).toMatchObject({ start_date: "2025-03-01", end_date: "2025-03-31" });
+    });
+  });
+
+  it("syncs the URL when moving to a different month, so a later reload keeps the same period", async () => {
+    mockedTransactionApi.getTransactions.mockResolvedValue(emptyTransactions);
+
+    const LocationProbe = () => {
+      const location = useLocation();
+      return <div data-testid="loc">{location.pathname}{location.search}</div>;
+    };
+
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={["/transactions"]}>
+          <TransactionsPage />
+          <LocationProbe />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+
+    await screen.findByText("거래 내역이 없습니다");
+    expect(screen.getByTestId("loc")).toHaveTextContent("/transactions");
+    expect(screen.getByTestId("loc")).not.toHaveTextContent("?");
+
+    await userEvent.click(screen.getByRole("button", { name: "이전 달" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("loc").textContent).toMatch(/\?year=\d{4}&month=\d{1,2}/);
+    });
+  });
+
+  // 회귀 테스트(#353 후속): 개발 서버/E2E는 <React.StrictMode>로 감싸져 있어 effect가 마운트 시
+  // 두 번 실행된다. "최초 마운트에는 스킵" 플래그를 단순 boolean으로만 구현하면, 첫 번째 실행에서
+  // 이미 플래그가 true로 바뀌어 두 번째 실행이 "진짜 변경"으로 오인되어 URL에 ?year=&month=가
+  // 붙어버렸다(대시보드 "전체 보기"·계좌이동 등록 후 복귀가 깨끗한 /transactions를 기대하는 E2E가
+  // 이 문제로 실패함). "마지막으로 URL에 반영한 연/월" 값을 비교해서만 실제로 갱신하도록 고쳤다.
+  it("does not add a year/month query even when effects double-invoke under StrictMode (dev/E2E parity)", async () => {
+    mockedTransactionApi.getTransactions.mockResolvedValue(emptyTransactions);
+
+    const LocationProbe = () => {
+      const location = useLocation();
+      return <div data-testid="loc">{location.pathname}{location.search}</div>;
+    };
+
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+    render(
+      <StrictMode>
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter initialEntries={["/transactions"]}>
+            <TransactionsPage />
+            <LocationProbe />
+          </MemoryRouter>
+        </QueryClientProvider>
+      </StrictMode>
+    );
+
+    await screen.findByText("거래 내역이 없습니다");
+    expect(screen.getByTestId("loc")).toHaveTextContent("/transactions");
+    expect(screen.getByTestId("loc")).not.toHaveTextContent("?");
+  });
+});
+
+// 일반 거래내역(/transactions) 탐색 UI 개선(#353): 필터 바(카테고리/지갑/수입-지출)와
+// 기간 이동 바텀시트.
+describe("TransactionsPage — 필터 바", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    Object.defineProperty(window.navigator, "onLine", { configurable: true, value: true });
+    mockedIconApi.getIcons.mockResolvedValue(emptyIcons);
+  });
+
+  it("applies the selected category filter to the transaction query, resets to page 1, and clears via the chip's X", async () => {
+    mockedTransactionApi.getTransactions.mockResolvedValue(emptyTransactions);
+    mockedCategoryApi.getCategories.mockResolvedValue({
+      success: true,
+      data: {
+        items: [
+          {
+            category_id: 5,
+            category_name: "식비",
+            icon_id: 1,
+            show: true,
+            include_in_statistics: true,
+            is_default: false,
+            editable: true,
+            created_at: "2026-01-01T00:00:00Z",
+            updated_at: "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      error: null
+    });
+
+    render(<TransactionsPage />, { wrapper: createWrapper() });
+
+    await waitFor(() => expect(mockedTransactionApi.getTransactions).toHaveBeenCalled());
+    mockedTransactionApi.getTransactions.mockClear();
+
+    await userEvent.click(screen.getByRole("button", { name: "카테고리" }));
+    await userEvent.click(await screen.findByRole("button", { name: /식비/ }));
+
+    await waitFor(() => {
+      const call = mockedTransactionApi.getTransactions.mock.calls.at(-1)?.[0];
+      expect(call).toMatchObject({ category_id: 5, page: 1 });
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "카테고리 필터 해제" }));
+
+    // 초기(필터 없음) 조회와 쿼리 파라미터가 동일해지므로 TanStack Query가 캐시를 재사용해
+    // 네트워크 재요청을 생략할 수 있다 — 그래서 mock 호출 여부 대신 칩이 실제로 선택 해제
+    // 상태(placeholder "카테고리")로 돌아왔는지를 검증한다.
+    expect(await screen.findByRole("button", { name: "카테고리" })).toBeInTheDocument();
+  });
+});
+
+describe("TransactionsPage — 기간 이동 바텀시트", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    Object.defineProperty(window.navigator, "onLine", { configurable: true, value: true });
+    mockedCategoryApi.getCategories.mockResolvedValue(emptyCategories);
+    mockedIconApi.getIcons.mockResolvedValue(emptyIcons);
+  });
+
+  it("opens on tapping the month label, and jumping to a date resolves its page before fetching the list", async () => {
+    mockedTransactionApi.getTransactions.mockImplementation(async (params) => {
+      if (params?.limit === 1) {
+        // 오늘 이후로 같은 달에 21건이 더 있다고 가정 → 20건씩 페이지네이션 시 2페이지.
+        return { success: true, data: { items: [], total_count: 21, page: 1, limit: 1 }, error: null };
+      }
+      return {
+        success: true,
+        data: { items: [], total_count: 0, page: params?.page ?? 1, limit: 20 },
+        error: null
+      };
+    });
+
+    // 같은 파일의 다른 테스트가 남긴 모듈 스코프 상태(_savedTxState)와 무관하게 항상 이번 달로
+    // 시작하도록 reset:true를 전달한다(기존 "오늘 위치로 스크롤" 테스트와 동일한 패턴).
+    render(<TransactionsPage />, {
+      wrapper: createWrapper([{ pathname: "/transactions", state: { reset: true } }])
+    });
+    await waitFor(() => expect(mockedTransactionApi.getTransactions).toHaveBeenCalled());
+
+    const today = getTodayInTimezone();
+    const [y, m] = today.split("-");
+    await userEvent.click(screen.getByRole("button", { name: `${y}년 ${parseInt(m, 10)}월` }));
+
+    expect(screen.getByText("기간 이동")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "오늘" }));
+
+    await waitFor(() => {
+      const mainListCalls = mockedTransactionApi.getTransactions.mock.calls.filter(([p]) => p?.limit === 20);
+      expect(mainListCalls.at(-1)?.[0]).toMatchObject({ page: 2 });
+    });
+
+    expect(screen.queryByText("기간 이동")).not.toBeInTheDocument();
+  });
+});
+
+// "일" 필터: 카테고리/지갑/수입-지출과 달리 실제로 조회 범위(start_date/end_date)를 그
+// 하루로 좁히는 필터다. 기간 이동 바텀시트의 "날짜 탭 → 페이지 스크롤 이동" 기능과는
+// 별개다.
+describe("TransactionsPage — 일 필터", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    Object.defineProperty(window.navigator, "onLine", { configurable: true, value: true });
+    mockedCategoryApi.getCategories.mockResolvedValue(emptyCategories);
+    mockedIconApi.getIcons.mockResolvedValue(emptyIcons);
+  });
+
+  it("narrows the query to the selected day (start_date === end_date === that day), resets to page 1, and clears via the chip's X", async () => {
+    mockedTransactionApi.getTransactions.mockResolvedValue(emptyTransactions);
+
+    render(<TransactionsPage />, {
+      wrapper: createWrapper([{ pathname: "/transactions", state: { reset: true } }])
+    });
+
+    await waitFor(() => expect(mockedTransactionApi.getTransactions).toHaveBeenCalled());
+    mockedTransactionApi.getTransactions.mockClear();
+
+    const today = getTodayInTimezone();
+    const [y, m] = today.split("-");
+    const monthNum = parseInt(m, 10);
+    const dayOneStr = `${y}-${m}-01`;
+
+    await userEvent.click(screen.getByRole("button", { name: "일" }));
+    await userEvent.click(await screen.findByRole("button", { name: "1" }));
+
+    await waitFor(() => {
+      const call = mockedTransactionApi.getTransactions.mock.calls
+        .filter(([p]) => p?.limit === 20)
+        .at(-1)?.[0];
+      expect(call).toMatchObject({ start_date: dayOneStr, end_date: dayOneStr, page: 1 });
+    });
+
+    expect(await screen.findByRole("button", { name: `${monthNum}월 1일` })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "일 필터 해제" }));
+
+    // 초기(필터 없음) 조회와 쿼리 파라미터가 동일해지므로 TanStack Query가 캐시를 재사용해
+    // 네트워크 재요청을 생략할 수 있다 — 그래서 mock 호출 여부 대신 칩이 실제로 선택 해제
+    // 상태(placeholder "일")로 돌아왔는지를 검증한다.
+    expect(await screen.findByRole("button", { name: "일" })).toBeInTheDocument();
+  });
+
+  it("combines the day filter with the other chips (AND) when requesting the list", async () => {
+    mockedTransactionApi.getTransactions.mockResolvedValue(emptyTransactions);
+    mockedCategoryApi.getCategories.mockResolvedValue({
+      success: true,
+      data: {
+        items: [
+          {
+            category_id: 5,
+            category_name: "식비",
+            icon_id: 1,
+            show: true,
+            include_in_statistics: true,
+            is_default: false,
+            editable: true,
+            created_at: "2026-01-01T00:00:00Z",
+            updated_at: "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      error: null
+    });
+
+    render(<TransactionsPage />, {
+      wrapper: createWrapper([{ pathname: "/transactions", state: { reset: true } }])
+    });
+    await waitFor(() => expect(mockedTransactionApi.getTransactions).toHaveBeenCalled());
+
+    await userEvent.click(screen.getByRole("button", { name: "카테고리" }));
+    await userEvent.click(await screen.findByRole("button", { name: /식비/ }));
+
+    const today = getTodayInTimezone();
+    const [y, m] = today.split("-");
+    const dayOneStr = `${y}-${m}-01`;
+
+    await userEvent.click(screen.getByRole("button", { name: "일" }));
+    await userEvent.click(await screen.findByRole("button", { name: "1" }));
+
+    await waitFor(() => {
+      const call = mockedTransactionApi.getTransactions.mock.calls
+        .filter(([p]) => p?.limit === 20)
+        .at(-1)?.[0];
+      expect(call).toMatchObject({
+        category_id: 5,
+        start_date: dayOneStr,
+        end_date: dayOneStr,
+        page: 1
+      });
+    });
+  });
+
+  it("resets the day filter when moving to a different month", async () => {
+    mockedTransactionApi.getTransactions.mockResolvedValue(emptyTransactions);
+
+    render(<TransactionsPage />, {
+      wrapper: createWrapper([{ pathname: "/transactions", state: { reset: true } }])
+    });
+    await waitFor(() => expect(mockedTransactionApi.getTransactions).toHaveBeenCalled());
+
+    await userEvent.click(screen.getByRole("button", { name: "일" }));
+    await userEvent.click(await screen.findByRole("button", { name: "1" }));
+
+    expect(await screen.findByRole("button", { name: /월 1일$/ })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "이전 달" }));
+
+    expect(await screen.findByRole("button", { name: "일" })).toBeInTheDocument();
   });
 });
