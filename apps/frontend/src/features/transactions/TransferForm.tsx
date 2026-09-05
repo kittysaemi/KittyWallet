@@ -13,7 +13,8 @@ import { IconRenderer } from "../../shared/ui/IconRenderer";
 import { useTimezone } from "../../shared/hooks/useTimezone";
 import { getTodayInTimezone } from "../../shared/utils/date";
 import { STALE_TIME } from "../../shared/constants/queryConfig";
-import { KOREAN_TEXT_INPUT_PROPS, NUMERIC_TEXT_INPUT_PROPS } from "../../shared/constants/inputIme";
+import { KOREAN_TEXT_INPUT_PROPS } from "../../shared/constants/inputIme";
+import { useNumericFieldProps } from "../../shared/hooks/useNumericFieldProps";
 import { toSupportErrorMessage } from "../../shared/api/apiError";
 
 function createSchema(today: string) {
@@ -126,6 +127,7 @@ export const TransferForm: React.FC<TransferFormProps> = ({
   const isEditMode = !!initialData;
   const queryClient = useQueryClient();
   const timezone = useTimezone();
+  const numericFieldProps = useNumericFieldProps();
   const today = React.useMemo(() => getTodayInTimezone(timezone), [timezone]);
   const schema = React.useMemo(() => createSchema(today), [today]);
 
@@ -410,7 +412,6 @@ export const TransferForm: React.FC<TransferFormProps> = ({
         label="이동 금액"
         name="amount"
         type="text"
-        inputMode="numeric"
         placeholder="0"
         value={amountStr}
         onChange={(e) => {
@@ -423,7 +424,7 @@ export const TransferForm: React.FC<TransferFormProps> = ({
         }}
         error={errors.amount}
         disabled={isSaving}
-        {...NUMERIC_TEXT_INPUT_PROPS}
+        {...numericFieldProps}
       />
 
       {/* 날짜 */}

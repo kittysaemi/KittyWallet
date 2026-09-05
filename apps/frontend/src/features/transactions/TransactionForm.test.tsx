@@ -124,12 +124,27 @@ describe("TransactionForm - 카드할부 UI 노출 규칙", () => {
   });
 });
 
-describe("TransactionForm - 모바일 IME 힌트 (#353)", () => {
+describe("TransactionForm - IME 힌트 (#353)", () => {
+  function stubPointer(coarse: boolean) {
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      matches: query === "(pointer: coarse)" ? coarse : false,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn()
+    }));
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("메모 필드에 한글 IME 힌트 속성이 적용된다", async () => {
     render(<TransactionForm onSuccess={vi.fn()} />, { wrapper: createWrapper() });
     const memo = await screen.findByLabelText("메모 (선택)");
-    // 금액(inputmode=numeric, TYPE_CLASS_NUMBER)에서 메모(TYPE_CLASS_TEXT)로 포커스가
-    // 옮겨갈 때 EditorInfo에 라틴 전용 힌트가 섞이지 않도록 한다.
     expect(memo).toHaveAttribute("lang", "ko");
     expect(memo).toHaveAttribute("inputmode", "text");
     expect(memo).toHaveAttribute("autocapitalize", "off");
@@ -137,12 +152,29 @@ describe("TransactionForm - 모바일 IME 힌트 (#353)", () => {
     expect(memo).toHaveAttribute("spellcheck", "false");
   });
 
-  it("금액 필드는 숫자 키패드를 유지하면서 라틴 입력 보조 기능을 끈다", async () => {
+  it("화면 키보드가 없는 데스크톱에서는 금액 필드에 inputmode를 붙이지 않는다", async () => {
+    // Windows TSF는 inputmode="numeric"을 IS_DIGITS 스코프로 변환해 한글 IME를
+    // 직접 입력(영문) 모드로 끈다. 데스크톱에서는 inputmode의 이점이 없으므로 생략한다.
+    stubPointer(false);
+    render(<TransactionForm onSuccess={vi.fn()} />, { wrapper: createWrapper() });
+    const amount = await screen.findByLabelText("금액");
+    expect(amount).not.toHaveAttribute("inputmode");
+    expect(amount).toHaveAttribute("autocomplete", "off");
+  });
+
+  it("화면 키보드가 있는 기기에서는 금액 필드에 숫자 키패드를 유지한다", async () => {
+    stubPointer(true);
     render(<TransactionForm onSuccess={vi.fn()} />, { wrapper: createWrapper() });
     const amount = await screen.findByLabelText("금액");
     expect(amount).toHaveAttribute("inputmode", "numeric");
-    expect(amount).toHaveAttribute("autocapitalize", "off");
-    expect(amount).toHaveAttribute("autocorrect", "off");
     expect(amount).toHaveAttribute("autocomplete", "off");
+  });
+
+  it("inputmode 없이도 금액 입력은 숫자만 받고 천 단위로 포맷된다", async () => {
+    stubPointer(false);
+    render(<TransactionForm onSuccess={vi.fn()} />, { wrapper: createWrapper() });
+    const amount = await screen.findByLabelText("금액");
+    await userEvent.type(amount, "12a34ㄱ5");
+    expect((amount as HTMLInputElement).value).toBe("12,345");
   });
 });

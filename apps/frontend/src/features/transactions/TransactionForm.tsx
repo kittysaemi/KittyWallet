@@ -21,7 +21,8 @@ import { Input } from "../../shared/ui/Input";
 import { useTimezone } from "../../shared/hooks/useTimezone";
 import { getTodayInTimezone } from "../../shared/utils/date";
 import { STALE_TIME } from "../../shared/constants/queryConfig";
-import { KOREAN_TEXT_INPUT_PROPS, NUMERIC_TEXT_INPUT_PROPS } from "../../shared/constants/inputIme";
+import { KOREAN_TEXT_INPUT_PROPS } from "../../shared/constants/inputIme";
+import { useNumericFieldProps } from "../../shared/hooks/useNumericFieldProps";
 import { CLIENT_ERROR_CODES, formatSupportError, toSupportErrorMessage } from "../../shared/api/apiError";
 
 function createSchema(today: string, skipFutureDateCheck = false) {
@@ -220,6 +221,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const isWalletLocked = !isEditMode && !!lockedWallet;
   const queryClient = useQueryClient();
   const timezone = useTimezone();
+  const numericFieldProps = useNumericFieldProps();
   const today = React.useMemo(() => getTodayInTimezone(timezone), [timezone]);
   const schema = React.useMemo(() => createSchema(today, futureInstallment), [today, futureInstallment]);
 
@@ -595,7 +597,6 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             label="이자"
             name="interest"
             type="text"
-            inputMode="numeric"
             placeholder="0"
             value={interestStr}
             onChange={(e) => {
@@ -608,7 +609,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             }}
             error={errors.interest}
             disabled={isSaving}
-            {...NUMERIC_TEXT_INPUT_PROPS}
+            {...numericFieldProps}
           />
         </>
       ) : (
@@ -616,7 +617,6 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           label="금액"
           name="amount"
           type="text"
-          inputMode="numeric"
           placeholder="0"
           value={amountStr}
           onChange={(e) => {
@@ -629,7 +629,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           }}
           error={errors.amount}
           disabled={isSaving}
-          {...NUMERIC_TEXT_INPUT_PROPS}
+          {...numericFieldProps}
         />
       )}
 

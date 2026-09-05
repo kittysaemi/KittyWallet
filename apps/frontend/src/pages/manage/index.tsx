@@ -8,7 +8,8 @@ import { cardApi } from "../../entities/card/api/cardApi";
 import type { CardItem } from "../../entities/card/model/card.types";
 import { categoryApi } from "../../entities/category/api/categoryApi";
 import { STALE_TIME, RETRY } from "../../shared/constants/queryConfig";
-import { KOREAN_TEXT_INPUT_PROPS, NUMERIC_TEXT_INPUT_PROPS } from "../../shared/constants/inputIme";
+import { KOREAN_TEXT_INPUT_PROPS } from "../../shared/constants/inputIme";
+import { useNumericFieldProps } from "../../shared/hooks/useNumericFieldProps";
 import type { CategoryItem } from "../../entities/category/model/category.types";
 import { iconApi } from "../../entities/icon/api/iconApi";
 import type {
@@ -126,6 +127,7 @@ const ArchiveDialog: React.FC<{
 const AccountsTab: React.FC = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const numericFieldProps = useNumericFieldProps();
   const isOffline = !navigator.onLine;
   const [isCreating, setIsCreating] = React.useState(false);
   const [newName, setNewName] = React.useState("");
@@ -332,8 +334,7 @@ const AccountsTab: React.FC = () => {
             </div>
             <input
               aria-label="초기 잔액"
-              inputMode="numeric"
-              {...NUMERIC_TEXT_INPUT_PROPS}
+              {...numericFieldProps}
               value={newBalance ? Number(newBalance).toLocaleString() : ""}
               onChange={(e) => {
                 const raw = e.target.value.replace(/,/g, "").replace(/[^0-9]/g, "");
@@ -371,8 +372,7 @@ const AccountsTab: React.FC = () => {
               {newAllowNegative && (
                 <input
                   aria-label="신규 계좌 마이너스 한도"
-                  inputMode="numeric"
-                  {...NUMERIC_TEXT_INPUT_PROPS}
+                  {...numericFieldProps}
                   value={newNegativeLimit ? Number(newNegativeLimit).toLocaleString() : ""}
                   onChange={(e) => {
                     const raw = e.target.value.replace(/,/g, "").replace(/[^0-9]/g, "");
