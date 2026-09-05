@@ -1,3 +1,10 @@
+## [1.45.1](https://github.com/kittysaemi/KittyWallet/compare/v1.45.0...v1.45.1) (2026-09-05)
+
+
+### Bug Fixes
+
+* **statistics:** 달력 히트맵 할부를 구매일 원금 기준으로 집계 ([#417](https://github.com/kittysaemi/KittyWallet/issues/417)) ([80d8ce5](https://github.com/kittysaemi/KittyWallet/commit/80d8ce5e29c29ae4f803acb0883307fa274dbe24)), closes [#369](https://github.com/kittysaemi/KittyWallet/issues/369) [#353](https://github.com/kittysaemi/KittyWallet/issues/353) [#369](https://github.com/kittysaemi/KittyWallet/issues/369)
+
 # [1.45.0](https://github.com/kittysaemi/KittyWallet/compare/v1.44.4...v1.45.0) (2026-09-05)
 
 
