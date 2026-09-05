@@ -25,7 +25,8 @@ test("E2E-TRANSFER-001 계좌이동 생성 → 라벨 노출 → 상세 → 수�
   await toSelect.selectOption("2002");
   await page.getByLabel("이동 금액").fill("30000");
   await page.getByRole("button", { name: "계좌이동 등록" }).click();
-  await expect(page).toHaveURL(/\/kittywallet\/transactions$/);
+  // 지갑별 거래내역에서 진입했으므로 일반 거래내역이 아니라 원래 지갑 화면으로 돌아온다 (#409)
+  await expect(page).toHaveURL(/\/kittywallet\/accounts\/2001\/transactions$/);
 
   // 2) 지갑별 거래내역에 "계좌이동" 라벨 노출 확인 (양쪽 계좌 모두)
   await page.goto("/kittywallet/accounts/2001/transactions");

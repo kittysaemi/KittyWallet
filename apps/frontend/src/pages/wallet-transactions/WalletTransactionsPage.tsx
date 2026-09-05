@@ -67,7 +67,9 @@ const WalletTransactionsPage: React.FC<WalletTransactionsPageProps> = ({ walletT
 
   function handleAddClick() {
     if (walletType === "CARD") {
-      navigate(`/transactions/new?walletType=CARD&walletId=${walletId}`);
+      navigate(`/transactions/new?walletType=CARD&walletId=${walletId}`, {
+        state: { returnTo: `${location.pathname}${location.search}` }
+      });
       return;
     }
     setIsEntryExpanded((v) => !v);
@@ -362,7 +364,11 @@ const WalletTransactionsPage: React.FC<WalletTransactionsPageProps> = ({ walletT
               <div className="flex divide-x divide-[var(--color-border-secondary)] border-t border-[var(--color-border-secondary)]">
                 <button
                   type="button"
-                  onClick={() => navigate(`/transactions/new?walletType=ACCOUNT&walletId=${walletId}`)}
+                  onClick={() =>
+                    navigate(`/transactions/new?walletType=ACCOUNT&walletId=${walletId}`, {
+                      state: { returnTo: `${location.pathname}${location.search}` }
+                    })
+                  }
                   className="flex flex-1 flex-col items-center gap-1.5 py-4 transition hover:bg-[var(--color-bg-secondary)]"
                 >
                   <PenLine size={22} className="text-[var(--color-primary-hover)]" />
@@ -370,7 +376,11 @@ const WalletTransactionsPage: React.FC<WalletTransactionsPageProps> = ({ walletT
                 </button>
                 <button
                   type="button"
-                  onClick={() => navigate(`/transfer/new?fromAccountId=${walletId}`)}
+                  onClick={() =>
+                    navigate(`/transfer/new?fromAccountId=${walletId}`, {
+                      state: { returnTo: `${location.pathname}${location.search}` }
+                    })
+                  }
                   className="flex flex-1 flex-col items-center gap-1.5 py-4 transition hover:bg-[var(--color-bg-secondary)]"
                 >
                   <ArrowLeftRight size={22} className="text-[var(--color-primary-hover)]" />
