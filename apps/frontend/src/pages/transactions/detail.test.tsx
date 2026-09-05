@@ -2,7 +2,7 @@ import type { PropsWithChildren } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import { MemoryRouter, Route, Routes, createMemoryRouter, RouterProvider, useLocation } from "react-router-dom";
 import TransactionDetailPage from "./detail";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import { accountApi } from "../../entities/account/api/accountApi";
@@ -165,6 +165,41 @@ describe("TransactionDetailPage — edit icon visibility", () => {
 
     await userEvent.click(await screen.findByLabelText("거래 수정"));
     expect(await screen.findByText("거래 수정 화면 (returnTo: none)")).toBeInTheDocument();
+  });
+
+  it("navigating to edit replaces the detail entry, so 뒤로가기 skips it and lands on the wallet screen (#353)", async () => {
+    mockedTransactionApi.getTransaction.mockResolvedValue({ success: true, data: makeTx(), error: null });
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } }
+    });
+
+    const router = createMemoryRouter(
+      [
+        { path: "/accounts/:walletId/transactions", element: <div>지갑 거래내역 화면</div> },
+        { path: "/transactions/:id", element: <TransactionDetailPage /> },
+        { path: "/transactions/:id/edit", element: <div>거래 수정 화면</div> }
+      ],
+      {
+        initialEntries: [
+          "/accounts/1/transactions",
+          { pathname: "/transactions/1", state: { editable: true, returnTo: "/accounts/1/transactions" } }
+        ],
+        initialIndex: 1
+      }
+    );
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    );
+
+    await userEvent.click(await screen.findByLabelText("거래 수정"));
+    expect(await screen.findByText("거래 수정 화면")).toBeInTheDocument();
+
+    router.navigate(-1);
+    expect(await screen.findByText("지갑 거래내역 화면")).toBeInTheDocument();
   });
 });
 

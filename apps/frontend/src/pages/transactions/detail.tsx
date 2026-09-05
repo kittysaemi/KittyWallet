@@ -276,7 +276,16 @@ const TransactionDetailPage: React.FC = () => {
             {editable && tx && !tx.wallet_deleted && (
               <button
                 type="button"
-                onClick={() => navigate(`/transactions/${id}/edit`, returnTo ? { state: { returnTo } } : undefined)}
+                onClick={() =>
+                  // replace: true로 상세화면 자체를 수정화면으로 교체한다(#353) — push로 쌓으면
+                  // 저장 후 지갑 화면으로 돌아왔을 때 "뒤로가기"가 (이미 지나간) 상세화면으로
+                  // 한 번 더 빠지는 문제가 있었다. 수정은 같은 항목을 계속 들여다보는 연장선이라
+                  // 별도로 되돌아갈 페이지로 취급하지 않는다.
+                  navigate(`/transactions/${id}/edit`, {
+                    replace: true,
+                    ...(returnTo ? { state: { returnTo } } : {})
+                  })
+                }
                 className="flex h-9 w-9 items-center justify-center rounded-xl text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-secondary)]"
                 aria-label="거래 수정"
               >
