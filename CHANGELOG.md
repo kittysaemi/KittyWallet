@@ -1,3 +1,10 @@
+## [1.44.2](https://github.com/kittysaemi/KittyWallet/compare/v1.44.1...v1.44.2) (2026-09-05)
+
+
+### Bug Fixes
+
+* **transactions:** 지갑 거래내역에서 등록 완료 후 원래 지갑 화면으로 복귀 ([#415](https://github.com/kittysaemi/KittyWallet/issues/415)) ([5435a15](https://github.com/kittysaemi/KittyWallet/commit/5435a15ffa9cc8ff58845ae0c09500d29f6948d6)), closes [#353](https://github.com/kittysaemi/KittyWallet/issues/353) [#353](https://github.com/kittysaemi/KittyWallet/issues/353)
+
 ## [1.44.1](https://github.com/kittysaemi/KittyWallet/compare/v1.44.0...v1.44.1) (2026-09-05)
 
 
