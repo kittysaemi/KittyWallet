@@ -7,6 +7,7 @@ import { toSupportErrorMessage } from "../../shared/api/apiError";
 
 interface NavigationState {
   receiptFile?: File;
+  returnTo?: string;
 }
 
 const TransactionNewPage: React.FC = () => {
@@ -26,7 +27,12 @@ const TransactionNewPage: React.FC = () => {
   const [lastImageSource, setLastImageSource] = React.useState<"camera" | "gallery">(
     urlSource === "camera" ? "camera" : "gallery"
   );
-  const receiptFile = (location.state as NavigationState | null)?.receiptFile;
+  const navigationState = location.state as NavigationState | null;
+  const receiptFile = navigationState?.receiptFile;
+  // 지갑별 거래내역 화면에서 진입한 경우, 등록 완료 후 일반 거래내역이 아니라 원래 있던 지갑
+  // 화면(기간/스크롤 상태 포함)으로 돌아가야 한다(#409와 동일한 returnTo state 패턴,
+  // edit.tsx/detail.tsx 참고).
+  const returnTo = navigationState?.returnTo;
 
   const lockedWalletType = searchParams.get("walletType");
   const lockedWalletId = searchParams.get("walletId");
@@ -66,8 +72,8 @@ const TransactionNewPage: React.FC = () => {
   React.useEffect(() => {
     if (!receiptFile) return;
     prepareImage(receiptFile);
-    navigate(location.pathname, { replace: true, state: null });
-  }, [location.pathname, navigate, prepareImage, receiptFile]);
+    navigate(location.pathname, { replace: true, state: returnTo ? { returnTo } : null });
+  }, [location.pathname, navigate, prepareImage, receiptFile, returnTo]);
 
   const selectCameraImage = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -123,7 +129,13 @@ const TransactionNewPage: React.FC = () => {
               lastCreatedDateRef.current = finalDraft.transaction_date;
               if (receiptDraft) void receiptAnalysisApi.saveTrainingSample(receiptDraft, finalDraft);
             }}
-            onSuccess={() => navigate("/transactions", { state: { highlightDate: lastCreatedDateRef.current } })}
+            onSuccess={() => {
+              if (returnTo) {
+                navigate(returnTo);
+                return;
+              }
+              navigate("/transactions", { state: { highlightDate: lastCreatedDateRef.current } });
+            }}
           />
         </div>
       </div>
