@@ -62,11 +62,11 @@ test("E2E-TRANSFER-001 계좌이동 생성 → 라벨 노출 → 상세 → 수�
   // 이슈 #353: 수정 완료 후에는 원래 진입했던 지갑 거래내역 화면(여기서는 2001 계좌)으로 복귀한다.
   await expect(page).toHaveURL(/\/kittywallet\/accounts\/2001\/transactions$/);
 
-  // 상세->수정 이동도 replace이므로, 뒤로가기하면 상세/수정화면을 거치지 않고 바로 이전
-  // 화면으로 이동한다 (#353)
+  // 상세->수정은 push이므로(수정 취소 시 상세로 돌아갈 수 있어야 함), 저장 완료 후 지갑
+  // 화면에서 뒤로가기하면 (건너뛰지 않고) 상세화면으로 이동한다 (#353)
   await page.goBack();
+  await expect(page.getByRole("heading", { name: "상세내역" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "계좌이동 수정" })).not.toBeVisible();
-  await expect(page.getByRole("heading", { name: "상세내역" })).not.toBeVisible();
 
   // 방향이 바뀌었으므로 2001은 이제 받는 계좌(입금), 2002는 보내는 계좌(출금)
   await page.goto("/kittywallet/accounts/2001/transactions");

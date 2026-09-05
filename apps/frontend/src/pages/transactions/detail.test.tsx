@@ -167,7 +167,7 @@ describe("TransactionDetailPage — edit icon visibility", () => {
     expect(await screen.findByText("거래 수정 화면 (returnTo: none)")).toBeInTheDocument();
   });
 
-  it("navigating to edit replaces the detail entry, so 뒤로가기 skips it and lands on the wallet screen (#353)", async () => {
+  it("지갑 → 상세 → 수정 → 뒤로가기 → 상세 → 뒤로가기 → 지갑 순서로 단계별 복귀한다 (#353)", async () => {
     mockedTransactionApi.getTransaction.mockResolvedValue({ success: true, data: makeTx(), error: null });
 
     const queryClient = new QueryClient({
@@ -198,6 +198,11 @@ describe("TransactionDetailPage — edit icon visibility", () => {
     await userEvent.click(await screen.findByLabelText("거래 수정"));
     expect(await screen.findByText("거래 수정 화면")).toBeInTheDocument();
 
+    // 저장하지 않고 뒤로가기: 상세화면으로(건너뛰지 않음)
+    router.navigate(-1);
+    expect(await screen.findByText("식비")).toBeInTheDocument();
+
+    // 한 번 더 뒤로가기: 지갑 거래내역 화면으로
     router.navigate(-1);
     expect(await screen.findByText("지갑 거래내역 화면")).toBeInTheDocument();
   });
