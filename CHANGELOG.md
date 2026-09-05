@@ -1,3 +1,10 @@
+## [1.45.2](https://github.com/kittysaemi/KittyWallet/compare/v1.45.1...v1.45.2) (2026-09-05)
+
+
+### Bug Fixes
+
+* **transactions:** 지갑 거래내역에서 반복 등록 시 히스토리에 지갑 화면이 쌓이던 문제 수정 ([#420](https://github.com/kittysaemi/KittyWallet/issues/420)) ([457a78d](https://github.com/kittysaemi/KittyWallet/commit/457a78d5f0096e1088944e82bfd70a077f538d56)), closes [#353](https://github.com/kittysaemi/KittyWallet/issues/353)
+
 ## [1.45.1](https://github.com/kittysaemi/KittyWallet/compare/v1.45.0...v1.45.1) (2026-09-05)
 
 
