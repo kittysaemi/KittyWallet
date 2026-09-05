@@ -28,10 +28,11 @@ test("E2E-TRANSFER-001 계좌이동 생성 → 라벨 노출 → 상세 → 수�
   // 지갑별 거래내역에서 진입했으므로 일반 거래내역이 아니라 원래 지갑 화면으로 돌아온다 (#353)
   await expect(page).toHaveURL(/\/kittywallet\/accounts\/2001\/transactions$/);
 
-  // 등록화면은 replace로 지갑 화면으로 교체되었으므로, 뒤로가기해도 이미 제출한 등록화면이
-  // 다시 나타나지 않는다 (#353)
+  // 등록 완료는 진입에 쓴 push를 그대로 되돌리는(pop) 방식이므로, 뒤로가기하면 이미 제출한
+  // 등록화면이 다시 나타나지 않고 지갑 화면 이전(대시보드)으로 곧바로 나간다 (#353)
   await page.goBack();
   await expect(page.getByRole("button", { name: "계좌이동 등록" })).not.toBeVisible();
+  await expect(page).toHaveURL(/\/kittywallet\/dashboard$/);
 
   // 2) 지갑별 거래내역에 "계좌이동" 라벨 노출 확인 (양쪽 계좌 모두)
   await page.goto("/kittywallet/accounts/2001/transactions");
@@ -90,4 +91,33 @@ test("E2E-TRANSFER-001 계좌이동 생성 → 라벨 노출 → 상세 → 수�
   await page.goto("/kittywallet/accounts/2002/transactions");
   await expect(page.getByText("계좌이동", { exact: true })).toHaveCount(0);
   await expect(page.getByText("거래 내역이 없습니다")).toBeVisible();
+});
+
+test("E2E-TRANSFER-002 지갑 거래내역에서 계좌이동을 반복 등록해도 뒤로가기 한 번이면 벗어난다 (#353)", async ({
+  page
+}) => {
+  await installTransferE2EFixtures(page);
+  await login(page);
+
+  // 대시보드 -> 지갑 거래내역 순으로 들어온 상태에서 시작한다.
+  await page.goto("/kittywallet/accounts/2001/transactions");
+
+  // 등록 -> 복귀 사이클을 두 번 반복한다.
+  for (const amount of ["10000", "20000"]) {
+    await page.getByRole("button", { name: "거래등록/계좌이동" }).click();
+    await page.getByRole("button", { name: "계좌이동", exact: true }).click();
+    await expect(page).toHaveURL(/\/kittywallet\/transfer\/new\?fromAccountId=2001$/);
+
+    const [, toSelect] = await page.getByRole("combobox").all();
+    await toSelect.selectOption("2002");
+    await page.getByLabel("이동 금액").fill(amount);
+    await page.getByRole("button", { name: "계좌이동 등록" }).click();
+    await expect(page).toHaveURL(/\/kittywallet\/accounts\/2001\/transactions$/);
+  }
+
+  // 핵심 회귀 검증: 두 건을 등록했어도 뒤로가기는 한 번이면 충분하다.
+  // 예전 구현(replace로 지갑 경로 재진입)에서는 등록 건수만큼 지갑 화면이 히스토리에 쌓여
+  // 여기서 다시 지갑 거래내역 화면이 나왔고, 대시보드로 나가려면 뒤로가기를 2번 눌러야 했다.
+  await page.goBack();
+  await expect(page).toHaveURL(/\/kittywallet\/dashboard$/);
 });
