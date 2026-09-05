@@ -1,3 +1,10 @@
+## [1.45.3](https://github.com/kittysaemi/KittyWallet/compare/v1.45.2...v1.45.3) (2026-09-05)
+
+
+### Bug Fixes
+
+* **ui:** 등록/수정 화면 한글 입력 필드 IME 힌트 정리 및 데스크톱 inputmode 생략 ([#419](https://github.com/kittysaemi/KittyWallet/issues/419)) ([e12f396](https://github.com/kittysaemi/KittyWallet/commit/e12f39671fb058f882e77c419250932b4187f2dc))
+
 ## [1.45.2](https://github.com/kittysaemi/KittyWallet/compare/v1.45.1...v1.45.2) (2026-09-05)
 
 
