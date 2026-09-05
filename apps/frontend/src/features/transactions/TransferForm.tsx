@@ -1,14 +1,12 @@
 import React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDownUp, ChevronDown, Circle, Info } from "lucide-react";
+import { ArrowDownUp, ChevronDown, Info } from "lucide-react";
 import { z } from "zod";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import { invalidateTransactionRelatedQueries } from "../../entities/transaction/lib/invalidateTransactionQueries";
-import { TRANSFER_CATEGORY_NAME } from "../../entities/transaction/lib/isTransfer";
+import { TRANSFER_ICON } from "../../entities/transaction/lib/isTransfer";
 import { accountApi } from "../../entities/account/api/accountApi";
 import type { AccountItem } from "../../entities/account/model/account.types";
-import { categoryApi } from "../../entities/category/api/categoryApi";
-import { iconApi } from "../../entities/icon/api/iconApi";
 import { Button } from "../../shared/ui/Button";
 import { Input } from "../../shared/ui/Input";
 import { IconRenderer } from "../../shared/ui/IconRenderer";
@@ -156,26 +154,8 @@ export const TransferForm: React.FC<TransferFormProps> = ({
     staleTime: STALE_TIME.REALTIME,
     refetchOnMount: "always"
   });
-  const categoriesQuery = useQuery({
-    queryKey: ["categories", "active"],
-    queryFn: () => categoryApi.getCategories(true),
-    staleTime: STALE_TIME.MEDIUM
-  });
-  const iconsQuery = useQuery({
-    queryKey: ["icons", "select"],
-    queryFn: () => iconApi.getIcons(true),
-    staleTime: STALE_TIME.LONG
-  });
-
   const accounts = accountsQuery.data?.data?.items ?? [];
   const toOptions = accounts.filter((a) => a.account_id !== fromAccountId);
-
-  const transferCategory = categoriesQuery.data?.data?.items.find(
-    (c) => c.category_name === TRANSFER_CATEGORY_NAME
-  );
-  const transferIcon = transferCategory
-    ? iconsQuery.data?.data?.items.find((icon) => icon.icon_id === transferCategory.icon_id)
-    : undefined;
 
   function handleSwap() {
     if (isFromLocked || isReadOnly) return;
@@ -288,16 +268,12 @@ export const TransferForm: React.FC<TransferFormProps> = ({
       {/* 계좌이동 아이콘 + 라벨 (#409) */}
       <div className="flex items-center gap-2">
         <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-bg-secondary)]">
-          {transferIcon ? (
-            <IconRenderer
-              providerType={transferIcon.provider_type}
-              providerKey={transferIcon.provider_key}
-              size={18}
-              className="text-[var(--color-text-primary)]"
-            />
-          ) : (
-            <Circle size={18} className="text-[var(--color-text-primary)]" />
-          )}
+          <IconRenderer
+            providerType={TRANSFER_ICON.providerType}
+            providerKey={TRANSFER_ICON.providerKey}
+            size={18}
+            className="text-[var(--color-text-primary)]"
+          />
         </span>
         <span className="text-sm font-medium text-[var(--color-text-primary)]">계좌금액이동</span>
       </div>

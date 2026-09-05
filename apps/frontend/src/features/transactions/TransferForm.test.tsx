@@ -6,8 +6,6 @@ import { MemoryRouter } from "react-router-dom";
 import { TransferForm } from "./TransferForm";
 import { accountApi } from "../../entities/account/api/accountApi";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
-import { categoryApi } from "../../entities/category/api/categoryApi";
-import { iconApi } from "../../entities/icon/api/iconApi";
 
 vi.mock("../../shared/hooks/useTimezone", () => ({ useTimezone: () => "Asia/Seoul" }));
 
@@ -19,12 +17,6 @@ vi.mock("../../entities/transaction/api/transactionApi", () => ({
     createTransfer: vi.fn(),
     updateTransfer: vi.fn()
   }
-}));
-vi.mock("../../entities/category/api/categoryApi", () => ({
-  categoryApi: { getCategories: vi.fn() }
-}));
-vi.mock("../../entities/icon/api/iconApi", () => ({
-  iconApi: { getIcons: vi.fn() }
 }));
 
 const accountA = {
@@ -43,29 +35,6 @@ const accountB = {
   account_id: 2,
   account_name: "저축통장",
   current_balance: 50000
-};
-
-const transferCategory = {
-  category_id: 9001,
-  category_name: "계좌금액이동",
-  icon_id: 3002,
-  show: true,
-  include_in_statistics: false,
-  is_default: true,
-  editable: false,
-  created_at: "2026-01-01T00:00:00Z",
-  updated_at: "2026-01-01T00:00:00Z"
-};
-
-const transferIcon = {
-  icon_id: 3002,
-  icon_code: "icon-arrow-left-right",
-  provider_type: "lucide",
-  provider_key: "arrow-left-right",
-  show: true,
-  is_default: true,
-  created_at: "2026-01-01T00:00:00Z",
-  updated_at: "2026-01-01T00:00:00Z"
 };
 
 const makeResponse = <T,>(items: T[]) => ({
@@ -88,8 +57,6 @@ function createWrapper() {
 beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(accountApi.getAccounts).mockResolvedValue(makeResponse([accountA, accountB]));
-  vi.mocked(categoryApi.getCategories).mockResolvedValue(makeResponse([transferCategory]));
-  vi.mocked(iconApi.getIcons).mockResolvedValue(makeResponse([transferIcon]));
 });
 
 describe("TransferForm", () => {
@@ -102,19 +69,10 @@ describe("TransferForm", () => {
     expect(screen.getByLabelText("메모 (선택)")).toBeInTheDocument();
   });
 
-  it("계좌이동 카테고리 아이콘과 라벨을 폼 상단에 표시한다", async () => {
-    render(<TransferForm onSuccess={vi.fn()} />, { wrapper: createWrapper() });
-    await waitFor(() => expect(categoryApi.getCategories).toHaveBeenCalledWith(true));
-    await waitFor(() => expect(iconApi.getIcons).toHaveBeenCalledWith(true));
-    expect(await screen.findByText("계좌금액이동")).toBeInTheDocument();
-  });
-
-  it("계좌이동 카테고리/아이콘을 찾지 못하면 기본(Circle) 아이콘으로 대체한다", async () => {
-    vi.mocked(categoryApi.getCategories).mockResolvedValue(makeResponse([]));
-    vi.mocked(iconApi.getIcons).mockResolvedValue(makeResponse([]));
+  it("계좌이동 카테고리 상태와 무관하게 고정 아이콘과 라벨을 폼 상단에 표시한다 (#409)", async () => {
     render(<TransferForm onSuccess={vi.fn()} />, { wrapper: createWrapper() });
     expect(await screen.findByText("계좌금액이동")).toBeInTheDocument();
-    // Circle 아이콘은 lucide-react가 렌더하는 svg이므로 svg 존재 여부로 폴백을 확인한다.
+    // 카테고리/아이콘 조회 없이 고정 아이콘(TRANSFER_ICON)을 바로 렌더링하므로 svg 존재 여부로 확인한다.
     const badge = screen.getByText("계좌금액이동").previousElementSibling;
     expect(badge?.querySelector("svg")).toBeInTheDocument();
   });
