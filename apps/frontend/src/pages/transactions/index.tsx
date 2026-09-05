@@ -669,12 +669,26 @@ const TransactionsPage: React.FC = () => {
   // 시점에는 실행하지 않는다 — 거래 등록 후 복귀(highlightDate)나 "최근 내역 더보기"(reset)
   // 진입 시 URL이 정확히 `/transactions`로 끝나야 하는 화면(E2E, 대시보드 진입)이 있기 때문에,
   // 사용자가 실제로 기간을 이동(이전/다음 달, 기간 이동 바텀시트)한 뒤부터만 URL에 반영한다.
+  // 주의: react-router의 `setSearchParams`는 매 렌더마다 새 함수로 반환될 수 있다(예: 카테고리/
+  // 아이콘 등 다른 쿼리가 로딩을 마치고 리렌더될 때). 이 함수를 의존성 배열에 그대로 두면, 연/월이
+  // 실제로는 바뀌지 않았는데도 effect가 다시 실행되어 마운트 직후 URL에 `?year=&month=`가 붙어버리는
+  // 버그가 있었다(#353 후속 수정). 그래서 "마지막으로 URL에 반영한 연/월"을 ref로 따로 기억해두고,
+  // 실제로 값이 달라졌을 때만 URL을 갱신한다.
   const yearMonthMountedRef = React.useRef(false);
+  const lastSyncedYearMonthRef = React.useRef<{ year: number; month: number } | null>(null);
   React.useEffect(() => {
     if (!yearMonthMountedRef.current) {
       yearMonthMountedRef.current = true;
+      lastSyncedYearMonthRef.current = { year, month };
       return;
     }
+    if (
+      lastSyncedYearMonthRef.current?.year === year &&
+      lastSyncedYearMonthRef.current?.month === month
+    ) {
+      return;
+    }
+    lastSyncedYearMonthRef.current = { year, month };
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);

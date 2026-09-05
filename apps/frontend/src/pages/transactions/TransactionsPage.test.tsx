@@ -1,3 +1,4 @@
+import { StrictMode } from "react";
 import type { PropsWithChildren } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
@@ -412,6 +413,37 @@ describe("TransactionsPage — 새로고침(F5) 시 기간 유지", () => {
     await waitFor(() => {
       expect(screen.getByTestId("loc").textContent).toMatch(/\?year=\d{4}&month=\d{1,2}/);
     });
+  });
+
+  // 회귀 테스트(#353 후속): 개발 서버/E2E는 <React.StrictMode>로 감싸져 있어 effect가 마운트 시
+  // 두 번 실행된다. "최초 마운트에는 스킵" 플래그를 단순 boolean으로만 구현하면, 첫 번째 실행에서
+  // 이미 플래그가 true로 바뀌어 두 번째 실행이 "진짜 변경"으로 오인되어 URL에 ?year=&month=가
+  // 붙어버렸다(대시보드 "전체 보기"·계좌이동 등록 후 복귀가 깨끗한 /transactions를 기대하는 E2E가
+  // 이 문제로 실패함). "마지막으로 URL에 반영한 연/월" 값을 비교해서만 실제로 갱신하도록 고쳤다.
+  it("does not add a year/month query even when effects double-invoke under StrictMode (dev/E2E parity)", async () => {
+    mockedTransactionApi.getTransactions.mockResolvedValue(emptyTransactions);
+
+    const LocationProbe = () => {
+      const location = useLocation();
+      return <div data-testid="loc">{location.pathname}{location.search}</div>;
+    };
+
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+    render(
+      <StrictMode>
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter initialEntries={["/transactions"]}>
+            <TransactionsPage />
+            <LocationProbe />
+          </MemoryRouter>
+        </QueryClientProvider>
+      </StrictMode>
+    );
+
+    await screen.findByText("거래 내역이 없습니다");
+    expect(screen.getByTestId("loc")).toHaveTextContent("/transactions");
+    expect(screen.getByTestId("loc")).not.toHaveTextContent("?");
   });
 });
 

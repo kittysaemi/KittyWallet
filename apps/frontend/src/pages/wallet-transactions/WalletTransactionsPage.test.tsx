@@ -1,3 +1,4 @@
+import { StrictMode } from "react";
 import type { PropsWithChildren } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
@@ -487,5 +488,47 @@ describe("WalletTransactionsPage — 새로고침(F5) 시 기간 유지", () => 
     });
 
     expect(await screen.findByRole("button", { name: "년" })).toHaveClass("bg-[var(--color-primary)]");
+  });
+
+  // 회귀 테스트(#353 후속): 개발 서버/E2E는 <React.StrictMode>로 감싸져 있어 effect가 마운트 시
+  // 두 번 실행된다. "최초 마운트에는 스킵" 플래그를 단순 boolean으로만 구현하면, 첫 번째 실행에서
+  // 이미 플래그가 true로 바뀌어 두 번째 실행이 "진짜 변경"으로 오인되어 URL에 ?period=&date=가
+  // 붙어버렸다(TransactionsPage의 동일한 버그와 같은 원인). "마지막으로 URL에 반영한 기간" 값을
+  // 비교해서만 실제로 갱신하도록 고쳤다.
+  it("does not add a period/date query even when effects double-invoke under StrictMode (dev/E2E parity)", async () => {
+    mockedTransactionApi.getTransactions.mockResolvedValue(makeTxPage());
+
+    const LocationProbe = () => {
+      const location = useLocation();
+      return <div data-testid="loc">{location.pathname}{location.search}</div>;
+    };
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } }
+    });
+
+    render(
+      <StrictMode>
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter initialEntries={["/accounts/1/transactions"]}>
+            <Routes>
+              <Route
+                path="/accounts/:walletId/transactions"
+                element={
+                  <>
+                    <WalletTransactionsPage walletType="ACCOUNT" />
+                    <LocationProbe />
+                  </>
+                }
+              />
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>
+      </StrictMode>
+    );
+
+    expect(await screen.findByText("지갑 거래내역")).toBeInTheDocument();
+    expect(screen.getByTestId("loc")).toHaveTextContent("/accounts/1/transactions");
+    expect(screen.getByTestId("loc")).not.toHaveTextContent("?");
   });
 });

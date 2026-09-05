@@ -100,17 +100,32 @@ const WalletTransactionsPage: React.FC<WalletTransactionsPageProps> = ({ walletT
   // 기간(periodType/baseDate)이 바뀔 때마다 URL 쿼리 파라미터에 반영한다(replace로 히스토리를
   // 늘리지 않음). 최초 마운트 시점에는 실행하지 않는다 — 새 지갑으로 처음 진입했을 때(기본값
   // "이번 달")는 URL을 그대로 깔끔하게 둔다.
+  // 주의: react-router의 `setSearchParams`는 매 렌더마다 새 함수로 반환될 수 있다(예: 다른 쿼리가
+  // 로딩을 마치고 리렌더될 때). 이 함수를 의존성 배열에 그대로 두면 기간이 실제로는 바뀌지 않았는데도
+  // effect가 다시 실행되어 마운트 직후 URL에 `?period=&date=`가 붙어버리는 버그가 있었다(#353 후속
+  // 수정, TransactionsPage의 동일한 버그와 같은 원인). 그래서 "마지막으로 URL에 반영한 기간"을 ref로
+  // 따로 기억해두고, 실제로 값이 달라졌을 때만 URL을 갱신한다.
   const periodMountedRef = React.useRef(false);
+  const lastSyncedPeriodRef = React.useRef<{ periodType: PeriodType; dateStr: string } | null>(null);
   React.useEffect(() => {
+    const dateStr = toDateValue(baseDate);
     if (!periodMountedRef.current) {
       periodMountedRef.current = true;
+      lastSyncedPeriodRef.current = { periodType, dateStr };
       return;
     }
+    if (
+      lastSyncedPeriodRef.current?.periodType === periodType &&
+      lastSyncedPeriodRef.current?.dateStr === dateStr
+    ) {
+      return;
+    }
+    lastSyncedPeriodRef.current = { periodType, dateStr };
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
         next.set("period", periodType);
-        next.set("date", toDateValue(baseDate));
+        next.set("date", dateStr);
         return next;
       },
       { replace: true }
