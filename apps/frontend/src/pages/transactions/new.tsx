@@ -30,8 +30,8 @@ const TransactionNewPage: React.FC = () => {
   const navigationState = location.state as NavigationState | null;
   const receiptFile = navigationState?.receiptFile;
   // 지갑별 거래내역 화면에서 진입한 경우, 등록 완료 후 일반 거래내역이 아니라 원래 있던 지갑
-  // 화면(기간/스크롤 상태 포함)으로 돌아가야 한다(#409와 동일한 returnTo state 패턴,
-  // edit.tsx/detail.tsx 참고).
+  // 화면(기간/스크롤 상태 포함)으로 돌아가야 한다(#353). edit.tsx/detail.tsx와 동일한
+  // returnTo state 패턴을 따른다.
   const returnTo = navigationState?.returnTo;
 
   const lockedWalletType = searchParams.get("walletType");

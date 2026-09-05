@@ -1,3 +1,17 @@
+## [1.44.3](https://github.com/kittysaemi/KittyWallet/compare/v1.44.2...v1.44.3) (2026-09-05)
+
+
+### Bug Fixes
+
+* **transfer:** 계좌금액이동 아이콘을 카테고리 상태와 무관하게 고정 ([#414](https://github.com/kittysaemi/KittyWallet/issues/414)) ([ae35076](https://github.com/kittysaemi/KittyWallet/commit/ae35076c8d1f212dfdad3f6b4c382b40bf41ab6d)), closes [#409](https://github.com/kittysaemi/KittyWallet/issues/409)
+
+## [1.44.2](https://github.com/kittysaemi/KittyWallet/compare/v1.44.1...v1.44.2) (2026-09-05)
+
+
+### Bug Fixes
+
+* **transactions:** 지갑 거래내역에서 등록 완료 후 원래 지갑 화면으로 복귀 ([#415](https://github.com/kittysaemi/KittyWallet/issues/415)) ([5435a15](https://github.com/kittysaemi/KittyWallet/commit/5435a15ffa9cc8ff58845ae0c09500d29f6948d6)), closes [#353](https://github.com/kittysaemi/KittyWallet/issues/353) [#353](https://github.com/kittysaemi/KittyWallet/issues/353)
+
 ## [1.44.1](https://github.com/kittysaemi/KittyWallet/compare/v1.44.0...v1.44.1) (2026-09-05)
 
 
