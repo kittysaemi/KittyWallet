@@ -11,6 +11,7 @@ import { getPendingSyncCount } from "../../shared/storage/syncQueue";
 import { clearUserApiCaches } from "../../pwa/cache/cacheInvalidation";
 import { deleteDb } from "../../pwa/indexed-db/indexedDb.client";
 import { Button } from "../../shared/ui/Button";
+import { KOREAN_TEXT_INPUT_PROPS } from "../../shared/constants/inputIme";
 
 const nicknameSchema = z
   .string()
@@ -204,6 +205,7 @@ const SettingsPage: React.FC = () => {
                   <div className="flex gap-2">
                     <input
                       aria-label="닉네임 입력"
+                      {...KOREAN_TEXT_INPUT_PROPS}
                       value={nicknameInput}
                       maxLength={30}
                       autoFocus

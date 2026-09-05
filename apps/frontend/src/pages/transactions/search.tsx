@@ -13,6 +13,7 @@ import { IconRenderer } from "../../shared/ui/IconRenderer";
 import { useTimezone } from "../../shared/hooks/useTimezone";
 import { getTodayInTimezone } from "../../shared/utils/date";
 import { STALE_TIME, QUERY_LIMIT } from "../../shared/constants/queryConfig";
+import { KOREAN_TEXT_INPUT_PROPS } from "../../shared/constants/inputIme";
 
 const cardClass =
   "rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] shadow-[0_4px_16px_var(--color-card-shadow)]";
@@ -548,6 +549,8 @@ const KeywordTab: React.FC<{ iconMap: Map<number, IconItem>; categoryIconMap: Ma
             placeholder="검색어를 입력하세요"
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
+            autoComplete="off"
+            {...KOREAN_TEXT_INPUT_PROPS}
           />
         </div>
 

@@ -9,6 +9,8 @@ import type { IconItem } from "../../entities/icon/model/icon.types";
 import { IconSelect } from "../icons/IconSelect";
 import { Button } from "../../shared/ui/Button";
 import { Input } from "../../shared/ui/Input";
+import { KOREAN_TEXT_INPUT_PROPS } from "../../shared/constants/inputIme";
+import { useNumericFieldProps } from "../../shared/hooks/useNumericFieldProps";
 import { toSupportErrorMessage } from "../../shared/api/apiError";
 
 const createSchema = z.object({
@@ -40,6 +42,7 @@ interface AccountFormProps {
 export const AccountForm: React.FC<AccountFormProps> = ({ mode, account }) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const numericFieldProps = useNumericFieldProps();
   const isEdit = mode === "edit";
 
   const [accountName, setAccountName] = useState(account?.account_name ?? "");
@@ -137,13 +140,14 @@ export const AccountForm: React.FC<AccountFormProps> = ({ mode, account }) => {
         placeholder="예: 생활비 통장"
         error={fieldErrors.account_name}
         maxLength={15}
+        autoComplete="off"
+        {...KOREAN_TEXT_INPUT_PROPS}
       />
 
       {!isEdit && (
         <Input
           label="초기 잔액"
           type="text"
-          inputMode="numeric"
           name="initial_balance"
           value={initialBalance ? Number(initialBalance).toLocaleString() : ""}
           onChange={(e) => {
@@ -156,6 +160,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({ mode, account }) => {
           }}
           placeholder="0"
           error={fieldErrors.initial_balance}
+          {...numericFieldProps}
         />
       )}
 

@@ -8,6 +8,8 @@ import { cardApi } from "../../entities/card/api/cardApi";
 import type { CardItem } from "../../entities/card/model/card.types";
 import { categoryApi } from "../../entities/category/api/categoryApi";
 import { STALE_TIME, RETRY } from "../../shared/constants/queryConfig";
+import { KOREAN_TEXT_INPUT_PROPS } from "../../shared/constants/inputIme";
+import { useNumericFieldProps } from "../../shared/hooks/useNumericFieldProps";
 import type { CategoryItem } from "../../entities/category/model/category.types";
 import { iconApi } from "../../entities/icon/api/iconApi";
 import type {
@@ -125,6 +127,7 @@ const ArchiveDialog: React.FC<{
 const AccountsTab: React.FC = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const numericFieldProps = useNumericFieldProps();
   const isOffline = !navigator.onLine;
   const [isCreating, setIsCreating] = React.useState(false);
   const [newName, setNewName] = React.useState("");
@@ -321,6 +324,7 @@ const AccountsTab: React.FC = () => {
               </button>
               <input
                 aria-label="계좌명"
+                {...KOREAN_TEXT_INPUT_PROPS}
                 value={newName}
                 maxLength={15}
                 onChange={(e) => setNewName(e.target.value)}
@@ -330,7 +334,7 @@ const AccountsTab: React.FC = () => {
             </div>
             <input
               aria-label="초기 잔액"
-              inputMode="numeric"
+              {...numericFieldProps}
               value={newBalance ? Number(newBalance).toLocaleString() : ""}
               onChange={(e) => {
                 const raw = e.target.value.replace(/,/g, "").replace(/[^0-9]/g, "");
@@ -368,7 +372,7 @@ const AccountsTab: React.FC = () => {
               {newAllowNegative && (
                 <input
                   aria-label="신규 계좌 마이너스 한도"
-                  inputMode="numeric"
+                  {...numericFieldProps}
                   value={newNegativeLimit ? Number(newNegativeLimit).toLocaleString() : ""}
                   onChange={(e) => {
                     const raw = e.target.value.replace(/,/g, "").replace(/[^0-9]/g, "");
@@ -480,6 +484,7 @@ const AccountsTab: React.FC = () => {
                     {isEditing ? (
                       <input
                         aria-label={`${account.account_name} 이름 수정`}
+                        {...KOREAN_TEXT_INPUT_PROPS}
                         value={editingName}
                         maxLength={15}
                         autoFocus
@@ -743,6 +748,7 @@ const CardsTab: React.FC = () => {
               </button>
               <input
                 aria-label="카드명"
+                {...KOREAN_TEXT_INPUT_PROPS}
                 value={newName}
                 maxLength={15}
                 onChange={(e) => setNewName(e.target.value)}
@@ -848,6 +854,7 @@ const CardsTab: React.FC = () => {
                     {isEditing ? (
                       <input
                         aria-label={`${card.card_name} 이름 수정`}
+                        {...KOREAN_TEXT_INPUT_PROPS}
                         value={editingName}
                         maxLength={15}
                         autoFocus
@@ -1030,6 +1037,7 @@ const CategoryRow: React.FC<CategoryRowProps> = ({
       {isEditingName ? (
         <input
           aria-label={`${category.category_name} 이름 수정`}
+          {...KOREAN_TEXT_INPUT_PROPS}
           value={editingName}
           onChange={(e) => onNameChange(e.target.value)}
           onBlur={() => onNameSave(category)}
@@ -1292,6 +1300,7 @@ const CategoriesTab: React.FC = () => {
               </button>
               <input
                 aria-label="카테고리명"
+                {...KOREAN_TEXT_INPUT_PROPS}
                 value={newName}
                 maxLength={15}
                 onChange={(e) => setNewName(e.target.value)}
