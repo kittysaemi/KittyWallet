@@ -18,6 +18,13 @@ export type TransactionWithInstallment = Transaction & {
   cardInstallment: CardInstallment | null;
 };
 
+// 다중 선택 지갑 필터(#353): 지갑은 (지갑유형, 지갑ID) 쌍으로만 식별되므로 ID 목록이 아니라
+// 쌍의 목록으로 받는다(계좌 1번과 카드 1번은 서로 다른 지갑이다).
+export interface WalletRef {
+  walletType: WalletType;
+  walletId: bigint;
+}
+
 export interface FindTransactionsCondition {
   userId: bigint;
   startDate?: Date;
@@ -26,6 +33,11 @@ export interface FindTransactionsCondition {
   walletType?: WalletType;
   walletId?: bigint;
   categoryId?: bigint;
+  // 다중 선택 필터(#353). 지정되면 단일 값(categoryId/walletType+walletId)보다 우선한다.
+  categoryIds?: bigint[];
+  walletRefs?: WalletRef[];
+  // 할부 거래(installmentId가 있는 거래)를 목록에서 제외한다.
+  excludeInstallment?: boolean;
   transactionType?: TransactionType;
 }
 
@@ -76,14 +88,34 @@ export class TransactionsRepository {
           }
         : undefined;
 
+    // 다중 선택이 지정되면 그것을 쓰고, 아니면 기존 단일 값 필터를 그대로 사용한다
+    // (검색/지갑별 거래내역 등 단일 값만 보내는 호출부와의 호환 유지).
+    const categoryFilter = condition.categoryIds?.length
+      ? { categoryId: { in: condition.categoryIds } }
+      : condition.categoryId
+        ? { categoryId: condition.categoryId }
+        : {};
+
+    const walletFilter = condition.walletRefs?.length
+      ? {
+          OR: condition.walletRefs.map((ref) => ({
+            walletType: ref.walletType,
+            walletId: ref.walletId
+          }))
+        }
+      : {
+          ...(condition.walletType ? { walletType: condition.walletType } : {}),
+          ...(condition.walletId ? { walletId: condition.walletId } : {})
+        };
+
     return {
       userId: condition.userId,
       deletedYn: false,
       ...(dateFilter ? { transactionDate: dateFilter } : {}),
       ...(condition.keyword ? { memo: { contains: condition.keyword, mode: "insensitive" } } : {}),
-      ...(condition.walletType ? { walletType: condition.walletType } : {}),
-      ...(condition.walletId ? { walletId: condition.walletId } : {}),
-      ...(condition.categoryId ? { categoryId: condition.categoryId } : {}),
+      ...walletFilter,
+      ...categoryFilter,
+      ...(condition.excludeInstallment ? { installmentId: null } : {}),
       ...(condition.transactionType ? { transactionType: condition.transactionType } : {})
     };
   }

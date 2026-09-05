@@ -1,6 +1,6 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronDown, ChevronLeft, ChevronRight, Clock, RefreshCw, WifiOff, X } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Clock, RefreshCw, WifiOff, X } from "lucide-react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import type { TransactionItem } from "../../entities/transaction/model/transaction.types";
@@ -20,23 +20,45 @@ import type { OfflineTransaction } from "../../pwa/types/indexedDb.types";
 const cardClass =
   "rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] shadow-[0_4px_16px_var(--color-card-shadow)]";
 
+// 지갑은 (유형, ID) 쌍으로만 식별된다 — 계좌 1번과 카드 1번은 서로 다른 지갑이다.
+// 그래서 다중 선택도 ID 배열이 아니라 쌍의 배열로 관리한다.
+interface WalletRef {
+  walletType: "ACCOUNT" | "CARD";
+  walletId: number;
+}
+
+const walletRefKey = (ref: WalletRef): string => `${ref.walletType}:${ref.walletId}`;
+
+function parseWalletRefKey(key: string): WalletRef {
+  const [walletType, walletId] = key.split(":");
+  return { walletType: walletType as "ACCOUNT" | "CARD", walletId: Number(walletId) };
+}
+
 interface Filters {
-  categoryId?: number;
-  walletType?: "ACCOUNT" | "CARD";
-  walletId?: number;
+  // 카테고리/지갑은 여러 개를 동시에 선택할 수 있다(#353). 서버에는 각각 쉼표 구분
+  // category_ids / wallet_ids로 전달된다.
+  categoryIds?: number[];
+  walletRefs?: WalletRef[];
+  // 수입/지출은 본질적으로 배타적인 값이라 단일 선택을 유지한다.
   transactionType?: "INCOME" | "EXPENSE";
+  // 할부 거래를 목록에서 제외하는 토글. 서버의 exclude_installment 파라미터로 전달된다.
+  excludeInstallment?: boolean;
   // 선택된 연/월(year, month) 안의 특정 일자(1~31)만 남기는 필터. 카테고리/지갑/수입-지출과
   // 달리 API 파라미터가 아니라, 조회 시 start_date/end_date를 둘 다 그 날짜로 좁혀서 구현한다
   // (getEffectiveDateRange 참고). 그래서 getFilterParams에는 포함하지 않는다.
   day?: number;
 }
 
+// 선택이 없는 필터는 아예 파라미터를 보내지 않는다(undefined). 그래야 "필터 해제" 후의 쿼리가
+// 최초 진입 시 쿼리와 완전히 같아져서 TanStack Query 캐시가 그대로 재사용된다.
 function getFilterParams(filters: Filters) {
   return {
-    category_id: filters.categoryId,
-    wallet_type: filters.walletType,
-    wallet_id: filters.walletId,
-    transaction_type: filters.transactionType
+    category_ids: filters.categoryIds?.length ? filters.categoryIds.join(",") : undefined,
+    wallet_ids: filters.walletRefs?.length
+      ? filters.walletRefs.map(walletRefKey).join(",")
+      : undefined,
+    transaction_type: filters.transactionType,
+    exclude_installment: filters.excludeInstallment ? true : undefined
   };
 }
 
@@ -404,6 +426,9 @@ const PeriodJumpSheet: React.FC<PeriodJumpSheetProps> = ({
 };
 
 // 카테고리/지갑/수입-지출 필터 칩에서 공용으로 사용하는 선택 바텀시트.
+// multiple=true면 체크박스형 다중 선택으로 동작한다(카테고리/지갑). 이때는 항목을 눌러도
+// 시트가 닫히지 않아 여러 개를 연속으로 고를 수 있고, 하단 "완료" 버튼이나 X로 닫는다.
+// multiple=false면 기존과 동일한 단일 선택이다(수입/지출) — 고르는 즉시 닫힌다.
 interface FilterSelectOption {
   id: string;
   label: string;
@@ -414,16 +439,35 @@ interface FilterSelectSheetProps {
   title: string;
   isOpen: boolean;
   options: FilterSelectOption[];
-  selectedId?: string;
+  selectedIds: string[];
+  multiple?: boolean;
   iconMap: Map<number, IconItem>;
-  onSelect: (id: string | undefined) => void;
+  onChange: (ids: string[]) => void;
   onClose: () => void;
 }
 
 const FilterSelectSheet: React.FC<FilterSelectSheetProps> = ({
-  title, isOpen, options, selectedId, iconMap, onSelect, onClose
+  title, isOpen, options, selectedIds, multiple = false, iconMap, onChange, onClose
 }) => {
   if (!isOpen) return null;
+
+  const hasSelection = selectedIds.length > 0;
+
+  const selectAll = () => {
+    onChange([]);
+    if (!multiple) onClose();
+  };
+
+  const toggle = (id: string) => {
+    if (!multiple) {
+      onChange([id]);
+      onClose();
+      return;
+    }
+    onChange(
+      selectedIds.includes(id) ? selectedIds.filter((v) => v !== id) : [...selectedIds, id]
+    );
+  };
 
   return (
     <div
@@ -448,9 +492,9 @@ const FilterSelectSheet: React.FC<FilterSelectSheetProps> = ({
         <div className="min-h-0 overflow-y-auto pr-1">
           <button
             type="button"
-            onClick={() => { onSelect(undefined); onClose(); }}
+            onClick={selectAll}
             className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition ${
-              !selectedId
+              !hasSelection
                 ? "bg-[var(--color-primary-soft)] font-semibold text-[var(--color-text-primary)]"
                 : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)]"
             }`}
@@ -459,18 +503,34 @@ const FilterSelectSheet: React.FC<FilterSelectSheetProps> = ({
           </button>
           {options.map((opt) => {
             const icon = opt.iconId ? iconMap.get(opt.iconId) : undefined;
-            const active = opt.id === selectedId;
+            const active = selectedIds.includes(opt.id);
             return (
               <button
                 key={opt.id}
                 type="button"
-                onClick={() => { onSelect(opt.id); onClose(); }}
+                // 다중 선택일 때는 체크박스 시맨틱을 준다(스크린리더가 선택 상태를 읽고,
+                // 테스트도 role=checkbox + aria-checked로 상태를 검증할 수 있다).
+                role={multiple ? "checkbox" : undefined}
+                aria-checked={multiple ? active : undefined}
+                onClick={() => toggle(opt.id)}
                 className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition ${
                   active
                     ? "bg-[var(--color-primary-soft)] font-semibold text-[var(--color-text-primary)]"
                     : "text-[var(--color-text-primary)] hover:bg-[var(--color-bg-secondary)]"
                 }`}
               >
+                {multiple && (
+                  <span
+                    aria-hidden="true"
+                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition ${
+                      active
+                        ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-text-primary)]"
+                        : "border-[var(--color-border-primary)] bg-[var(--color-bg-card)]"
+                    }`}
+                  >
+                    {active && <Check size={14} strokeWidth={3} />}
+                  </span>
+                )}
                 {icon && (
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--color-bg-secondary)]">
                     <IconRenderer
@@ -482,11 +542,22 @@ const FilterSelectSheet: React.FC<FilterSelectSheetProps> = ({
                   </span>
                 )}
                 <span className="flex-1">{opt.label}</span>
-                {active && <span className="text-xs font-semibold text-[var(--color-primary)]">✓</span>}
+                {!multiple && active && (
+                  <span className="text-xs font-semibold text-[var(--color-primary)]">✓</span>
+                )}
               </button>
             );
           })}
         </div>
+        {multiple && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="mt-4 shrink-0 rounded-xl bg-[var(--color-primary)] py-3 text-sm font-semibold text-[var(--color-text-primary)] transition hover:bg-[var(--color-primary-hover)]"
+          >
+            완료
+          </button>
+        )}
       </div>
     </div>
   );
@@ -595,6 +666,36 @@ const FilterChip: React.FC<FilterChipProps> = ({ label, value, onClick, onClear 
     )}
   </div>
 );
+
+// 선택할 값이 없는 on/off 필터("할부 제외")용 칩. 바텀시트를 열지 않고 그 자리에서 토글된다.
+interface FilterToggleChipProps {
+  label: string;
+  active: boolean;
+  onToggle: () => void;
+}
+
+const FilterToggleChip: React.FC<FilterToggleChipProps> = ({ label, active, onToggle }) => (
+  <button
+    type="button"
+    aria-pressed={active}
+    onClick={onToggle}
+    className={`flex items-center gap-1 rounded-full border py-1.5 px-3 text-xs font-medium transition ${
+      active
+        ? "border-[var(--color-primary)] bg-[var(--color-primary-soft)] text-[var(--color-text-primary)]"
+        : "border-[var(--color-border-primary)] bg-[var(--color-bg-card)] text-[var(--color-text-secondary)]"
+    }`}
+  >
+    {active && <Check size={12} aria-hidden="true" />}
+    <span>{label}</span>
+  </button>
+);
+
+// 다중 선택 칩에 표시할 라벨. 여러 개 고른 경우 첫 항목 + "외 N"으로 줄인다.
+function getMultiSelectLabel(labels: string[]): string | undefined {
+  if (labels.length === 0) return undefined;
+  if (labels.length === 1) return labels[0];
+  return `${labels[0]} 외 ${labels.length - 1}`;
+}
 
 // 상세화면(POP=뒤로가기)에서 돌아왔을 때 이전에 보던 페이지/스크롤 위치를 복원하기 위한
 // 모듈 스코프 저장소. 연/월은 새로고침에도 살아남아야 하므로 URL 쿼리 파라미터(year, month)로
@@ -846,12 +947,27 @@ const TransactionsPage: React.FC = () => {
     { id: "EXPENSE", label: "지출" }
   ];
 
-  const selectedCategoryLabel = filters.categoryId != null
-    ? categoryOptions.find((o) => o.id === String(filters.categoryId))?.label
-    : undefined;
-  const selectedWalletLabel = filters.walletId != null
-    ? walletOptions.find((o) => o.id === `${filters.walletType}:${filters.walletId}`)?.label
-    : undefined;
+  // 선택 순서를 그대로 라벨에 반영하기 위해 옵션 목록이 아니라 선택 목록을 기준으로 매핑한다.
+  // 아직 카테고리/지갑 목록이 로딩 중이면 이름을 못 찾을 수 있어 그 항목은 건너뛴다.
+  const selectedCategoryIds = React.useMemo(
+    () => (filters.categoryIds ?? []).map(String),
+    [filters.categoryIds]
+  );
+  const selectedWalletKeys = React.useMemo(
+    () => (filters.walletRefs ?? []).map(walletRefKey),
+    [filters.walletRefs]
+  );
+
+  const selectedCategoryLabel = getMultiSelectLabel(
+    selectedCategoryIds
+      .map((id) => categoryOptions.find((o) => o.id === id)?.label)
+      .filter((label): label is string => label != null)
+  );
+  const selectedWalletLabel = getMultiSelectLabel(
+    selectedWalletKeys
+      .map((key) => walletOptions.find((o) => o.id === key)?.label)
+      .filter((label): label is string => label != null)
+  );
   const selectedTypeLabel = filters.transactionType === "INCOME"
     ? "수입"
     : filters.transactionType === "EXPENSE"
@@ -1019,13 +1135,13 @@ const TransactionsPage: React.FC = () => {
             label="카테고리"
             value={selectedCategoryLabel}
             onClick={() => setIsCategorySheetOpen(true)}
-            onClear={() => updateFilters({ categoryId: undefined })}
+            onClear={() => updateFilters({ categoryIds: undefined })}
           />
           <FilterChip
             label="지갑"
             value={selectedWalletLabel}
             onClick={() => setIsWalletSheetOpen(true)}
-            onClear={() => updateFilters({ walletType: undefined, walletId: undefined })}
+            onClear={() => updateFilters({ walletRefs: undefined })}
           />
           <FilterChip
             label="수입/지출"
@@ -1038,6 +1154,13 @@ const TransactionsPage: React.FC = () => {
             value={selectedDayLabel}
             onClick={() => setIsDaySheetOpen(true)}
             onClear={() => updateFilters({ day: undefined })}
+          />
+          <FilterToggleChip
+            label="할부 제외"
+            active={filters.excludeInstallment === true}
+            onToggle={() =>
+              updateFilters({ excludeInstallment: filters.excludeInstallment ? undefined : true })
+            }
           />
         </div>
 
@@ -1166,32 +1289,34 @@ const TransactionsPage: React.FC = () => {
       <FilterSelectSheet
         title="카테고리"
         isOpen={isCategorySheetOpen}
+        multiple
         options={categoryOptions}
-        selectedId={filters.categoryId != null ? String(filters.categoryId) : undefined}
+        selectedIds={selectedCategoryIds}
         iconMap={iconMap}
-        onSelect={(id) => updateFilters({ categoryId: id ? Number(id) : undefined })}
+        onChange={(ids) => updateFilters({ categoryIds: ids.length ? ids.map(Number) : undefined })}
         onClose={() => setIsCategorySheetOpen(false)}
       />
       <FilterSelectSheet
         title="지갑"
         isOpen={isWalletSheetOpen}
+        multiple
         options={walletOptions}
-        selectedId={filters.walletId != null ? `${filters.walletType}:${filters.walletId}` : undefined}
+        selectedIds={selectedWalletKeys}
         iconMap={iconMap}
-        onSelect={(id) => {
-          if (!id) { updateFilters({ walletType: undefined, walletId: undefined }); return; }
-          const [walletType, walletId] = id.split(":");
-          updateFilters({ walletType: walletType as "ACCOUNT" | "CARD", walletId: Number(walletId) });
-        }}
+        onChange={(keys) =>
+          updateFilters({ walletRefs: keys.length ? keys.map(parseWalletRefKey) : undefined })
+        }
         onClose={() => setIsWalletSheetOpen(false)}
       />
       <FilterSelectSheet
         title="수입/지출"
         isOpen={isTypeSheetOpen}
         options={typeOptions}
-        selectedId={filters.transactionType}
+        selectedIds={filters.transactionType ? [filters.transactionType] : []}
         iconMap={iconMap}
-        onSelect={(id) => updateFilters({ transactionType: id as "INCOME" | "EXPENSE" | undefined })}
+        onChange={(ids) =>
+          updateFilters({ transactionType: ids[0] as "INCOME" | "EXPENSE" | undefined })
+        }
         onClose={() => setIsTypeSheetOpen(false)}
       />
       <DayFilterSheet

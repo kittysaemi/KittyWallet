@@ -12,6 +12,25 @@ const DEFAULT_LIMIT = 20;
 const DEFAULT_RECENT_LIMIT = 5;
 const MAX_RECENT_LIMIT = 20;
 
+// 다중 선택 필터(#353): 쿼리 파라미터는 DTO에서 형식 검증을 마친 쉼표 구분 문자열이다.
+function parseCategoryIds(raw?: string): number[] | undefined {
+  if (!raw) return undefined;
+  const ids = raw.split(",").map((v) => parseInt(v, 10));
+  return ids.length > 0 ? ids : undefined;
+}
+
+// `ACCOUNT:1,CARD:2` -> [{ walletType: "ACCOUNT", walletId: 1 }, { walletType: "CARD", walletId: 2 }]
+function parseWalletRefs(
+  raw?: string
+): Array<{ walletType: "ACCOUNT" | "CARD"; walletId: number }> | undefined {
+  if (!raw) return undefined;
+  const refs = raw.split(",").map((token) => {
+    const [walletType, walletId] = token.split(":");
+    return { walletType: walletType as "ACCOUNT" | "CARD", walletId: parseInt(walletId, 10) };
+  });
+  return refs.length > 0 ? refs : undefined;
+}
+
 @Controller("transactions")
 export class TransactionsController {
   constructor(private readonly transactionsService: TransactionsService) {}
@@ -31,6 +50,9 @@ export class TransactionsController {
       walletType: query.wallet_type,
       walletId: query.wallet_id ? parseInt(query.wallet_id, 10) : undefined,
       categoryId: query.category_id ? parseInt(query.category_id, 10) : undefined,
+      categoryIds: parseCategoryIds(query.category_ids),
+      walletRefs: parseWalletRefs(query.wallet_ids),
+      excludeInstallment: query.exclude_installment === "true",
       transactionType: query.transaction_type,
       page,
       limit,

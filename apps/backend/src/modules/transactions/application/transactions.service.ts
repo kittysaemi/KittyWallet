@@ -49,6 +49,10 @@ interface GetTransactionsCommand {
   walletType?: string;
   walletId?: number;
   categoryId?: number;
+  // 다중 선택 필터(#353). 지정되면 단일 값 필터보다 우선한다.
+  categoryIds?: number[];
+  walletRefs?: Array<{ walletType: "ACCOUNT" | "CARD"; walletId: number }>;
+  excludeInstallment?: boolean;
   transactionType?: string;
   page: number;
   limit: number;
@@ -421,20 +425,38 @@ export class TransactionsService {
       walletType: command.walletType as WalletType | undefined,
       walletId: command.walletId ? BigInt(command.walletId) : undefined,
       categoryId: command.categoryId ? BigInt(command.categoryId) : undefined,
+      categoryIds: command.categoryIds?.map((id) => BigInt(id)),
+      walletRefs: command.walletRefs?.map((ref) => ({
+        walletType: ref.walletType as WalletType,
+        walletId: BigInt(ref.walletId)
+      })),
+      excludeInstallment: command.excludeInstallment,
       transactionType: command.transactionType as TransactionType | undefined
     };
 
     const orderBy = this.buildOrderBy(command.sort);
 
-    const isCardFilter = command.walletType === "CARD" && command.walletId !== undefined;
+    // 카드 사용액 요약(period_summary)은 "카드 한 장"으로 좁혀졌을 때만 의미가 있다.
+    // 다중 선택(wallet_ids)으로 지갑을 여러 개 고른 경우에는 합계의 의미가 모호하므로 null을 준다.
+    const singleWallet =
+      command.walletRefs !== undefined
+        ? command.walletRefs.length === 1
+          ? command.walletRefs[0]
+          : undefined
+        : command.walletType !== undefined && command.walletId !== undefined
+          ? { walletType: command.walletType as "ACCOUNT" | "CARD", walletId: command.walletId }
+          : undefined;
+    const isCardFilter = singleWallet?.walletType === "CARD";
 
     const [transactions, total, cardExpense] = await Promise.all([
       this.transactionsRepository.findMany(condition, command.page, command.limit, orderBy),
       this.transactionsRepository.count(condition),
+      // period_summary는 "그 카드의 기간 총 사용액"이라는 고정된 의미를 갖는 값이라
+      // exclude_installment(목록에서 할부 거래만 감추는 보기 옵션)의 영향을 받지 않는다.
       isCardFilter
         ? this.transactionsRepository.sumCardExpense(
             command.userId,
-            BigInt(command.walletId!),
+            BigInt(singleWallet!.walletId),
             condition.startDate,
             condition.endDate
           )
