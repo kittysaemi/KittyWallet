@@ -1,3 +1,10 @@
+## [1.44.4](https://github.com/kittysaemi/KittyWallet/compare/v1.44.3...v1.44.4) (2026-09-05)
+
+
+### Bug Fixes
+
+* **transactions:** 저장/삭제 완료 및 등록 완료 후 뒤로가기 시 이전 화면 재노출 방지 ([#416](https://github.com/kittysaemi/KittyWallet/issues/416)) ([7ca1b60](https://github.com/kittysaemi/KittyWallet/commit/7ca1b60ddf7a7d88fbb8aae28f50d8078727e2d8)), closes [#353](https://github.com/kittysaemi/KittyWallet/issues/353) [#353](https://github.com/kittysaemi/KittyWallet/issues/353)
+
 ## [1.44.3](https://github.com/kittysaemi/KittyWallet/compare/v1.44.2...v1.44.3) (2026-09-05)
 
 
