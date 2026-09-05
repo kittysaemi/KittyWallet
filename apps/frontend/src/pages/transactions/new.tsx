@@ -131,9 +131,14 @@ const TransactionNewPage: React.FC = () => {
             }}
             onSuccess={() => {
               if (returnTo) {
-                // replace: true — 등록화면을 지갑 화면으로 교체해야, 등록 완료 후 "뒤로가기"를
-                // 눌렀을 때 이미 제출된 등록화면이 다시 나타나지 않는다(#353).
-                navigate(returnTo, { replace: true });
+                // returnTo가 있다는 것은 지갑 거래내역 화면에서 push 한 번으로 진입했다는 뜻이므로,
+                // 그 한 단계를 그대로 되돌린다(navigate(-1)). 예전처럼 replace로 지갑 경로를 다시
+                // 열면 [지갑, 지갑'] 처럼 히스토리가 등록 1건마다 한 칸씩 늘어나서, 등록을 N번
+                // 반복하면 이전 화면으로 나가는 데 뒤로가기를 N번 눌러야 했다(#353).
+                // pop은 순증가가 0이라 몇 번을 반복해도 뒤로가기 한 번이면 이전 화면으로 나간다.
+                // 목록 갱신은 폼의 invalidateTransactionRelatedQueries가 이미 처리하므로
+                // push/replace/pop 어느 쪽이든 복귀 시 최신 데이터가 보인다.
+                navigate(-1);
                 return;
               }
               navigate("/transactions", {
