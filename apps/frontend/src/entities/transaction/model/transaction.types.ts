@@ -108,6 +108,15 @@ export interface TransactionListParams {
   wallet_type?: string;
   wallet_id?: number;
   category_id?: number;
+  // 다중 선택 필터(#353). 쉼표 구분 문자열로 보낸다.
+  // - category_ids: "1,2,3"
+  // - wallet_ids: "ACCOUNT:1,CARD:2" (지갑은 유형+ID 쌍으로만 식별된다)
+  // 단일 값 파라미터(category_id/wallet_type/wallet_id)도 계속 지원되므로, 지갑별 거래내역이나
+  // 검색처럼 하나만 지정하는 화면은 기존 파라미터를 그대로 쓰면 된다.
+  category_ids?: string;
+  wallet_ids?: string;
+  // 할부 거래(installment_id가 있는 거래)를 목록에서 제외한다.
+  exclude_installment?: boolean;
   transaction_type?: string;
   page?: number;
   limit?: number;

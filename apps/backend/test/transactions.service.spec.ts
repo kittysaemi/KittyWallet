@@ -158,6 +158,72 @@ describe("TransactionsService", () => {
       expect(transactionsRepository.sumCardExpense).not.toHaveBeenCalled();
     });
 
+    // 다중 선택 필터(#353)
+    it("passes multi-selected category ids and wallet pairs through to the repository", async () => {
+      transactionsRepository.findMany.mockResolvedValue([]);
+      transactionsRepository.count.mockResolvedValue(0);
+
+      await service.getTransactions({
+        ...baseListCommand,
+        categoryIds: [1, 2],
+        walletRefs: [
+          { walletType: "ACCOUNT", walletId: 1 },
+          { walletType: "CARD", walletId: 2 }
+        ],
+        excludeInstallment: true
+      });
+
+      expect(transactionsRepository.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          categoryIds: [BigInt(1), BigInt(2)],
+          walletRefs: [
+            { walletType: "ACCOUNT", walletId: BigInt(1) },
+            { walletType: "CARD", walletId: BigInt(2) }
+          ],
+          excludeInstallment: true
+        }),
+        1,
+        20,
+        expect.anything()
+      );
+    });
+
+    it("returns the card period_summary when wallet_ids narrows to exactly one card", async () => {
+      transactionsRepository.findMany.mockResolvedValue([]);
+      transactionsRepository.count.mockResolvedValue(0);
+      transactionsRepository.sumCardExpense.mockResolvedValue(120000);
+
+      const result = await service.getTransactions({
+        ...baseListCommand,
+        walletRefs: [{ walletType: "CARD", walletId: 3 }]
+      });
+
+      expect(result.period_summary).toEqual({ total_expense: 120000 });
+      expect(transactionsRepository.sumCardExpense).toHaveBeenCalledWith(
+        BigInt(1),
+        BigInt(3),
+        undefined,
+        undefined
+      );
+    });
+
+    // 여러 지갑을 동시에 고른 경우 "이 카드의 기간 사용액"이라는 요약의 의미가 성립하지 않는다.
+    it("returns period_summary null when several wallets are selected at once", async () => {
+      transactionsRepository.findMany.mockResolvedValue([]);
+      transactionsRepository.count.mockResolvedValue(0);
+
+      const result = await service.getTransactions({
+        ...baseListCommand,
+        walletRefs: [
+          { walletType: "CARD", walletId: 3 },
+          { walletType: "CARD", walletId: 4 }
+        ]
+      });
+
+      expect(result.period_summary).toBeNull();
+      expect(transactionsRepository.sumCardExpense).not.toHaveBeenCalled();
+    });
+
     it("returns period_summary null when no wallet filter", async () => {
       transactionsRepository.findMany.mockResolvedValue([]);
       transactionsRepository.count.mockResolvedValue(0);

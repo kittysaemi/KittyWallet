@@ -8,6 +8,8 @@ import TransactionsPage from ".";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import { categoryApi } from "../../entities/category/api/categoryApi";
 import { iconApi } from "../../entities/icon/api/iconApi";
+import { accountApi } from "../../entities/account/api/accountApi";
+import { cardApi } from "../../entities/card/api/cardApi";
 import { getTodayInTimezone } from "../../shared/utils/date";
 
 vi.mock("../../entities/transaction/api/transactionApi", () => ({
@@ -28,9 +30,23 @@ vi.mock("../../entities/icon/api/iconApi", () => ({
   }
 }));
 
+vi.mock("../../entities/account/api/accountApi", () => ({
+  accountApi: {
+    getAccounts: vi.fn()
+  }
+}));
+
+vi.mock("../../entities/card/api/cardApi", () => ({
+  cardApi: {
+    getCards: vi.fn()
+  }
+}));
+
 const mockedTransactionApi = vi.mocked(transactionApi);
 const mockedCategoryApi = vi.mocked(categoryApi);
 const mockedIconApi = vi.mocked(iconApi);
+const mockedAccountApi = vi.mocked(accountApi);
+const mockedCardApi = vi.mocked(cardApi);
 
 const createWrapper = (
   initialEntries: Parameters<typeof MemoryRouter>[0]["initialEntries"] = ["/transactions"],
@@ -93,9 +109,15 @@ const emptyIcons = {
   error: null
 };
 
+const emptyAccounts = { success: true, data: { items: [] }, error: null };
+const emptyCards = { success: true, data: { items: [] }, error: null };
+
 describe("TransactionsPage error cases", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    // 지갑 필터 옵션(계좌/카드)은 모든 케이스에서 조회되므로 기본값을 항상 채워둔다.
+    mockedAccountApi.getAccounts.mockResolvedValue(emptyAccounts);
+    mockedCardApi.getCards.mockResolvedValue(emptyCards);
     Object.defineProperty(window.navigator, "onLine", {
       configurable: true,
       value: true
@@ -180,6 +202,9 @@ describe("TransactionsPage error cases", () => {
 describe("TransactionsPage — highlightDate (거래 등록 후 복귀)", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    // 지갑 필터 옵션(계좌/카드)은 모든 케이스에서 조회되므로 기본값을 항상 채워둔다.
+    mockedAccountApi.getAccounts.mockResolvedValue(emptyAccounts);
+    mockedCardApi.getCards.mockResolvedValue(emptyCards);
     Element.prototype.scrollIntoView = vi.fn();
     Object.defineProperty(window.navigator, "onLine", { configurable: true, value: true });
     mockedCategoryApi.getCategories.mockResolvedValue(emptyCategories);
@@ -329,6 +354,9 @@ describe("TransactionsPage — highlightDate (거래 등록 후 복귀)", () => 
 describe("TransactionsPage — 기본 진입 시 오늘 위치로 스크롤", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    // 지갑 필터 옵션(계좌/카드)은 모든 케이스에서 조회되므로 기본값을 항상 채워둔다.
+    mockedAccountApi.getAccounts.mockResolvedValue(emptyAccounts);
+    mockedCardApi.getCards.mockResolvedValue(emptyCards);
     Object.defineProperty(window.navigator, "onLine", { configurable: true, value: true });
     mockedCategoryApi.getCategories.mockResolvedValue(emptyCategories);
     mockedIconApi.getIcons.mockResolvedValue(emptyIcons);
@@ -367,6 +395,9 @@ describe("TransactionsPage — 기본 진입 시 오늘 위치로 스크롤", ()
 describe("TransactionsPage — 새로고침(F5) 시 기간 유지", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    // 지갑 필터 옵션(계좌/카드)은 모든 케이스에서 조회되므로 기본값을 항상 채워둔다.
+    mockedAccountApi.getAccounts.mockResolvedValue(emptyAccounts);
+    mockedCardApi.getCards.mockResolvedValue(emptyCards);
     Object.defineProperty(window.navigator, "onLine", { configurable: true, value: true });
     mockedCategoryApi.getCategories.mockResolvedValue(emptyCategories);
     mockedIconApi.getIcons.mockResolvedValue(emptyIcons);
@@ -447,49 +478,56 @@ describe("TransactionsPage — 새로고침(F5) 시 기간 유지", () => {
   });
 });
 
-// 일반 거래내역(/transactions) 탐색 UI 개선(#353): 필터 바(카테고리/지갑/수입-지출)와
-// 기간 이동 바텀시트.
+const makeCategory = (category_id: number, category_name: string) => ({
+  category_id,
+  category_name,
+  icon_id: 1,
+  show: true,
+  include_in_statistics: true,
+  is_default: false,
+  editable: true,
+  created_at: "2026-01-01T00:00:00Z",
+  updated_at: "2026-01-01T00:00:00Z"
+});
+
+const categoriesResponse = (
+  ...categories: ReturnType<typeof makeCategory>[]
+) => ({ success: true, data: { items: categories }, error: null });
+
+// 일반 거래내역(/transactions) 탐색 UI 개선(#353): 필터 바(카테고리/지갑/수입-지출/할부 제외)와
+// 기간 이동 바텀시트. 카테고리/지갑은 다중 선택(체크박스), 수입/지출은 배타적인 값이라 단일 선택,
+// "할부 제외"는 바텀시트 없이 그 자리에서 토글되는 on/off 칩이다.
 describe("TransactionsPage — 필터 바", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    // 지갑 필터 옵션(계좌/카드)은 모든 케이스에서 조회되므로 기본값을 항상 채워둔다.
+    mockedAccountApi.getAccounts.mockResolvedValue(emptyAccounts);
+    mockedCardApi.getCards.mockResolvedValue(emptyCards);
     Object.defineProperty(window.navigator, "onLine", { configurable: true, value: true });
     mockedIconApi.getIcons.mockResolvedValue(emptyIcons);
   });
 
+  const lastListCall = () =>
+    mockedTransactionApi.getTransactions.mock.calls.filter(([p]) => p?.limit === 20).at(-1)?.[0];
+
   it("applies the selected category filter to the transaction query, resets to page 1, and clears via the chip's X", async () => {
     mockedTransactionApi.getTransactions.mockResolvedValue(emptyTransactions);
-    mockedCategoryApi.getCategories.mockResolvedValue({
-      success: true,
-      data: {
-        items: [
-          {
-            category_id: 5,
-            category_name: "식비",
-            icon_id: 1,
-            show: true,
-            include_in_statistics: true,
-            is_default: false,
-            editable: true,
-            created_at: "2026-01-01T00:00:00Z",
-            updated_at: "2026-01-01T00:00:00Z"
-          }
-        ]
-      },
-      error: null
-    });
+    mockedCategoryApi.getCategories.mockResolvedValue(categoriesResponse(makeCategory(5, "식비")));
 
-    render(<TransactionsPage />, { wrapper: createWrapper() });
+    // 같은 파일의 다른 테스트가 남긴 모듈 스코프 상태(_savedTxState의 filters)를 물려받지 않도록
+    // 항상 필터 없는 초기 상태로 시작한다.
+    render(<TransactionsPage />, {
+      wrapper: createWrapper([{ pathname: "/transactions", state: { reset: true } }])
+    });
 
     await waitFor(() => expect(mockedTransactionApi.getTransactions).toHaveBeenCalled());
     mockedTransactionApi.getTransactions.mockClear();
 
     await userEvent.click(screen.getByRole("button", { name: "카테고리" }));
-    await userEvent.click(await screen.findByRole("button", { name: /식비/ }));
+    await userEvent.click(await screen.findByRole("checkbox", { name: /식비/ }));
+    await userEvent.click(screen.getByRole("button", { name: "완료" }));
 
-    await waitFor(() => {
-      const call = mockedTransactionApi.getTransactions.mock.calls.at(-1)?.[0];
-      expect(call).toMatchObject({ category_id: 5, page: 1 });
-    });
+    await waitFor(() => expect(lastListCall()).toMatchObject({ category_ids: "5", page: 1 }));
 
     await userEvent.click(screen.getByRole("button", { name: "카테고리 필터 해제" }));
 
@@ -498,11 +536,182 @@ describe("TransactionsPage — 필터 바", () => {
     // 상태(placeholder "카테고리")로 돌아왔는지를 검증한다.
     expect(await screen.findByRole("button", { name: "카테고리" })).toBeInTheDocument();
   });
+
+  it("keeps the category sheet open while several categories are checked and sends them as one comma-separated param", async () => {
+    mockedTransactionApi.getTransactions.mockResolvedValue(emptyTransactions);
+    mockedCategoryApi.getCategories.mockResolvedValue(
+      categoriesResponse(makeCategory(5, "식비"), makeCategory(7, "교통"))
+    );
+
+    // 같은 파일의 다른 테스트가 남긴 모듈 스코프 상태(_savedTxState의 filters)를 물려받지 않도록
+    // 항상 필터 없는 초기 상태로 시작한다.
+    render(<TransactionsPage />, {
+      wrapper: createWrapper([{ pathname: "/transactions", state: { reset: true } }])
+    });
+    await waitFor(() => expect(mockedTransactionApi.getTransactions).toHaveBeenCalled());
+
+    await userEvent.click(screen.getByRole("button", { name: "카테고리" }));
+    await userEvent.click(await screen.findByRole("checkbox", { name: /식비/ }));
+
+    // 다중 선택이므로 한 항목을 골라도 시트가 닫히지 않아야 한다.
+    expect(screen.getByRole("checkbox", { name: /교통/ })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("checkbox", { name: /교통/ }));
+
+    expect(screen.getByRole("checkbox", { name: /식비/ })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("checkbox", { name: /교통/ })).toHaveAttribute("aria-checked", "true");
+
+    await userEvent.click(screen.getByRole("button", { name: "완료" }));
+
+    await waitFor(() => expect(lastListCall()).toMatchObject({ category_ids: "5,7", page: 1 }));
+    // 칩 라벨은 "첫 항목 외 N"으로 줄여 보여준다.
+    expect(screen.getByRole("button", { name: "식비 외 1" })).toBeInTheDocument();
+  });
+
+  it("unchecks a previously selected category on a second tap", async () => {
+    mockedTransactionApi.getTransactions.mockResolvedValue(emptyTransactions);
+    mockedCategoryApi.getCategories.mockResolvedValue(
+      categoriesResponse(makeCategory(5, "식비"), makeCategory(7, "교통"))
+    );
+
+    // 같은 파일의 다른 테스트가 남긴 모듈 스코프 상태(_savedTxState의 filters)를 물려받지 않도록
+    // 항상 필터 없는 초기 상태로 시작한다.
+    render(<TransactionsPage />, {
+      wrapper: createWrapper([{ pathname: "/transactions", state: { reset: true } }])
+    });
+    await waitFor(() => expect(mockedTransactionApi.getTransactions).toHaveBeenCalled());
+
+    await userEvent.click(screen.getByRole("button", { name: "카테고리" }));
+    await userEvent.click(await screen.findByRole("checkbox", { name: /식비/ }));
+    await userEvent.click(screen.getByRole("checkbox", { name: /교통/ }));
+    await userEvent.click(screen.getByRole("checkbox", { name: /식비/ }));
+
+    expect(screen.getByRole("checkbox", { name: /식비/ })).toHaveAttribute("aria-checked", "false");
+
+    await userEvent.click(screen.getByRole("button", { name: "완료" }));
+
+    await waitFor(() => expect(lastListCall()).toMatchObject({ category_ids: "7" }));
+  });
+
+  it("sends multi-selected wallets as type:id pairs so accounts and cards with the same id stay distinct", async () => {
+    mockedTransactionApi.getTransactions.mockResolvedValue(emptyTransactions);
+    mockedCategoryApi.getCategories.mockResolvedValue(emptyCategories);
+    mockedAccountApi.getAccounts.mockResolvedValue({
+      success: true,
+      data: {
+        items: [
+          {
+            account_id: 1,
+            account_name: "생활통장",
+            icon_id: 1,
+            initial_balance: 0,
+            current_balance: 0,
+            allow_negative_balance: false,
+            negative_balance_limit: 0,
+            created_at: "2026-01-01T00:00:00Z",
+            updated_at: "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      error: null
+    });
+    mockedCardApi.getCards.mockResolvedValue({
+      success: true,
+      data: {
+        items: [
+          {
+            card_id: 1,
+            card_name: "미냥카드",
+            icon_id: 1,
+            use_yn: true,
+            created_at: "2026-01-01T00:00:00Z",
+            updated_at: "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      error: null
+    });
+
+    // 같은 파일의 다른 테스트가 남긴 모듈 스코프 상태(_savedTxState의 filters)를 물려받지 않도록
+    // 항상 필터 없는 초기 상태로 시작한다.
+    render(<TransactionsPage />, {
+      wrapper: createWrapper([{ pathname: "/transactions", state: { reset: true } }])
+    });
+    await waitFor(() => expect(mockedTransactionApi.getTransactions).toHaveBeenCalled());
+
+    await userEvent.click(screen.getByRole("button", { name: "지갑" }));
+    await userEvent.click(await screen.findByRole("checkbox", { name: /생활통장/ }));
+    await userEvent.click(screen.getByRole("checkbox", { name: /미냥카드/ }));
+    await userEvent.click(screen.getByRole("button", { name: "완료" }));
+
+    await waitFor(() =>
+      expect(lastListCall()).toMatchObject({ wallet_ids: "ACCOUNT:1,CARD:1", page: 1 })
+    );
+  });
+
+  it("keeps 수입/지출 single-select: picking a second option replaces the first and closes the sheet", async () => {
+    mockedTransactionApi.getTransactions.mockResolvedValue(emptyTransactions);
+    mockedCategoryApi.getCategories.mockResolvedValue(emptyCategories);
+
+    // 같은 파일의 다른 테스트가 남긴 모듈 스코프 상태(_savedTxState의 filters)를 물려받지 않도록
+    // 항상 필터 없는 초기 상태로 시작한다.
+    render(<TransactionsPage />, {
+      wrapper: createWrapper([{ pathname: "/transactions", state: { reset: true } }])
+    });
+    await waitFor(() => expect(mockedTransactionApi.getTransactions).toHaveBeenCalled());
+
+    await userEvent.click(screen.getByRole("button", { name: "수입/지출" }));
+    // 단일 선택이므로 체크박스가 아니라 일반 버튼이고, 고르는 즉시 시트가 닫힌다.
+    await userEvent.click(await screen.findByRole("button", { name: "지출" }));
+
+    await waitFor(() => expect(lastListCall()).toMatchObject({ transaction_type: "EXPENSE" }));
+    expect(screen.queryByRole("button", { name: "완료" })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "지출" }));
+    await userEvent.click(await screen.findByRole("button", { name: "수입" }));
+
+    await waitFor(() => expect(lastListCall()).toMatchObject({ transaction_type: "INCOME" }));
+  });
+
+  it("toggles the 할부 제외 filter on and off from the chip itself", async () => {
+    mockedTransactionApi.getTransactions.mockResolvedValue(emptyTransactions);
+    mockedCategoryApi.getCategories.mockResolvedValue(emptyCategories);
+
+    // 같은 파일의 다른 테스트가 남긴 모듈 스코프 상태(_savedTxState의 filters)를 물려받지 않도록
+    // 항상 필터 없는 초기 상태로 시작한다.
+    render(<TransactionsPage />, {
+      wrapper: createWrapper([{ pathname: "/transactions", state: { reset: true } }])
+    });
+    await waitFor(() => expect(mockedTransactionApi.getTransactions).toHaveBeenCalled());
+
+    const chip = screen.getByRole("button", { name: "할부 제외" });
+    expect(chip).toHaveAttribute("aria-pressed", "false");
+
+    await userEvent.click(chip);
+
+    await waitFor(() =>
+      expect(lastListCall()).toMatchObject({ exclude_installment: true, page: 1 })
+    );
+    expect(screen.getByRole("button", { name: "할부 제외" })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "할부 제외" }));
+
+    // 해제 시에는 파라미터 자체를 보내지 않아야 초기 조회와 쿼리 키가 같아진다.
+    expect(await screen.findByRole("button", { name: "할부 제외" })).toHaveAttribute(
+      "aria-pressed",
+      "false"
+    );
+  });
 });
 
 describe("TransactionsPage — 기간 이동 바텀시트", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    // 지갑 필터 옵션(계좌/카드)은 모든 케이스에서 조회되므로 기본값을 항상 채워둔다.
+    mockedAccountApi.getAccounts.mockResolvedValue(emptyAccounts);
+    mockedCardApi.getCards.mockResolvedValue(emptyCards);
     Object.defineProperty(window.navigator, "onLine", { configurable: true, value: true });
     mockedCategoryApi.getCategories.mockResolvedValue(emptyCategories);
     mockedIconApi.getIcons.mockResolvedValue(emptyIcons);
@@ -551,6 +760,9 @@ describe("TransactionsPage — 기간 이동 바텀시트", () => {
 describe("TransactionsPage — 일 필터", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    // 지갑 필터 옵션(계좌/카드)은 모든 케이스에서 조회되므로 기본값을 항상 채워둔다.
+    mockedAccountApi.getAccounts.mockResolvedValue(emptyAccounts);
+    mockedCardApi.getCards.mockResolvedValue(emptyCards);
     Object.defineProperty(window.navigator, "onLine", { configurable: true, value: true });
     mockedCategoryApi.getCategories.mockResolvedValue(emptyCategories);
     mockedIconApi.getIcons.mockResolvedValue(emptyIcons);
@@ -593,25 +805,7 @@ describe("TransactionsPage — 일 필터", () => {
 
   it("combines the day filter with the other chips (AND) when requesting the list", async () => {
     mockedTransactionApi.getTransactions.mockResolvedValue(emptyTransactions);
-    mockedCategoryApi.getCategories.mockResolvedValue({
-      success: true,
-      data: {
-        items: [
-          {
-            category_id: 5,
-            category_name: "식비",
-            icon_id: 1,
-            show: true,
-            include_in_statistics: true,
-            is_default: false,
-            editable: true,
-            created_at: "2026-01-01T00:00:00Z",
-            updated_at: "2026-01-01T00:00:00Z"
-          }
-        ]
-      },
-      error: null
-    });
+    mockedCategoryApi.getCategories.mockResolvedValue(categoriesResponse(makeCategory(5, "식비")));
 
     render(<TransactionsPage />, {
       wrapper: createWrapper([{ pathname: "/transactions", state: { reset: true } }])
@@ -619,7 +813,8 @@ describe("TransactionsPage — 일 필터", () => {
     await waitFor(() => expect(mockedTransactionApi.getTransactions).toHaveBeenCalled());
 
     await userEvent.click(screen.getByRole("button", { name: "카테고리" }));
-    await userEvent.click(await screen.findByRole("button", { name: /식비/ }));
+    await userEvent.click(await screen.findByRole("checkbox", { name: /식비/ }));
+    await userEvent.click(screen.getByRole("button", { name: "완료" }));
 
     const today = getTodayInTimezone();
     const [y, m] = today.split("-");
@@ -633,7 +828,7 @@ describe("TransactionsPage — 일 필터", () => {
         .filter(([p]) => p?.limit === 20)
         .at(-1)?.[0];
       expect(call).toMatchObject({
-        category_id: 5,
+        category_ids: "5",
         start_date: dayOneStr,
         end_date: dayOneStr,
         page: 1
