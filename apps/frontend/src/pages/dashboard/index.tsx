@@ -17,7 +17,6 @@ import { categoryApi } from "../../entities/category/api/categoryApi";
 import { iconApi } from "../../entities/icon/api/iconApi";
 import type { IconItem } from "../../entities/icon/model/icon.types";
 import { TransactionReadOnlyRow } from "../../entities/transaction/ui/TransactionReadOnlyRow";
-import { isTransferTransaction } from "../../entities/transaction/lib/isTransfer";
 import PwaInstallBanner from "../../shared/ui/PwaInstallBanner";
 
 const cardClass =
@@ -67,7 +66,7 @@ const DashboardPage: React.FC = () => {
 
   const query = useQuery({
     queryKey: ["dashboard"],
-    queryFn: () => dashboardApi.getDashboard({ recent_limit: QUERY_LIMIT.TOP5, summary_period: "MONTH" }),
+    queryFn: () => dashboardApi.getDashboard({ recent_limit: QUERY_LIMIT.DASHBOARD_RECENT, summary_period: "MONTH" }),
     staleTime: STALE_TIME.REALTIME,
     retry: isOffline ? false : RETRY.STANDARD
   });
@@ -112,7 +111,10 @@ const DashboardPage: React.FC = () => {
 
   const data = query.data?.data;
   // 계좌이동 거래는 여러 계좌를 섞어 보여주는 "최근 내역"에는 노출하지 않는다(지갑별 거래내역에서만 노출).
-  const recentTransactions = (data?.recent_transactions ?? []).filter((tx) => !isTransferTransaction(tx));
+  // 백엔드 getRecentTransactions가 쿼리 단계에서 이미 계좌이동을 제외하고 recent_limit(6)개를
+  // 채워서 반환하므로, 여기서 다시 클라이언트 필터링을 하지 않는다(필터링하면 표시 개수가
+  // 6개 미만으로 줄어들 수 있다).
+  const recentTransactions = data?.recent_transactions ?? [];
 
   async function handleLogout() {
     try { await authApi.logout(); } catch { /* ignore */ }

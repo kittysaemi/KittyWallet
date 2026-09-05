@@ -70,12 +70,25 @@ describe("DashboardRepository", () => {
           where: {
             userId: BigInt(1),
             deletedYn: false,
-            OR: [{ installmentId: null }, { installmentSeq: 1 }]
+            OR: [{ installmentId: null }, { installmentSeq: 1 }],
+            transferGroupId: null,
+            category: { categoryName: { not: "계좌금액이동" } }
           },
           orderBy: [{ transactionDate: "desc" }, { createdAt: "desc" }],
           take: 5
         })
       );
+    });
+
+    it("excludes account-transfer transactions at the query level so the requested limit is always filled — both transferGroupId-tagged transfers and legacy category-name-only transfers (created before the transferGroupId column existed)", async () => {
+      prisma.transaction.findMany.mockResolvedValue([]);
+
+      await repository.getRecentTransactions(BigInt(1), 6);
+
+      const [args] = prisma.transaction.findMany.mock.calls[0];
+      expect(args.where.transferGroupId).toBe(null);
+      expect(args.where.category).toEqual({ categoryName: { not: "계좌금액이동" } });
+      expect(args.take).toBe(6);
     });
 
     it("returns installment details for the first installment leg", async () => {

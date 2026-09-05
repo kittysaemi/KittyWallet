@@ -2,6 +2,12 @@ import { Injectable } from "@nestjs/common";
 import { TransactionType } from "@prisma/client";
 import { PrismaService } from "../../../database/prisma.service";
 
+// 계좌이동 전용 카테고리명. transfer.repository.ts와 동일한 값이다.
+// transferGroupId(2026-09-02 마이그레이션으로 추가)가 채워진 거래는 그 값으로 판별하고,
+// 그 이전에 생성된 레거시 계좌이동 거래는 transferGroupId가 없으므로 카테고리명으로 함께 걸러낸다.
+// 프론트 entities/transaction/lib/isTransfer.ts의 판별 기준과 맞춰야 한다.
+const TRANSFER_CATEGORY_NAME = "계좌금액이동";
+
 export interface AssetSummaryData {
   total_asset_amount: number;
   account_count: number;
@@ -128,7 +134,12 @@ export class DashboardRepository {
         deletedYn: false,
         // 할부의 실제 구매(1회차)는 최근 발생한 거래이므로 표시하되, 아직 발생하지 않은
         // 이후 회차(미래 청구분)는 최근내역에서 제외한다.
-        OR: [{ installmentId: null }, { installmentSeq: 1 }]
+        OR: [{ installmentId: null }, { installmentSeq: 1 }],
+        // 계좌이동 거래는 여러 계좌를 섞어 보여주는 "최근 내역"에는 노출하지 않는다
+        // (지갑별 거래내역에서만 노출). 쿼리 단계에서 제외해야 limit(6)이 항상 채워진다 —
+        // 응답을 받은 뒤 클라이언트에서 걸러내면 표시 개수가 limit보다 줄어들 수 있다.
+        transferGroupId: null,
+        category: { categoryName: { not: TRANSFER_CATEGORY_NAME } }
       },
       include: { category: true, cardInstallment: true },
       orderBy: [{ transactionDate: "desc" }, { createdAt: "desc" }],
