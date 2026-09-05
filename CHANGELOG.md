@@ -1,3 +1,10 @@
+## [1.44.3](https://github.com/kittysaemi/KittyWallet/compare/v1.44.2...v1.44.3) (2026-09-05)
+
+
+### Bug Fixes
+
+* **transfer:** 계좌금액이동 아이콘을 카테고리 상태와 무관하게 고정 ([#414](https://github.com/kittysaemi/KittyWallet/issues/414)) ([ae35076](https://github.com/kittysaemi/KittyWallet/commit/ae35076c8d1f212dfdad3f6b4c382b40bf41ab6d)), closes [#409](https://github.com/kittysaemi/KittyWallet/issues/409)
+
 ## [1.44.2](https://github.com/kittysaemi/KittyWallet/compare/v1.44.1...v1.44.2) (2026-09-05)
 
 
