@@ -260,16 +260,15 @@ export class StatisticsService {
   async getCalendarStatistics(command: GetVisualizationCommand) {
     const month = command.month ?? getTodayInTimezone().slice(0, 7);
     const { startDate, endDate } = this.parseMonth(month);
-    // 달력 히트맵은 할부 거래를 집계 대상에서 완전히 제외한다.
-    // (카테고리 통계처럼 원금으로 재집계하지 않고, 할부 거래 자체를 노출하지 않는다.)
-    const dailyGroups = await this.statisticsRepository.groupDailyAmountsByTransactionType({
+    // 달력 히트맵은 할부 회차를 매달 중복 집계하지 않고, 최초 구매일에 원금 기준으로 1회만 집계한다.
+    // (카테고리 통계 #369와 동일한 2-pass 방식)
+    const dailyGroups = await this.statisticsRepository.groupDailyExpenseAmountsByInstallmentOrigin({
       userId: command.userId,
       startDate,
       endDate,
       walletType: this.toWalletType(command.walletType),
       walletId: command.walletId,
-      transactionType: TransactionType.EXPENSE,
-      excludeInstallment: true
+      transactionType: TransactionType.EXPENSE
     });
 
     const dailyMap = new Map<string, number>();

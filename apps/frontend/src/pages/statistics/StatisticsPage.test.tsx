@@ -390,7 +390,7 @@ describe("StatisticsPage", () => {
     expect(await screen.findByLabelText("달력 히트맵")).toBeInTheDocument();
   });
 
-  it("달력히트맵 일자 상세 목록에서 할부 거래를 제외한다", async () => {
+  it("달력히트맵 일자 상세 목록에서 할부 1회차를 원금으로 표시한다", async () => {
     render(<StatisticsPage />, { wrapper: createWrapper() });
 
     await userEvent.click(await screen.findByRole("button", { name: "달력히트맵" }));
@@ -400,9 +400,39 @@ describe("StatisticsPage", () => {
 
     await waitFor(() => expect(mockedTransactionApi.getTransactions).toHaveBeenCalled());
 
-    // 일반 지출은 노출되고, 할부 회차 거래는 노출되지 않는다.
+    // 일반 지출과 구매일(1회차) 할부가 모두 노출된다.
     expect(await screen.findByText("식비/우리은행")).toBeInTheDocument();
-    expect(screen.queryByText("가전/신한카드")).not.toBeInTheDocument();
+    expect(screen.getByText(/가전\/신한카드/)).toBeInTheDocument();
+    // 할부는 회차 금액(100,000원)이 아니라 원금(300,000원)으로 표시된다.
+    expect(screen.getByText("-300,000원")).toBeInTheDocument();
+    expect(screen.queryByText("-100,000원")).not.toBeInTheDocument();
+    expect(screen.getByText(/할부 3개월/)).toBeInTheDocument();
+  });
+
+  it("달력히트맵 일자 상세 목록에서 할부 2회차 이후는 제외한다", async () => {
+    mockedTransactionApi.getTransactions.mockResolvedValueOnce({
+      ...DAY_TRANSACTIONS_DATA,
+      data: {
+        ...DAY_TRANSACTIONS_DATA.data,
+        items: [
+          DAY_TRANSACTIONS_DATA.data.items[0],
+          // 구매일이 아닌 달의 2회차 거래 — 그날 히트맵 합계에는 포함되지 않는다.
+          { ...DAY_TRANSACTIONS_DATA.data.items[1], transaction_id: 3, installment_seq: 2 }
+        ]
+      }
+    });
+
+    render(<StatisticsPage />, { wrapper: createWrapper() });
+
+    await userEvent.click(await screen.findByRole("button", { name: "달력히트맵" }));
+    await screen.findByLabelText("달력 히트맵");
+
+    await userEvent.click(screen.getByRole("button", { name: /^1일/ }));
+
+    await waitFor(() => expect(mockedTransactionApi.getTransactions).toHaveBeenCalled());
+
+    expect(await screen.findByText("식비/우리은행")).toBeInTheDocument();
+    expect(screen.queryByText(/가전\/신한카드/)).not.toBeInTheDocument();
   });
 
   it("switches to 소비흐름 tab and renders expense Sankey diagram", async () => {

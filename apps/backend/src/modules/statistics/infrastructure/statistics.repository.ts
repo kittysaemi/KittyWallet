@@ -9,8 +9,6 @@ export interface StatisticsCondition {
   walletType?: WalletType;
   walletId?: bigint;
   transactionType?: TransactionType;
-  /** true이면 할부 거래(installmentId가 있는 거래)를 집계에서 완전히 제외한다. */
-  excludeInstallment?: boolean;
 }
 
 export interface TransactionTypeAmountGroup {
@@ -21,6 +19,11 @@ export interface TransactionTypeAmountGroup {
 
 export interface DailyTransactionTypeAmountGroup extends TransactionTypeAmountGroup {
   transactionDate: Date;
+}
+
+export interface DailyAmountGroup {
+  transactionDate: Date;
+  amount: Prisma.Decimal | null;
 }
 
 export interface CategoryAmountGroup {
@@ -66,8 +69,24 @@ export class StatisticsRepository {
       },
       ...(condition.walletType ? { walletType: condition.walletType } : {}),
       ...(condition.walletId ? { walletId: condition.walletId } : {}),
-      ...(condition.transactionType ? { transactionType: condition.transactionType } : {}),
-      ...(condition.excludeInstallment ? { installmentId: null } : {})
+      ...(condition.transactionType ? { transactionType: condition.transactionType } : {})
+    };
+  }
+
+  /** 할부 원금 집계 pass에서 사용하는 CARD_INSTALLMENT 조회 조건. */
+  private buildInstallmentWhere(condition: StatisticsCondition) {
+    return {
+      userId: condition.userId,
+      deletedYn: false,
+      ...(condition.startDate && condition.endDate
+        ? { purchaseDate: { gte: condition.startDate, lte: condition.endDate } }
+        : {}),
+      ...(condition.walletId ? { cardId: condition.walletId } : {}),
+      category: {
+        categoryUserSettings: {
+          none: { userId: condition.userId, includeInStatistics: false }
+        }
+      }
     };
   }
 
@@ -111,6 +130,69 @@ export class StatisticsRepository {
         transactionCount: row._count._all
       };
     });
+  }
+
+  /**
+   * 일별 지출 합계를 할부 원금 기준으로 집계한다. (카테고리 통계 #369와 동일한 2-pass 방식)
+   *
+   * 1) 할부가 아닌 EXPENSE 거래는 transactionDate 기준으로 그대로 합산한다.
+   * 2) 할부 거래는 회차별 금액을 합산하지 않고, CARD_INSTALLMENT의 최초 구매일(purchaseDate)에
+   *    원금(originalAmount)을 1회만 더한다.
+   *
+   * 이렇게 하면 3개월 할부 30만원이 매달 10만원씩 3번 잡히는 대신, 구매일 하루에 30만원으로 잡힌다.
+   */
+  async groupDailyExpenseAmountsByInstallmentOrigin(
+    condition: StatisticsCondition
+  ): Promise<DailyAmountGroup[]> {
+    const nonInstallmentWhere = {
+      ...this.buildWhere(condition),
+      transactionType: TransactionType.EXPENSE,
+      installmentId: null
+    };
+
+    // 할부는 카드 전용이므로 계좌로 필터링한 경우 할부 pass 자체를 건너뛴다.
+    const skipInstallmentPass = condition.walletType === "ACCOUNT";
+
+    const [nonInstallmentRows, installmentRows] = await Promise.all([
+      this.prisma.transaction.groupBy({
+        by: ["transactionDate"],
+        where: nonInstallmentWhere,
+        _sum: { amount: true, interest: true }
+      }),
+      skipInstallmentPass
+        ? Promise.resolve([])
+        : this.prisma.cardInstallment.groupBy({
+            by: ["purchaseDate"],
+            where: this.buildInstallmentWhere(condition),
+            _sum: { originalAmount: true }
+          })
+    ]);
+
+    const amountMap = new Map<string, { date: Date; amount: number }>();
+
+    const addAmount = (date: Date, amount: number) => {
+      const key = date.toISOString();
+      const existing = amountMap.get(key);
+      amountMap.set(key, { date, amount: (existing?.amount ?? 0) + amount });
+    };
+
+    for (const row of nonInstallmentRows) {
+      addAmount(
+        row.transactionDate,
+        (row._sum.amount?.toNumber() ?? 0) + Number(row._sum.interest ?? 0)
+      );
+    }
+
+    for (const row of installmentRows) {
+      addAmount(row.purchaseDate, row._sum.originalAmount?.toNumber() ?? 0);
+    }
+
+    return Array.from(amountMap.values())
+      .sort((a, b) => a.date.getTime() - b.date.getTime())
+      .map(({ date, amount }) => ({
+        transactionDate: date,
+        amount: new Prisma.Decimal(amount)
+      }));
   }
 
   async groupExpensesByWalletAndCategory(
@@ -246,19 +328,7 @@ export class StatisticsRepository {
       installmentId: null
     };
 
-    const installmentWhere = {
-      userId: condition.userId,
-      deletedYn: false,
-      ...(condition.startDate && condition.endDate
-        ? { purchaseDate: { gte: condition.startDate, lte: condition.endDate } }
-        : {}),
-      ...(condition.walletId ? { cardId: condition.walletId } : {}),
-      category: {
-        categoryUserSettings: {
-          none: { userId: condition.userId, includeInStatistics: false }
-        }
-      }
-    };
+    const installmentWhere = this.buildInstallmentWhere(condition);
 
     const skipInstallmentPass = condition.walletType === "ACCOUNT";
 

@@ -465,9 +465,10 @@ const HeatmapContent: React.FC<{
     enabled: selectedDate != null,
     staleTime: STALE_TIME.SHORT
   });
-  // 히트맵 일별 합계가 할부를 제외하므로, 상세 목록에서도 할부 거래를 제외해 합계와 목록을 일치시킨다.
+  // 히트맵 일별 합계는 할부를 최초 구매일(1회차)에 원금으로 1회만 반영하므로 상세 목록도 동일하게 맞춘다.
+  // 2회차 이후 회차는 그날 합계에 포함되지 않으므로 목록에서도 제외한다.
   const selectedTransactions = (selectedTransactionsQuery.data?.data?.items ?? []).filter(
-    (item: TransactionItem) => item.installment_id == null
+    (item: TransactionItem) => item.installment_id == null || item.installment_seq === 1
   );
 
   if (isLoading) return <TabSkeleton />;
@@ -544,25 +545,40 @@ const HeatmapContent: React.FC<{
             )}
             {!selectedTransactionsQuery.isLoading && selectedTransactions.length > 0 && (
               <ul className="flex max-h-40 flex-col gap-1 overflow-y-auto">
-                {selectedTransactions.map((item: TransactionItem) => (
-                  <li
-                    key={item.transaction_id}
-                    className="flex items-center justify-between gap-2 rounded-lg bg-[var(--color-bg-card)] px-2 py-1.5"
-                  >
-                    <span className="min-w-0 truncate text-xs text-[var(--color-text-primary)]">
-                      {item.category_name}/{item.wallet_name}
-                    </span>
-                    <span
-                      className={`shrink-0 text-xs font-semibold ${
-                        item.transaction_type === "EXPENSE"
-                          ? "text-[var(--color-danger)]"
-                          : "text-[var(--color-income)]"
-                      }`}
+                {selectedTransactions.map((item: TransactionItem) => {
+                  // 할부는 회차 금액이 아니라 원금으로 표시해 히트맵 합계와 일치시킨다.
+                  const isInstallment = item.installment_id != null;
+                  const displayAmount =
+                    isInstallment && item.installment_original_amount != null
+                      ? item.installment_original_amount
+                      : item.amount + (item.interest ?? 0);
+
+                  return (
+                    <li
+                      key={item.transaction_id}
+                      className="flex items-center justify-between gap-2 rounded-lg bg-[var(--color-bg-card)] px-2 py-1.5"
                     >
-                      {formatSignedAmount(item.amount + (item.interest ?? 0), item.transaction_type)}
-                    </span>
-                  </li>
-                ))}
+                      <span className="min-w-0 truncate text-xs text-[var(--color-text-primary)]">
+                        {item.category_name}/{item.wallet_name}
+                        {isInstallment && item.installment_total_count != null && (
+                          <span className="text-[var(--color-text-secondary)]">
+                            {" "}
+                            · 할부 {item.installment_total_count}개월
+                          </span>
+                        )}
+                      </span>
+                      <span
+                        className={`shrink-0 text-xs font-semibold ${
+                          item.transaction_type === "EXPENSE"
+                            ? "text-[var(--color-danger)]"
+                            : "text-[var(--color-income)]"
+                        }`}
+                      >
+                        {formatSignedAmount(displayAmount, item.transaction_type)}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
