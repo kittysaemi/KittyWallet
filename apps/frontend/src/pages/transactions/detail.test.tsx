@@ -2,7 +2,7 @@ import type { PropsWithChildren } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import { MemoryRouter, Route, Routes, createMemoryRouter, RouterProvider, useLocation } from "react-router-dom";
 import TransactionDetailPage from "./detail";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
 import { accountApi } from "../../entities/account/api/accountApi";
@@ -165,6 +165,46 @@ describe("TransactionDetailPage — edit icon visibility", () => {
 
     await userEvent.click(await screen.findByLabelText("거래 수정"));
     expect(await screen.findByText("거래 수정 화면 (returnTo: none)")).toBeInTheDocument();
+  });
+
+  it("지갑 → 상세 → 수정 → 뒤로가기 → 상세 → 뒤로가기 → 지갑 순서로 단계별 복귀한다 (#353)", async () => {
+    mockedTransactionApi.getTransaction.mockResolvedValue({ success: true, data: makeTx(), error: null });
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } }
+    });
+
+    const router = createMemoryRouter(
+      [
+        { path: "/accounts/:walletId/transactions", element: <div>지갑 거래내역 화면</div> },
+        { path: "/transactions/:id", element: <TransactionDetailPage /> },
+        { path: "/transactions/:id/edit", element: <div>거래 수정 화면</div> }
+      ],
+      {
+        initialEntries: [
+          "/accounts/1/transactions",
+          { pathname: "/transactions/1", state: { editable: true, returnTo: "/accounts/1/transactions" } }
+        ],
+        initialIndex: 1
+      }
+    );
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    );
+
+    await userEvent.click(await screen.findByLabelText("거래 수정"));
+    expect(await screen.findByText("거래 수정 화면")).toBeInTheDocument();
+
+    // 저장하지 않고 뒤로가기: 상세화면으로(건너뛰지 않음)
+    router.navigate(-1);
+    expect(await screen.findByText("식비")).toBeInTheDocument();
+
+    // 한 번 더 뒤로가기: 지갑 거래내역 화면으로
+    router.navigate(-1);
+    expect(await screen.findByText("지갑 거래내역 화면")).toBeInTheDocument();
   });
 });
 

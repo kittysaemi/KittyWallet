@@ -25,8 +25,13 @@ test("E2E-TRANSFER-001 계좌이동 생성 → 라벨 노출 → 상세 → 수�
   await toSelect.selectOption("2002");
   await page.getByLabel("이동 금액").fill("30000");
   await page.getByRole("button", { name: "계좌이동 등록" }).click();
-  // 지갑별 거래내역에서 진입했으므로 일반 거래내역이 아니라 원래 지갑 화면으로 돌아온다 (#409)
+  // 지갑별 거래내역에서 진입했으므로 일반 거래내역이 아니라 원래 지갑 화면으로 돌아온다 (#353)
   await expect(page).toHaveURL(/\/kittywallet\/accounts\/2001\/transactions$/);
+
+  // 등록화면은 replace로 지갑 화면으로 교체되었으므로, 뒤로가기해도 이미 제출한 등록화면이
+  // 다시 나타나지 않는다 (#353)
+  await page.goBack();
+  await expect(page.getByRole("button", { name: "계좌이동 등록" })).not.toBeVisible();
 
   // 2) 지갑별 거래내역에 "계좌이동" 라벨 노출 확인 (양쪽 계좌 모두)
   await page.goto("/kittywallet/accounts/2001/transactions");
@@ -56,6 +61,14 @@ test("E2E-TRANSFER-001 계좌이동 생성 → 라벨 노출 → 상세 → 수�
   await page.getByRole("button", { name: "수정 완료" }).click();
   // 이슈 #353: 수정 완료 후에는 원래 진입했던 지갑 거래내역 화면(여기서는 2001 계좌)으로 복귀한다.
   await expect(page).toHaveURL(/\/kittywallet\/accounts\/2001\/transactions$/);
+
+  // 상세->수정 이동 자체는 push이므로 수정을 취소(저장 없이 뒤로가기)하면 상세화면으로
+  // 정상적으로 돌아갈 수 있다 — 다만 "저장 완료"는 완결된 액션이므로, 완료 후 지갑 화면에서
+  // 뒤로가기하면 그새 지나온 상세/수정화면을 다시 보여주지 않고 그 이전 화면으로 바로
+  // 이동해야 한다 (#353)
+  await page.goBack();
+  await expect(page.getByRole("heading", { name: "상세내역" })).not.toBeVisible();
+  await expect(page.getByRole("heading", { name: "계좌이동 수정" })).not.toBeVisible();
 
   // 방향이 바뀌었으므로 2001은 이제 받는 계좌(입금), 2002는 보내는 계좌(출금)
   await page.goto("/kittywallet/accounts/2001/transactions");
