@@ -64,17 +64,12 @@ services:
       - default
       - shared-web
 
-  certbot:
-    image: certbot/certbot:v3.1.0
-    container_name: kittywallet-certbot
-    volumes:
-      - ./infra/certbot/www:/var/www/certbot
-      - ./infra/certbot/conf:/etc/letsencrypt
-
 networks:
   shared-web:
     external: true
 
 volumes:
   postgres-data:
+    external: true
+    name: app_postgres-data
   paddle-models:
