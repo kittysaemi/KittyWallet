@@ -174,6 +174,39 @@ jobs:
           source: "docker-compose.prod.yml"
           target: ${{ secrets.DEPLOY_PATH }}
 
+      - name: Backup PostgreSQL database before migration
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          script: |
+            set -euo pipefail
+            cd "${{ secrets.DEPLOY_PATH }}"
+
+            # Same pg_dump approach used manually in K2
+            # (/root/kittywallet-backup/20260911-204317/kittywallet_backup.dump).
+            # Skips gracefully on the very first deploy, when the postgres
+            # container does not exist yet. See Docs/12_deployment/롤백정의.md
+            # for the app-image-rollback vs. DB-recovery boundary this backup
+            # supports.
+            if ! docker ps --format '{{.Names}}' | grep -Fxq kittywallet-postgres; then
+              echo "::warning title=KittyWallet pre-migration backup skipped::kittywallet-postgres container is not running yet (likely first deploy); skipping pre-migration backup."
+              exit 0
+            fi
+
+            BACKUP_DIR="/root/kittywallet-backup/$(date +%Y%m%d-%H%M%S)"
+            mkdir -p "$BACKUP_DIR"
+            docker exec kittywallet-postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -F c' > "$BACKUP_DIR/kittywallet_backup.dump"
+
+            echo "== Backup file =="
+            ls -lh "$BACKUP_DIR/kittywallet_backup.dump"
+
+            echo "== Backup integrity check (pg_restore --list) =="
+            docker run --rm -v "$BACKUP_DIR:/backup" postgres:16-alpine \
+              pg_restore --list /backup/kittywallet_backup.dump | head -5
+
       - name: Deploy with Docker Compose
         uses: appleboy/ssh-action@v1.2.0
         env:
@@ -205,6 +238,11 @@ jobs:
             docker compose --env-file .env.production -f docker-compose.prod.yml pull
             docker compose --env-file .env.production -f docker-compose.prod.yml up -d
             docker compose --env-file .env.production -f docker-compose.prod.yml exec -T backend npm run db:migrate
+            # db:seed re-applies default icon/category rows via upsert /
+            # find-then-update-or-create (apps/backend/prisma/seed.cjs); it
+            # never deletes rows or touches user data, so running it on every
+            # deploy is idempotent and intentionally left unconditional.
+            # See Docs/12_deployment/배포절차.md section 7.
             docker compose --env-file .env.production -f docker-compose.prod.yml exec -T backend npm run db:seed
             docker compose --env-file .env.production -f docker-compose.prod.yml ps
 
