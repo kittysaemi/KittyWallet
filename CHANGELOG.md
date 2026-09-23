@@ -1,3 +1,10 @@
+# [1.48.0](https://github.com/kittysaemi/KittyWallet/compare/v1.47.0...v1.48.0) (2026-09-23)
+
+
+### Features
+
+* **transfer:** 계좌이동 보내는 쪽 n월 현금 동일 사용 선택 추가 ([936837c](https://github.com/kittysaemi/KittyWallet/commit/936837ca6a93df79590706248b2ec0a0eed62c50)), closes [#426](https://github.com/kittysaemi/KittyWallet/issues/426)
+
 # [1.47.0](https://github.com/kittysaemi/KittyWallet/compare/v1.46.1...v1.47.0) (2026-09-23)
 
 
