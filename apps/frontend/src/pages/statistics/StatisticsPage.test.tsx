@@ -725,4 +725,36 @@ describe("StatisticsPage", () => {
     await userEvent.click(backdrop as Element);
     expect(screen.queryByLabelText("거래 내역을 불러오는 중입니다.")).not.toBeInTheDocument();
   });
+
+  it("카테고리통계 팝업 조회 실패 시 에러 상태와 다시 시도 버튼을 표시한다", async () => {
+    const onLineSpy = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+    mockedTransactionApi.getTransactions.mockRejectedValueOnce(new Error("Network Error"));
+
+    render(<StatisticsPage />, { wrapper: createWrapper() });
+    await userEvent.click(await screen.findByRole("button", { name: "카테고리통계" }));
+    await screen.findByLabelText("카테고리별 지출 통계");
+
+    await userEvent.click(screen.getByText("90,000원"));
+
+    expect(await screen.findByText("거래 내역을 불러오지 못했습니다.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "다시 시도" })).toBeInTheDocument();
+
+    onLineSpy.mockRestore();
+  });
+
+  it("카테고리통계 팝업 조회 결과가 없으면 빈 상태 문구를 표시한다", async () => {
+    mockedTransactionApi.getTransactions.mockResolvedValueOnce({
+      success: true,
+      data: { items: [], page: 1, limit: 300, total_count: 0 },
+      error: null
+    });
+
+    render(<StatisticsPage />, { wrapper: createWrapper() });
+    await userEvent.click(await screen.findByRole("button", { name: "카테고리통계" }));
+    await screen.findByLabelText("카테고리별 지출 통계");
+
+    await userEvent.click(screen.getByText("90,000원"));
+
+    expect(await screen.findByText("표시할 거래 내역이 없습니다.")).toBeInTheDocument();
+  });
 });
