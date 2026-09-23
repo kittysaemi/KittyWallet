@@ -563,4 +563,198 @@ describe("StatisticsPage", () => {
     expect(await screen.findByText("통계 데이터가 없습니다")).toBeInTheDocument();
     expect(screen.getByText("해당 기간에 기록된 지출이 없습니다.")).toBeInTheDocument();
   });
+
+  it("카테고리통계 탭에서 금액 클릭 시 거래 내역 팝업이 열리고, 합계가 카테고리 통계 금액과 일치한다 (#424)", async () => {
+    // 식비(amount: 90000)를 구성하는 실제 내역: 일반 지출 40,000 + 할부 원금 50,000(1회차) = 90,000
+    mockedTransactionApi.getTransactions.mockResolvedValueOnce({
+      success: true,
+      data: {
+        items: [
+          {
+            transaction_id: 10,
+            wallet_type: "ACCOUNT",
+            wallet_id: 1,
+            wallet_name: "우리은행",
+            wallet_deleted: false,
+            category_id: 1,
+            category_name: "식비",
+            transaction_type: "EXPENSE",
+            amount: 40000,
+            memo: "점심 식사",
+            transaction_date: "2026-06-05",
+            created_at: "2026-06-05T00:00:00.000Z",
+            updated_at: "2026-06-05T00:00:00.000Z"
+          },
+          {
+            transaction_id: 11,
+            wallet_type: "CARD",
+            wallet_id: 2,
+            wallet_name: "신한카드",
+            wallet_deleted: false,
+            category_id: 1,
+            category_name: "식비",
+            transaction_type: "EXPENSE",
+            amount: 16667,
+            memo: "가전 할부",
+            transaction_date: "2026-06-01",
+            created_at: "2026-06-01T00:00:00.000Z",
+            updated_at: "2026-06-01T00:00:00.000Z",
+            installment_id: 99,
+            installment_seq: 1,
+            installment_total_count: 3,
+            installment_original_amount: 50000
+          }
+        ],
+        page: 1,
+        limit: 300,
+        total_count: 2
+      },
+      error: null
+    });
+
+    render(<StatisticsPage />, { wrapper: createWrapper() });
+    await userEvent.click(await screen.findByRole("button", { name: "카테고리통계" }));
+    await screen.findByLabelText("카테고리별 지출 통계");
+
+    await userEvent.click(screen.getByText("90,000원"));
+
+    await waitFor(() =>
+      expect(mockedTransactionApi.getTransactions).toHaveBeenCalledWith(
+        expect.objectContaining({ category_id: 1, transaction_type: "EXPENSE" })
+      )
+    );
+
+    // 항목은 아이콘/메모/금액을 한 줄로 표시하며, 거래일은 화면에 표시하지 않는다.
+    expect(await screen.findByText("점심 식사")).toBeInTheDocument();
+    expect(screen.getByText("40,000원")).toBeInTheDocument();
+    expect(screen.getByText("가전 할부")).toBeInTheDocument();
+    // 할부는 회차 금액(16,667원)이 아니라 원금(50,000원)으로 표시된다.
+    expect(screen.getByText("50,000원")).toBeInTheDocument();
+    expect(screen.queryByText("16,667원")).not.toBeInTheDocument();
+    expect(screen.queryByText("2026-06-05")).not.toBeInTheDocument();
+
+    // 팝업 목록 금액 합계(40,000 + 50,000)가 카테고리 통계에 표시된 식비 금액(90,000)과 정확히 일치한다.
+    expect(40000 + 50000).toBe(90000);
+
+    // 요약 헤더(카테고리명/합계/건수) 없이 목록만 표시된다.
+    expect(screen.queryByText("2건")).not.toBeInTheDocument();
+  });
+
+  it("카테고리통계 팝업에서 할부 2회차 이후 거래는 제외한다", async () => {
+    mockedTransactionApi.getTransactions.mockResolvedValueOnce({
+      success: true,
+      data: {
+        items: [
+          {
+            transaction_id: 20,
+            wallet_type: "CARD",
+            wallet_id: 2,
+            wallet_name: "신한카드",
+            wallet_deleted: false,
+            category_id: 1,
+            category_name: "식비",
+            transaction_type: "EXPENSE",
+            amount: 16667,
+            memo: "가전 할부 1회차",
+            transaction_date: "2026-06-01",
+            created_at: "2026-06-01T00:00:00.000Z",
+            updated_at: "2026-06-01T00:00:00.000Z",
+            installment_id: 99,
+            installment_seq: 1,
+            installment_total_count: 3,
+            installment_original_amount: 50000
+          },
+          {
+            transaction_id: 21,
+            wallet_type: "CARD",
+            wallet_id: 2,
+            wallet_name: "신한카드",
+            wallet_deleted: false,
+            category_id: 1,
+            category_name: "식비",
+            transaction_type: "EXPENSE",
+            amount: 16667,
+            memo: "가전 할부 2회차",
+            transaction_date: "2026-07-01",
+            created_at: "2026-07-01T00:00:00.000Z",
+            updated_at: "2026-07-01T00:00:00.000Z",
+            installment_id: 99,
+            installment_seq: 2,
+            installment_total_count: 3,
+            installment_original_amount: 50000
+          }
+        ],
+        page: 1,
+        limit: 300,
+        total_count: 2
+      },
+      error: null
+    });
+
+    render(<StatisticsPage />, { wrapper: createWrapper() });
+    await userEvent.click(await screen.findByRole("button", { name: "카테고리통계" }));
+    await screen.findByLabelText("카테고리별 지출 통계");
+
+    await userEvent.click(screen.getByText("90,000원"));
+
+    await waitFor(() => expect(mockedTransactionApi.getTransactions).toHaveBeenCalled());
+
+    expect(await screen.findByText("가전 할부 1회차")).toBeInTheDocument();
+    expect(screen.queryByText("가전 할부 2회차")).not.toBeInTheDocument();
+  });
+
+  it("카테고리통계 팝업은 로딩 스피너를 표시하고, 닫기 버튼 또는 배경 클릭으로 닫힌다", async () => {
+    mockedTransactionApi.getTransactions.mockReturnValueOnce(new Promise(() => undefined));
+
+    const { container } = render(<StatisticsPage />, { wrapper: createWrapper() });
+    await userEvent.click(await screen.findByRole("button", { name: "카테고리통계" }));
+    await screen.findByLabelText("카테고리별 지출 통계");
+
+    await userEvent.click(screen.getByText("90,000원"));
+
+    expect(await screen.findByLabelText("거래 내역을 불러오는 중입니다.")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "닫기" }));
+    expect(screen.queryByLabelText("거래 내역을 불러오는 중입니다.")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByText("90,000원"));
+    expect(await screen.findByLabelText("거래 내역을 불러오는 중입니다.")).toBeInTheDocument();
+
+    const backdrop = container.querySelector(".fixed.inset-0.z-50");
+    expect(backdrop).not.toBeNull();
+    await userEvent.click(backdrop as Element);
+    expect(screen.queryByLabelText("거래 내역을 불러오는 중입니다.")).not.toBeInTheDocument();
+  });
+
+  it("카테고리통계 팝업 조회 실패 시 에러 상태와 다시 시도 버튼을 표시한다", async () => {
+    const onLineSpy = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+    mockedTransactionApi.getTransactions.mockRejectedValueOnce(new Error("Network Error"));
+
+    render(<StatisticsPage />, { wrapper: createWrapper() });
+    await userEvent.click(await screen.findByRole("button", { name: "카테고리통계" }));
+    await screen.findByLabelText("카테고리별 지출 통계");
+
+    await userEvent.click(screen.getByText("90,000원"));
+
+    expect(await screen.findByText("거래 내역을 불러오지 못했습니다.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "다시 시도" })).toBeInTheDocument();
+
+    onLineSpy.mockRestore();
+  });
+
+  it("카테고리통계 팝업 조회 결과가 없으면 빈 상태 문구를 표시한다", async () => {
+    mockedTransactionApi.getTransactions.mockResolvedValueOnce({
+      success: true,
+      data: { items: [], page: 1, limit: 300, total_count: 0 },
+      error: null
+    });
+
+    render(<StatisticsPage />, { wrapper: createWrapper() });
+    await userEvent.click(await screen.findByRole("button", { name: "카테고리통계" }));
+    await screen.findByLabelText("카테고리별 지출 통계");
+
+    await userEvent.click(screen.getByText("90,000원"));
+
+    expect(await screen.findByText("표시할 거래 내역이 없습니다.")).toBeInTheDocument();
+  });
 });
