@@ -1,3 +1,10 @@
+# [1.47.0](https://github.com/kittysaemi/KittyWallet/compare/v1.46.1...v1.47.0) (2026-09-23)
+
+
+### Features
+
+* **dashboard:** n월 현금 지출 예상 금액 및 거래 n월 현금 동일 사용 체크 추가 ([5c015ac](https://github.com/kittysaemi/KittyWallet/commit/5c015ac69897c937a51dcfae0b6402af0ad72400)), closes [#426](https://github.com/kittysaemi/KittyWallet/issues/426)
+
 ## [1.46.1](https://github.com/kittysaemi/KittyWallet/compare/v1.46.0...v1.46.1) (2026-09-23)
 
 
