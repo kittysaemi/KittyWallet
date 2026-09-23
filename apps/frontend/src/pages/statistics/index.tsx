@@ -11,7 +11,7 @@ import {
   PointElement,
   Tooltip
 } from "chart.js";
-import { ChevronLeft, ChevronRight, RefreshCw, WifiOff } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, RefreshCw, WifiOff, X } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { useTimezone } from "../../shared/hooks/useTimezone";
 import { getTodayInTimezone, getWeekRange, formatWeekLabel } from "../../shared/utils/date";
@@ -96,6 +96,21 @@ function toPeriodChartItems(items: PeriodStatisticsItem[]): ChartItem[] {
       expenseAmount: item.expense_amount
     };
   });
+}
+
+// 카테고리 통계 카드에 표시된 금액과 정확히 같은 범위를 조회하기 위한 기간 변환(#424)
+function getCategoryExpenseDateRange(
+  params: CategoryExpenseParams
+): { start_date?: string; end_date?: string } {
+  if (params.period_type === "year" && params.year) {
+    return { start_date: `${params.year}-01-01`, end_date: `${params.year}-12-31` };
+  }
+  if (params.period_type === "month" && params.month) {
+    const [y, m] = params.month.split("-").map(Number);
+    const lastDay = new Date(y, m, 0).getDate();
+    return { start_date: `${params.month}-01`, end_date: `${params.month}-${String(lastDay).padStart(2, "0")}` };
+  }
+  return {};
 }
 
 /* ── 공통 UI 조각 ─────────────────────────────────────── */
@@ -1257,6 +1272,127 @@ const FlowContent: React.FC<{
   </div>
 );
 
+// 카테고리별 거래 내역 팝업(#424) — 카테고리 통계 카드에 표시된 금액을 구성하는 실제 내역을 그대로 보여준다.
+const CategoryExpenseDetailModal: React.FC<{
+  categoryId: number;
+  categoryIcon?: IconItem;
+  dateRange: { start_date?: string; end_date?: string };
+  isOffline: boolean;
+  onClose: () => void;
+}> = ({ categoryId, categoryIcon, dateRange, isOffline, onClose }) => {
+  React.useEffect(() => {
+    const original = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = original;
+    };
+  }, []);
+
+  const query = useQuery({
+    queryKey: ["transactions", "category-expense-detail", categoryId, dateRange.start_date, dateRange.end_date],
+    queryFn: () =>
+      transactionApi.getTransactions({
+        category_id: categoryId,
+        transaction_type: "EXPENSE",
+        start_date: dateRange.start_date,
+        end_date: dateRange.end_date,
+        page: 1,
+        limit: QUERY_LIMIT.KEYWORD_SEARCH
+      }),
+    staleTime: STALE_TIME.SHORT,
+    retry: isOffline ? false : RETRY.STANDARD
+  });
+
+  // 카테고리 통계 집계 기준과 동일하게, 할부는 1회차(구매월)만 원금으로 표시하고 2회차 이후는 제외한다.
+  const items = (query.data?.data?.items ?? []).filter(
+    (item: TransactionItem) => item.installment_id == null || item.installment_seq === 1
+  );
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 pb-8 sm:items-center sm:pb-0"
+      onClick={onClose}
+    >
+      <div
+        className="flex max-h-[70vh] w-full max-w-[420px] flex-col rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-end p-2">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="닫기"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-secondary)]"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 pb-4">
+          {query.isLoading && (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 size={28} className="animate-spin text-[var(--color-primary)]" aria-label="거래 내역을 불러오는 중입니다." />
+            </div>
+          )}
+
+          {query.isError && (
+            <div className="flex flex-col items-center gap-3 py-8 text-center">
+              <p className="text-sm text-[var(--color-text-secondary)]">거래 내역을 불러오지 못했습니다.</p>
+              <button
+                type="button"
+                onClick={() => void query.refetch()}
+                className="flex min-h-9 items-center gap-1.5 rounded-xl bg-[var(--color-primary)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] transition hover:bg-[var(--color-primary-hover)]"
+              >
+                <RefreshCw size={12} />
+                다시 시도
+              </button>
+            </div>
+          )}
+
+          {!query.isLoading && !query.isError && items.length === 0 && (
+            <p className="py-8 text-center text-sm text-[var(--color-text-secondary)]">
+              표시할 거래 내역이 없습니다.
+            </p>
+          )}
+
+          {!query.isLoading && !query.isError && items.length > 0 && (
+            <ul className="flex flex-col">
+              {items.map((item: TransactionItem) => {
+                const isInstallment = item.installment_id != null;
+                const displayAmount =
+                  isInstallment && item.installment_original_amount != null
+                    ? item.installment_original_amount
+                    : item.amount + (item.interest ?? 0);
+                return (
+                  <li
+                    key={item.transaction_id}
+                    className="flex items-center gap-3 border-b border-[var(--color-border-primary)] py-3 last:border-none"
+                  >
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--color-bg-secondary)]">
+                      {categoryIcon && (
+                        <IconRenderer
+                          providerType={categoryIcon.provider_type}
+                          providerKey={categoryIcon.provider_key}
+                          size={15}
+                          className="text-[var(--color-text-secondary)]"
+                        />
+                      )}
+                    </div>
+                    <p className="min-w-0 flex-1 truncate text-sm text-[var(--color-text-primary)]">{item.memo}</p>
+                    <span className="shrink-0 text-sm font-semibold text-[var(--color-text-primary)]">
+                      {formatAmount(displayAmount)}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // category-expense 탭
 const CategoryExpenseContent: React.FC<{
   iconMap: Map<number, IconItem>;
@@ -1285,6 +1421,9 @@ const CategoryExpenseContent: React.FC<{
   const data: CategoryExpenseData | null = query.data?.data ?? null;
   const isCurrentYear = selectedYear === currentYear;
   const isCurrentMonth = selectedMonth === currentMonth;
+
+  const [detailCategory, setDetailCategory] = React.useState<{ id: number; iconId: number | null } | null>(null);
+  const detailDateRange = React.useMemo(() => getCategoryExpenseDateRange(queryParams), [queryParams]);
 
   function moveYear(dir: -1 | 1) {
     setSelectedYear((prev) => {
@@ -1373,7 +1512,12 @@ const CategoryExpenseContent: React.FC<{
                 <div key={item.category_id}>
                   <div className="mb-1 flex items-center justify-between gap-3">
                     <div className="flex min-w-0 items-center gap-2">
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--color-bg-secondary)]">
+                      <button
+                        type="button"
+                        onClick={() => setDetailCategory({ id: item.category_id, iconId: item.icon_id })}
+                        aria-label={`${item.category_name} 거래 내역 보기`}
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--color-bg-secondary)]"
+                      >
                         {icon && (
                           <IconRenderer
                             providerType={icon.provider_type}
@@ -1382,14 +1526,19 @@ const CategoryExpenseContent: React.FC<{
                             className="text-[var(--color-text-secondary)]"
                           />
                         )}
-                      </div>
+                      </button>
                       <span className="truncate text-sm font-medium text-[var(--color-text-primary)]">
                         {item.category_name}
                       </span>
                     </div>
-                    <span className="shrink-0 text-sm font-semibold text-[var(--color-text-primary)]">
+                    <button
+                      type="button"
+                      onClick={() => setDetailCategory({ id: item.category_id, iconId: item.icon_id })}
+                      aria-label={`${item.category_name} 거래 내역 보기`}
+                      className="shrink-0 text-sm font-semibold text-[var(--color-text-primary)]"
+                    >
                       {formatAmount(item.amount)}
-                    </span>
+                    </button>
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-[var(--color-bg-secondary)]">
                     <div
@@ -1408,6 +1557,16 @@ const CategoryExpenseContent: React.FC<{
             })}
           </div>
         </section>
+      )}
+
+      {detailCategory != null && (
+        <CategoryExpenseDetailModal
+          categoryId={detailCategory.id}
+          categoryIcon={detailCategory.iconId != null ? iconMap.get(detailCategory.iconId) : undefined}
+          dateRange={detailDateRange}
+          isOffline={isOffline}
+          onClose={() => setDetailCategory(null)}
+        />
       )}
     </div>
   );
