@@ -13,6 +13,7 @@ import type { TransactionItem } from "../../entities/transaction/model/transacti
 import { accountApi } from "../../entities/account/api/accountApi";
 import { cardApi } from "../../entities/card/api/cardApi";
 import { categoryApi } from "../../entities/category/api/categoryApi";
+import { sortCategoriesByName } from "../../entities/category/lib/sortCategories";
 import { iconApi } from "../../entities/icon/api/iconApi";
 import type { IconItem } from "../../entities/icon/model/icon.types";
 import { IconRenderer } from "../../shared/ui/IconRenderer";
@@ -314,7 +315,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
   const categoryOptions: DropdownOption[] = React.useMemo(
     () =>
-      (categoriesQuery.data?.data?.items ?? []).map((cat) => ({
+      sortCategoriesByName(categoriesQuery.data?.data?.items ?? []).map((cat) => ({
         id: cat.category_id,
         label: cat.category_name,
         iconId: cat.icon_id

@@ -89,7 +89,7 @@ const CLEANUP_CANDIDATES = {
   error: null
 };
 
-const createWrapper = (tab: "accounts" | "cards" | "icons" = "accounts") => {
+const createWrapper = (tab: "accounts" | "cards" | "categories" | "icons" = "accounts") => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } }
   });
@@ -218,5 +218,48 @@ describe("ManagePage — 계좌/카드 거래내역 네비게이션 (#284)", () 
       expect(mockedIconApi.deleteUnusedIcons).toHaveBeenCalledWith({ icon_ids: [12] })
     );
     expect(await screen.findByText("1개의 아이콘을 삭제했습니다.")).toBeInTheDocument();
+  });
+});
+
+describe("ManagePage — 카테고리 정렬 (#353)", () => {
+  const makeCategory = (category_id: number, category_name: string, is_default: boolean) => ({
+    category_id,
+    category_name,
+    icon_id: 1,
+    show: true,
+    include_in_statistics: true,
+    is_default,
+    editable: !is_default,
+    created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z"
+  });
+
+  beforeEach(() => {
+    mockedAccountApi.getAccounts.mockResolvedValue(ACCOUNTS_DATA);
+    mockedCardApi.getCards.mockResolvedValue(CARDS_DATA);
+    mockedIconApi.getIcons.mockResolvedValue(EMPTY_ICONS);
+    // API는 등록순(categoryId 오름차순)으로 반환한다
+    mockedCategoryApi.getCategories.mockResolvedValue({
+      success: true,
+      data: {
+        items: [
+          makeCategory(1, "급여", true),
+          makeCategory(2, "식비", true),
+          makeCategory(20, "하늘", false),
+          makeCategory(21, "가게", false),
+          makeCategory(22, "나들이", false)
+        ]
+      },
+      error: null
+    });
+  });
+
+  it("기본 카테고리는 등록순으로 앞에 두고, 사용자 카테고리는 그 뒤에 이름순으로 표시한다", async () => {
+    render(<ManagePage />, { wrapper: createWrapper("categories") });
+
+    const list = await screen.findByRole("list", { name: "카테고리 목록" });
+    const labels = Array.from(list.children).map((item) => item.getAttribute("aria-label"));
+
+    expect(labels).toEqual(["급여", "식비", "가게 숨기기", "나들이 숨기기", "하늘 숨기기"]);
   });
 });

@@ -11,6 +11,7 @@ import { STALE_TIME, RETRY } from "../../shared/constants/queryConfig";
 import { KOREAN_TEXT_INPUT_PROPS } from "../../shared/constants/inputIme";
 import { useNumericFieldProps } from "../../shared/hooks/useNumericFieldProps";
 import type { CategoryItem } from "../../entities/category/model/category.types";
+import { sortCategoriesForManage } from "../../entities/category/lib/sortCategories";
 import { iconApi } from "../../entities/icon/api/iconApi";
 import type {
   IconCleanupCandidateItem,
@@ -1144,7 +1145,10 @@ const CategoriesTab: React.FC = () => {
     iconsQuery.isError ||
     (categoriesQuery.data && !categoriesQuery.data.success) ||
     (iconsQuery.data && !iconsQuery.data.success);
-  const categories = categoriesQuery.data?.data?.items ?? [];
+  const categories = React.useMemo(
+    () => sortCategoriesForManage(categoriesQuery.data?.data?.items ?? []),
+    [categoriesQuery.data]
+  );
   const icons = iconsQuery.data?.data?.items ?? [];
   const iconsById = new Map(icons.map((icon) => [icon.icon_id, icon]));
 

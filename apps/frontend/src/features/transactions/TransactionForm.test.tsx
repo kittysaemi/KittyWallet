@@ -287,3 +287,28 @@ describe("TransactionForm - n월 현금 동일 사용 (#426)", () => {
     expect(await screen.findByRole("checkbox", { name: "10월 현금 동일 사용" })).toBeChecked();
   });
 });
+
+describe("TransactionForm - 카테고리 선택 목록 정렬 (#353)", () => {
+  it("기본/사용자 구분 없이 카테고리명 가나다순으로 표시한다", async () => {
+    // API는 등록순(categoryId 오름차순)으로 반환한다
+    vi.mocked(categoryApi.getCategories).mockResolvedValue(
+      makeResponse([
+        { category_id: 1, category_name: "식비", icon_id: 0 },
+        { category_id: 2, category_name: "교통비", icon_id: 0 },
+        { category_id: 20, category_name: "하늘", icon_id: 0 },
+        { category_id: 21, category_name: "가게", icon_id: 0 }
+      ]) as never
+    );
+    render(<TransactionForm onSuccess={vi.fn()} />, { wrapper: createWrapper() });
+
+    await userEvent.click(await screen.findByRole("button", { name: "카테고리 선택" }));
+    await screen.findByRole("button", { name: "가게" });
+
+    const expected = ["가게", "교통비", "식비", "하늘"];
+    const optionNames = screen
+      .getAllByRole("button")
+      .map((button) => button.getAttribute("aria-label") ?? button.textContent?.trim() ?? "")
+      .filter((name) => expected.includes(name));
+    expect(optionNames).toEqual(expected);
+  });
+});
