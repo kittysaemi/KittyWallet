@@ -204,8 +204,12 @@ jobs:
             ls -lh "$BACKUP_DIR/kittywallet_backup.dump"
 
             echo "== Backup integrity check (pg_restore --list) =="
+            # Write the TOC to a file instead of piping into head: head closes
+            # the pipe early, pg_restore then fails with SIGPIPE and pipefail
+            # aborts the deploy (#428).
             docker run --rm -v "$BACKUP_DIR:/backup" postgres:16-alpine \
-              pg_restore --list /backup/kittywallet_backup.dump | head -5
+              pg_restore --list /backup/kittywallet_backup.dump > "$BACKUP_DIR/kittywallet_backup.toc"
+            head -5 "$BACKUP_DIR/kittywallet_backup.toc"
 
       - name: Deploy with Docker Compose
         uses: appleboy/ssh-action@v1.2.0
