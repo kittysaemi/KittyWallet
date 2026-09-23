@@ -1,3 +1,10 @@
+# [1.46.0](https://github.com/kittysaemi/KittyWallet/compare/v1.45.3...v1.46.0) (2026-09-23)
+
+
+### Features
+
+* **ui:** 카테고리 통계 탭에 카테고리별 거래 내역 팝업 추가 ([b629f19](https://github.com/kittysaemi/KittyWallet/commit/b629f19f399a8604055bbf4987f6323b977ef0a2)), closes [#424](https://github.com/kittysaemi/KittyWallet/issues/424)
+
 ## [1.45.3](https://github.com/kittysaemi/KittyWallet/compare/v1.45.2...v1.45.3) (2026-09-05)
 
 
