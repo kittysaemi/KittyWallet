@@ -1,3 +1,10 @@
+## [1.49.2](https://github.com/kittysaemi/KittyWallet/compare/v1.49.1...v1.49.2) (2026-09-23)
+
+
+### Bug Fixes
+
+* **search:** 거래 검색 조회 탭 결과를 스크롤 시 이어서 불러오기 ([7c11f6f](https://github.com/kittysaemi/KittyWallet/commit/7c11f6fbbf715e5d921eee8ad9b0d1fd7fbe6eb3)), closes [#353](https://github.com/kittysaemi/KittyWallet/issues/353)
+
 ## [1.49.1](https://github.com/kittysaemi/KittyWallet/compare/v1.49.0...v1.49.1) (2026-09-23)
 
 
