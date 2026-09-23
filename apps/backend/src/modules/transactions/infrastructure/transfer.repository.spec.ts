@@ -93,3 +93,58 @@ describe("TransferRepository - findAccountsByIds / findAccountsByIdsReadOnly", (
     });
   });
 });
+
+describe("TransferRepository - n월 현금 동일 사용 (next_month_cash_yn, #426 리오픈)", () => {
+  let repository: TransferRepository;
+  let tx: Prisma.TransactionClient;
+
+  beforeEach(() => {
+    repository = new TransferRepository({} as unknown as PrismaService);
+    tx = {
+      transaction: { create: jest.fn().mockResolvedValue({}), update: jest.fn().mockResolvedValue({}) },
+      account: { update: jest.fn().mockResolvedValue({}) }
+    } as unknown as Prisma.TransactionClient;
+  });
+
+  it("생성 시 체크 값은 보내는 쪽(EXPENSE) 거래에만 저장하고 받는 쪽에는 넣지 않는다", async () => {
+    await repository.createTransferPair(tx, {
+      userId: 1n,
+      categoryId: 9n,
+      fromAccountId: 1n,
+      toAccountId: 2n,
+      amount: 10000,
+      transactionDate: new Date("2026-06-20"),
+      transferGroupId: "group-1",
+      nextMonthCashYn: true,
+      now: new Date("2026-06-20T03:00:00Z")
+    });
+
+    const [[fromArgs], [toArgs]] = (tx.transaction.create as jest.Mock).mock.calls;
+    expect(fromArgs.data).toMatchObject({ transactionType: "EXPENSE", nextMonthCashYn: true });
+    expect(toArgs.data.transactionType).toBe("INCOME");
+    expect(toArgs.data).not.toHaveProperty("nextMonthCashYn");
+  });
+
+  it("수정 시 체크 값은 보내는 쪽 거래에만 반영하고, 미전달이면 어느 쪽도 건드리지 않는다", async () => {
+    const baseInput = {
+      fromTransactionId: 101n,
+      toTransactionId: 102n,
+      fromAccountId: 1n,
+      toAccountId: 2n,
+      amount: 10000,
+      transactionDate: new Date("2026-06-20"),
+      hasMemoUpdate: false
+    };
+
+    await repository.updateTransferPair(tx, { ...baseInput, nextMonthCashYn: true }, []);
+    const [[fromArgs], [toArgs]] = (tx.transaction.update as jest.Mock).mock.calls;
+    expect(fromArgs).toMatchObject({ where: { transactionId: 101n }, data: { nextMonthCashYn: true } });
+    expect(toArgs.data).not.toHaveProperty("nextMonthCashYn");
+
+    (tx.transaction.update as jest.Mock).mockClear();
+    await repository.updateTransferPair(tx, baseInput, []);
+    for (const [args] of (tx.transaction.update as jest.Mock).mock.calls) {
+      expect(args.data).not.toHaveProperty("nextMonthCashYn");
+    }
+  });
+});

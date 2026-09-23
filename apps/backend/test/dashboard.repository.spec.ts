@@ -63,7 +63,7 @@ describe("DashboardRepository", () => {
     const startDate = new Date("2026-09-01T00:00:00.000Z");
     const endDate = new Date("2026-09-30T00:00:00.000Z");
 
-    it("계좌는 체크된 지출만, 카드는 할부 회차 포함 지출 전체를 통계 제외 설정 없이 집계한다", async () => {
+    it("계좌는 체크된 지출만(체크된 계좌이동 보내는 쪽 포함), 카드는 할부 회차 포함 지출 전체를 통계 제외 설정 없이 집계한다", async () => {
       prisma.transaction.aggregate.mockResolvedValue({ _sum: { amount: null, interest: null } });
 
       await repository.getCashExpenseForecastAmounts(BigInt(1), startDate, endDate);
@@ -72,16 +72,20 @@ describe("DashboardRepository", () => {
         userId: BigInt(1),
         deletedYn: false,
         transactionType: TransactionType.EXPENSE,
-        transactionDate: { gte: startDate, lte: endDate },
-        transferGroupId: null,
-        category: { categoryName: { not: "계좌금액이동" } }
+        transactionDate: { gte: startDate, lte: endDate }
       };
+      // 계좌 집계에는 계좌이동 제외 조건이 없어야 체크된 계좌이동 보내는 쪽 거래가 포함된다(#426 리오픈).
       expect(prisma.transaction.aggregate).toHaveBeenCalledWith({
         where: { ...baseWhere, walletType: "ACCOUNT", nextMonthCashYn: true },
         _sum: { amount: true }
       });
       expect(prisma.transaction.aggregate).toHaveBeenCalledWith({
-        where: { ...baseWhere, walletType: "CARD" },
+        where: {
+          ...baseWhere,
+          walletType: "CARD",
+          transferGroupId: null,
+          category: { categoryName: { not: "계좌금액이동" } }
+        },
         _sum: { amount: true, interest: true }
       });
     });

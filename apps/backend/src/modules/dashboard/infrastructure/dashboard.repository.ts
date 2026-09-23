@@ -133,7 +133,7 @@ export class DashboardRepository {
   }
 
   // "n월 현금 지출 예상 금액"(대시보드API.md cash_expense_forecast) 집계.
-  // 소비 요약과 달리 카테고리 통계 제외 설정을 적용하지 않고, 계좌이동 거래는 제외한다.
+  // 소비 요약과 달리 카테고리 통계 제외 설정을 적용하지 않는다.
   async getCashExpenseForecastAmounts(
     userId: bigint,
     startDate: Date,
@@ -143,19 +143,24 @@ export class DashboardRepository {
       userId,
       deletedYn: false,
       transactionType: TransactionType.EXPENSE,
-      transactionDate: { gte: startDate, lte: endDate },
-      transferGroupId: null,
-      category: { categoryName: { not: TRANSFER_CATEGORY_NAME } }
+      transactionDate: { gte: startDate, lte: endDate }
     };
 
     const [accountResult, cardResult] = await Promise.all([
+      // 계좌는 체크된 지출만 합산한다. 계좌이동도 보내는 쪽(EXPENSE)이 체크되어 있으면 포함하며,
+      // 받는 쪽(INCOME)은 지출 조건에서 걸러지고 체크하지 않은 계좌이동은 체크 조건에서 걸러진다.
       this.prisma.transaction.aggregate({
         where: { ...baseWhere, walletType: "ACCOUNT", nextMonthCashYn: true },
         _sum: { amount: true }
       }),
       // 카드는 할부 회차를 포함한 월별 거래 전체를 합산하며, 할부 이자도 청구액에 포함한다.
       this.prisma.transaction.aggregate({
-        where: { ...baseWhere, walletType: "CARD" },
+        where: {
+          ...baseWhere,
+          walletType: "CARD",
+          transferGroupId: null,
+          category: { categoryName: { not: TRANSFER_CATEGORY_NAME } }
+        },
         _sum: { amount: true, interest: true }
       })
     ]);

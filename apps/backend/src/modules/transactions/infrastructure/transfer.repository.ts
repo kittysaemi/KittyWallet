@@ -21,6 +21,7 @@ export interface CreateTransferPairInput {
   transactionDate: Date;
   memo?: string | null;
   transferGroupId: string;
+  nextMonthCashYn: boolean;
   now: Date;
 }
 
@@ -33,6 +34,8 @@ export interface UpdateTransferPairInput {
   transactionDate: Date;
   memo?: string | null;
   hasMemoUpdate: boolean;
+  /** 보내는 쪽 거래의 "n월 현금 동일 사용". undefined면 기존 값 유지 */
+  nextMonthCashYn?: boolean;
 }
 
 export interface BalanceChange {
@@ -185,6 +188,8 @@ export class TransferRepository {
         transactionDate: input.transactionDate,
         memo: input.memo ?? null,
         transferGroupId: input.transferGroupId,
+        // "n월 현금 동일 사용"은 보내는 쪽(출금) 거래에만 저장한다. 받는 쪽은 DB 기본값 false.
+        nextMonthCashYn: input.nextMonthCashYn,
         deletedYn: false,
         syncedAt: input.now
       }
@@ -229,7 +234,8 @@ export class TransferRepository {
         walletId: input.fromAccountId,
         amount: input.amount,
         transactionDate: input.transactionDate,
-        ...(input.hasMemoUpdate ? { memo: input.memo ?? null } : {})
+        ...(input.hasMemoUpdate ? { memo: input.memo ?? null } : {}),
+        ...(input.nextMonthCashYn !== undefined ? { nextMonthCashYn: input.nextMonthCashYn } : {})
       }
     });
 

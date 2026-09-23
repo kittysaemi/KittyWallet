@@ -139,3 +139,14 @@ textarea {
   user-select: text;
   cursor: text;
 }
+
+/* 체크박스/라디오는 텍스트 입력이 아니므로 위 텍스트 커서 규칙에서 제외한다. */
+input[type="checkbox"],
+input[type="radio"] {
+  cursor: pointer;
+}
+
+input[type="checkbox"]:disabled,
+input[type="radio"]:disabled {
+  cursor: not-allowed;
+}

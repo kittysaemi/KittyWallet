@@ -295,7 +295,8 @@ const TransactionEditPage: React.FC = () => {
                     to_account_deleted: transferDetailQuery.data.data.to_account_deleted,
                     amount: transferDetailQuery.data.data.amount,
                     transaction_date: transferDetailQuery.data.data.transaction_date,
-                    memo: transaction.memo
+                    memo: transaction.memo,
+                    next_month_cash_yn: transferDetailQuery.data.data.next_month_cash_yn
                   }}
                   onSuccess={goToListAfterCompletion}
                 />

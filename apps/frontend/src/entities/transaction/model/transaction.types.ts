@@ -138,6 +138,8 @@ export interface CreateTransferRequest {
   amount: number;
   transaction_date: string;
   memo?: string;
+  /** 보내는 쪽 거래의 "n월 현금 동일 사용" 체크 여부 */
+  next_month_cash_yn?: boolean;
   timezone?: string;
 }
 
@@ -147,6 +149,7 @@ export interface UpdateTransferRequest {
   amount?: number;
   transaction_date?: string;
   memo?: string | null;
+  next_month_cash_yn?: boolean;
   timezone?: string;
 }
 
@@ -162,6 +165,8 @@ export interface TransferResult {
   to_account_deleted: boolean;
   amount: number;
   transaction_date: string;
+  /** 보내는 쪽 거래의 "n월 현금 동일 사용" 체크 여부 */
+  next_month_cash_yn?: boolean;
   updated_at: string;
 }
 

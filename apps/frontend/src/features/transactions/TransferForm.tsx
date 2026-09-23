@@ -11,7 +11,7 @@ import { Button } from "../../shared/ui/Button";
 import { Input } from "../../shared/ui/Input";
 import { IconRenderer } from "../../shared/ui/IconRenderer";
 import { useTimezone } from "../../shared/hooks/useTimezone";
-import { getTodayInTimezone } from "../../shared/utils/date";
+import { getNextMonthNumber, getTodayInTimezone } from "../../shared/utils/date";
 import { STALE_TIME } from "../../shared/constants/queryConfig";
 import { KOREAN_TEXT_INPUT_PROPS } from "../../shared/constants/inputIme";
 import { useNumericFieldProps } from "../../shared/hooks/useNumericFieldProps";
@@ -48,6 +48,7 @@ export interface TransferFormInitialData {
   amount: number;
   transaction_date: string;
   memo?: string | null;
+  next_month_cash_yn?: boolean;
 }
 
 interface TransferFormProps {
@@ -142,6 +143,9 @@ export const TransferForm: React.FC<TransferFormProps> = ({
     () => initialData?.transaction_date ?? getTodayInTimezone(timezone)
   );
   const [memo, setMemo] = React.useState<string>(initialData?.memo ?? "");
+  const [nextMonthCash, setNextMonthCash] = React.useState<boolean>(
+    initialData?.next_month_cash_yn ?? false
+  );
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [apiError, setApiError] = React.useState<string>("");
 
@@ -242,10 +246,11 @@ export const TransferForm: React.FC<TransferFormProps> = ({
         amount: parsed.data.amount,
         transaction_date: parsed.data.transaction_date,
         memo: parsed.data.memo ?? null,
+        next_month_cash_yn: nextMonthCash,
         timezone
       });
     } else {
-      createMutation.mutate({ ...parsed.data, timezone });
+      createMutation.mutate({ ...parsed.data, next_month_cash_yn: nextMonthCash, timezone });
     }
   }
 
@@ -456,6 +461,23 @@ export const TransferForm: React.FC<TransferFormProps> = ({
         autoComplete="off"
         {...KOREAN_TEXT_INPUT_PROPS}
       />
+
+      {/* n월 현금 동일 사용 (보내는 쪽 출금 거래에만 적용, #426) */}
+      {fromAccountId > 0 && (
+        <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 py-2">
+          <input
+            type="checkbox"
+            name="next_month_cash_yn"
+            checked={nextMonthCash}
+            onChange={(e) => setNextMonthCash(e.target.checked)}
+            disabled={isSaving}
+            className="h-5 w-5 shrink-0 accent-[var(--color-primary)]"
+          />
+          <span className="text-sm font-medium text-[var(--color-text-primary)]">
+            {date ? `${getNextMonthNumber(date)}월 현금 동일 사용` : "다음 달 현금 동일 사용"}
+          </span>
+        </label>
+      )}
 
       {apiError && (
         <div
