@@ -72,6 +72,7 @@ describe("TransactionsService", () => {
     findCategory: jest.fn(),
     findById: jest.fn(),
     findMany: jest.fn(),
+    findWalletRefsByName: jest.fn(),
     findAccountsByIds: jest.fn(),
     findCardsByIds: jest.fn(),
     count: jest.fn(),
@@ -156,6 +157,31 @@ describe("TransactionsService", () => {
 
       expect(result.period_summary).toBeNull();
       expect(transactionsRepository.sumCardExpense).not.toHaveBeenCalled();
+    });
+
+    // 키워드 검색(#353)
+    it("resolves name-matched wallets and passes them with the keyword to the repository", async () => {
+      transactionsRepository.findMany.mockResolvedValue([]);
+      transactionsRepository.count.mockResolvedValue(0);
+      const refs = [{ walletType: "CARD" as const, walletId: BigInt(4) }];
+      transactionsRepository.findWalletRefsByName.mockResolvedValue(refs);
+
+      await service.getTransactions({ ...baseListCommand, keyword: "마운자로" });
+
+      expect(transactionsRepository.findWalletRefsByName).toHaveBeenCalledWith(BigInt(1), "마운자로");
+      expect(transactionsRepository.findMany.mock.calls[0][0]).toMatchObject({
+        keyword: "마운자로",
+        keywordWalletRefs: refs
+      });
+    });
+
+    it("does not look up wallets when no keyword is given", async () => {
+      transactionsRepository.findMany.mockResolvedValue([]);
+      transactionsRepository.count.mockResolvedValue(0);
+
+      await service.getTransactions(baseListCommand);
+
+      expect(transactionsRepository.findWalletRefsByName).not.toHaveBeenCalled();
     });
 
     // 다중 선택 필터(#353)

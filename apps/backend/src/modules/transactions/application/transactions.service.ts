@@ -440,6 +440,9 @@ export class TransactionsService {
       startDate: command.startDate ? new Date(command.startDate) : undefined,
       endDate: command.endDate ? new Date(command.endDate) : undefined,
       keyword: command.keyword,
+      keywordWalletRefs: command.keyword
+        ? await this.transactionsRepository.findWalletRefsByName(command.userId, command.keyword)
+        : undefined,
       walletType: command.walletType as WalletType | undefined,
       walletId: command.walletId ? BigInt(command.walletId) : undefined,
       categoryId: command.categoryId ? BigInt(command.categoryId) : undefined,

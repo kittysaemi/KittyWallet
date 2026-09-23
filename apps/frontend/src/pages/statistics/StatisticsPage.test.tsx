@@ -28,11 +28,14 @@ vi.mock("../../entities/icon/api/iconApi", () => ({
   }
 }));
 
-vi.mock("../../entities/transaction/api/transactionApi", () => ({
-  transactionApi: {
-    getTransactions: vi.fn()
-  }
-}));
+// getAllTransactions(전체 조회)는 실제 구현을 쓰고, 내부에서 호출하는 getTransactions만 모킹한다.
+vi.mock("../../entities/transaction/api/transactionApi", async () => {
+  const actual = await vi.importActual<typeof import("../../entities/transaction/api/transactionApi")>(
+    "../../entities/transaction/api/transactionApi"
+  );
+  actual.transactionApi.getTransactions = vi.fn();
+  return actual;
+});
 
 const mockedStatisticsApi = vi.mocked(statisticsApi);
 const mockedIconApi = vi.mocked(iconApi);
@@ -638,6 +641,46 @@ describe("StatisticsPage", () => {
 
     // 요약 헤더(카테고리명/합계/건수) 없이 목록만 표시된다.
     expect(screen.queryByText("2건")).not.toBeInTheDocument();
+  });
+
+  it("카테고리통계 팝업은 100건을 넘는 내역도 페이지를 이어 받아 모두 표시한다 (#353)", async () => {
+    const makeItem = (id: number) => ({
+      transaction_id: id,
+      wallet_type: "ACCOUNT" as const,
+      wallet_id: 1,
+      wallet_name: "우리은행",
+      wallet_deleted: false,
+      category_id: 1,
+      category_name: "식비",
+      transaction_type: "EXPENSE" as const,
+      amount: 100,
+      memo: `내역 ${id}`,
+      transaction_date: "2026-06-05",
+      created_at: "2026-06-05T00:00:00.000Z",
+      updated_at: "2026-06-05T00:00:00.000Z"
+    });
+    mockedTransactionApi.getTransactions
+      .mockResolvedValueOnce({
+        success: true,
+        data: { items: Array.from({ length: 100 }, (_, i) => makeItem(i + 1)), page: 1, limit: 100, total_count: 101 },
+        error: null
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        data: { items: [makeItem(101)], page: 2, limit: 100, total_count: 101 },
+        error: null
+      });
+
+    render(<StatisticsPage />, { wrapper: createWrapper() });
+    await userEvent.click(await screen.findByRole("button", { name: "카테고리통계" }));
+    await screen.findByLabelText("카테고리별 지출 통계");
+    await userEvent.click(screen.getByText("90,000원"));
+
+    expect(await screen.findByText("내역 101")).toBeInTheDocument();
+    expect(screen.getByText("내역 1")).toBeInTheDocument();
+    expect(mockedTransactionApi.getTransactions).toHaveBeenCalledWith(
+      expect.objectContaining({ category_id: 1, page: 2, limit: 100 })
+    );
   });
 
   it("카테고리통계 팝업에서 할부 2회차 이후 거래는 제외한다", async () => {

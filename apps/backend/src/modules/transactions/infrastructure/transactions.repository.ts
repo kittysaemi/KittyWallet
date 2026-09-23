@@ -30,6 +30,9 @@ export interface FindTransactionsCondition {
   startDate?: Date;
   endDate?: Date;
   keyword?: string;
+  // 키워드와 이름이 일치하는 계좌/카드(#353). 지갑은 거래 테이블에 관계가 없는 walletType+walletId
+  // 구조라 서비스에서 먼저 이름으로 찾아 넘겨준다.
+  keywordWalletRefs?: WalletRef[];
   walletType?: WalletType;
   walletId?: bigint;
   categoryId?: bigint;
@@ -109,11 +112,26 @@ export class TransactionsRepository {
           ...(condition.walletId ? { walletId: condition.walletId } : {})
         };
 
+    // 키워드는 메모·카테고리명·계좌명·카드명 중 하나라도 부분 일치하면 조회한다(#353).
+    // walletFilter도 OR를 쓸 수 있어 같은 레벨에 펼치지 않고 AND로 묶는다.
+    const keywordFilter: Prisma.TransactionWhereInput | undefined = condition.keyword
+      ? {
+          OR: [
+            { memo: { contains: condition.keyword, mode: "insensitive" } },
+            { category: { categoryName: { contains: condition.keyword, mode: "insensitive" } } },
+            ...(condition.keywordWalletRefs ?? []).map((ref) => ({
+              walletType: ref.walletType,
+              walletId: ref.walletId
+            }))
+          ]
+        }
+      : undefined;
+
     return {
       userId: condition.userId,
       deletedYn: false,
       ...(dateFilter ? { transactionDate: dateFilter } : {}),
-      ...(condition.keyword ? { memo: { contains: condition.keyword, mode: "insensitive" } } : {}),
+      ...(keywordFilter ? { AND: [keywordFilter] } : {}),
       ...walletFilter,
       ...categoryFilter,
       ...(condition.excludeInstallment ? { installmentId: null } : {}),
@@ -238,6 +256,24 @@ export class TransactionsRepository {
       where: { accountId: { in: ids } },
       select: { accountId: true, accountName: true, deletedYn: true }
     });
+  }
+
+  // 이름에 키워드가 포함된 사용자의 계좌/카드(보관·삭제된 지갑 포함 — 과거 거래도 검색되어야 한다).
+  async findWalletRefsByName(userId: bigint, keyword: string): Promise<WalletRef[]> {
+    const [accounts, cards] = await Promise.all([
+      this.prisma.account.findMany({
+        where: { userId, accountName: { contains: keyword, mode: "insensitive" } },
+        select: { accountId: true }
+      }),
+      this.prisma.card.findMany({
+        where: { userId, cardName: { contains: keyword, mode: "insensitive" } },
+        select: { cardId: true }
+      })
+    ]);
+    return [
+      ...accounts.map((a) => ({ walletType: "ACCOUNT" as WalletType, walletId: a.accountId })),
+      ...cards.map((c) => ({ walletType: "CARD" as WalletType, walletId: c.cardId }))
+    ];
   }
 
   findCardsByIds(

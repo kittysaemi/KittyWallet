@@ -1,4 +1,5 @@
 import { apiClient } from "../../../shared/api/apiClient";
+import { QUERY_LIMIT } from "../../../shared/constants/queryConfig";
 import type {
   ApiResponse,
   ConvertToInstallmentRequest,
@@ -22,6 +23,30 @@ export const transactionApi = {
   ): Promise<ApiResponse<TransactionListData>> => {
     const res = await apiClient.get<ApiResponse<TransactionListData>>("/transactions", { params });
     return res.data;
+  },
+
+  /**
+   * 조건에 맞는 거래를 건수 제한 없이 모두 조회한다(#353).
+   * API는 1회 요청당 최대 100건만 반환하므로, total_count에 도달할 때까지 페이지를 이어 받아 합친다.
+   * 한 페이지라도 실패하면 그 응답을 그대로 반환한다.
+   */
+  getAllTransactions: async (
+    params?: Omit<TransactionListParams, "page" | "limit">
+  ): Promise<ApiResponse<TransactionListData>> => {
+    const limit = QUERY_LIMIT.TRANSACTION_API_MAX;
+    const items: TransactionItem[] = [];
+    let first: ApiResponse<TransactionListData> | null = null;
+    for (let page = 1; ; page += 1) {
+      const res = await transactionApi.getTransactions({ ...params, page, limit });
+      if (!res.success || !res.data) return res;
+      first ??= res;
+      items.push(...res.data.items);
+      if (res.data.items.length < limit || items.length >= res.data.total_count) break;
+    }
+    return {
+      ...first,
+      data: { ...first.data!, items, page: 1, limit: items.length, total_count: items.length }
+    };
   },
 
   getRecentTransactions: async (

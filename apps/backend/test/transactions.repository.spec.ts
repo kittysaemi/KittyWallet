@@ -89,6 +89,73 @@ describe("TransactionsRepository.findMany where clause", () => {
 
     expect("installmentId" in where).toBe(false);
   });
+
+  // 키워드 검색(#353): 메모만이 아니라 카테고리명·계좌명·카드명도 검색한다.
+  it("matches the keyword against memo, category name and name-matched wallets", async () => {
+    const where = await whereOf({
+      ...baseCondition,
+      keyword: "마운자로",
+      keywordWalletRefs: [
+        { walletType: "ACCOUNT", walletId: BigInt(3) },
+        { walletType: "CARD", walletId: BigInt(4) }
+      ]
+    });
+
+    expect(where.AND).toEqual([
+      {
+        OR: [
+          { memo: { contains: "마운자로", mode: "insensitive" } },
+          { category: { categoryName: { contains: "마운자로", mode: "insensitive" } } },
+          { walletType: "ACCOUNT", walletId: BigInt(3) },
+          { walletType: "CARD", walletId: BigInt(4) }
+        ]
+      }
+    ]);
+    expect("memo" in where).toBe(false);
+  });
+
+  it("keeps the keyword OR separate from the multi-selected wallet OR", async () => {
+    const where = await whereOf({
+      ...baseCondition,
+      keyword: "식비",
+      walletRefs: [{ walletType: "CARD", walletId: BigInt(1) }]
+    });
+
+    expect(where.OR).toEqual([{ walletType: "CARD", walletId: BigInt(1) }]);
+    expect(where.AND[0].OR).toHaveLength(2);
+  });
+
+  it("adds no keyword condition when keyword is not given", async () => {
+    const where = await whereOf(baseCondition);
+
+    expect("AND" in where).toBe(false);
+  });
+});
+
+describe("TransactionsRepository.findWalletRefsByName", () => {
+  it("finds the user accounts and cards whose name contains the keyword as wallet refs", async () => {
+    const accountFindMany = jest.fn().mockResolvedValue([{ accountId: BigInt(3) }]);
+    const cardFindMany = jest.fn().mockResolvedValue([{ cardId: BigInt(4) }]);
+    const repository = new TransactionsRepository({
+      account: { findMany: accountFindMany },
+      card: { findMany: cardFindMany }
+    } as unknown as PrismaService);
+
+    const refs = await repository.findWalletRefsByName(BigInt(1), "생활");
+
+    expect(refs).toEqual([
+      { walletType: "ACCOUNT", walletId: BigInt(3) },
+      { walletType: "CARD", walletId: BigInt(4) }
+    ]);
+    expect(accountFindMany.mock.calls[0][0].where).toEqual({
+      userId: BigInt(1),
+      accountName: { contains: "생활", mode: "insensitive" }
+    });
+    expect(cardFindMany.mock.calls[0][0].where).toEqual({
+      userId: BigInt(1),
+      cardName: { contains: "생활", mode: "insensitive" }
+    });
+  });
 });
 
 describe("TransactionsRepository.createInstallmentWithTransactions", () => {
