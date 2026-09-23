@@ -1,3 +1,10 @@
+## [1.49.1](https://github.com/kittysaemi/KittyWallet/compare/v1.49.0...v1.49.1) (2026-09-23)
+
+
+### Bug Fixes
+
+* **transaction:** 키워드 검색을 서버 전체 검색으로 바꾸고 통계 목록 100건 제한 제거 ([061fdf6](https://github.com/kittysaemi/KittyWallet/commit/061fdf60a63d77bf1307e6fad8a131b224424335)), closes [#353](https://github.com/kittysaemi/KittyWallet/issues/353)
+
 # [1.49.0](https://github.com/kittysaemi/KittyWallet/compare/v1.48.0...v1.49.0) (2026-09-23)
 
 
