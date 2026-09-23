@@ -45,6 +45,7 @@ function makeTransferTx(overrides: Record<string, unknown> = {}) {
     installmentTotalCount: null,
     interest: 0,
     transferGroupId: "group-1",
+    nextMonthCashYn: false,
     deletedYn: false,
     syncedAt: new Date("2026-06-20T03:00:00Z"),
     createdAt: new Date("2026-06-20T03:00:00Z"),
@@ -484,6 +485,98 @@ describe("TransferService", () => {
       (mockRepo.findTransferPairReadOnly as jest.Mock).mockResolvedValue([]);
 
       await expect(service.getTransfer(1n, "group-1")).rejects.toMatchObject({ code: "TRANSFER_003" });
+    });
+  });
+});
+
+describe("TransferService - n월 현금 동일 사용 (next_month_cash_yn, #426 리오픈)", () => {
+  let service: TransferService;
+
+  function mockPair(fromOverrides: Record<string, unknown> = {}) {
+    return {
+      fromTransaction: makeTransferTx({ transactionId: 101n, walletId: 1n, ...fromOverrides }),
+      toTransaction: makeTransferTx({ transactionId: 102n, walletId: 2n, transactionType: "INCOME" })
+    };
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (mockRepo.runInTransaction as jest.Mock).mockImplementation((fn: (tx: unknown) => unknown) => fn({}));
+    (mockRepo.findAccountLedger as jest.Mock).mockResolvedValue([]);
+    (mockRepo.findAccountsByIds as jest.Mock).mockResolvedValue([
+      makeAccount({ accountId: 1n, initialBalance: makeDecimal(50000) }),
+      makeAccount({ accountId: 2n })
+    ]);
+    (mockRepo.findOrCreateTransferCategory as jest.Mock).mockResolvedValue({ categoryId: 9n });
+    service = new TransferService(mockRepo);
+  });
+
+  describe("createTransfer", () => {
+    const command = {
+      userId: 1n,
+      fromAccountId: 1n,
+      toAccountId: 2n,
+      amount: 10000,
+      transactionDate: "2026-06-20"
+    };
+
+    it("체크하면 보내는 쪽 거래 생성 입력에 true를 전달하고, 응답에 보내는 쪽 값을 반환한다", async () => {
+      (mockRepo.createTransferPair as jest.Mock).mockResolvedValue(mockPair({ nextMonthCashYn: true }));
+
+      const result = await service.createTransfer({ ...command, nextMonthCashYn: true });
+
+      expect(mockRepo.createTransferPair).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ nextMonthCashYn: true })
+      );
+      expect(result.next_month_cash_yn).toBe(true);
+    });
+
+    it("미전달 시 false로 생성한다", async () => {
+      (mockRepo.createTransferPair as jest.Mock).mockResolvedValue(mockPair());
+
+      const result = await service.createTransfer(command);
+
+      expect(mockRepo.createTransferPair).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ nextMonthCashYn: false })
+      );
+      expect(result.next_month_cash_yn).toBe(false);
+    });
+  });
+
+  describe("updateTransfer", () => {
+    beforeEach(() => {
+      (mockRepo.findTransferPair as jest.Mock).mockResolvedValue([
+        makeTransferTx({ transactionId: 101n, walletId: 1n, transactionType: "EXPENSE" }),
+        makeTransferTx({ transactionId: 102n, walletId: 2n, transactionType: "INCOME" })
+      ]);
+    });
+
+    it("체크 값만 전달해도 수정할 수 있고, 보내는 쪽 거래 수정 입력에 전달한다", async () => {
+      (mockRepo.updateTransferPair as jest.Mock).mockResolvedValue(mockPair({ nextMonthCashYn: true }));
+
+      const result = await service.updateTransfer({
+        userId: 1n,
+        transferGroupId: "group-1",
+        nextMonthCashYn: true
+      });
+
+      expect(mockRepo.updateTransferPair).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ nextMonthCashYn: true }),
+        expect.any(Array)
+      );
+      expect(result.next_month_cash_yn).toBe(true);
+    });
+
+    it("체크 값 미전달 시 undefined를 전달해 기존 값을 유지한다", async () => {
+      (mockRepo.updateTransferPair as jest.Mock).mockResolvedValue(mockPair());
+
+      await service.updateTransfer({ userId: 1n, transferGroupId: "group-1", amount: 20000 });
+
+      const [, input] = (mockRepo.updateTransferPair as jest.Mock).mock.calls[0];
+      expect(input.nextMonthCashYn).toBeUndefined();
     });
   });
 });

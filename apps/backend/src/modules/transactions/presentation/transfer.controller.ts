@@ -18,6 +18,7 @@ export class TransferController {
       amount: dto.amount,
       transactionDate: dto.transaction_date,
       memo: dto.memo,
+      nextMonthCashYn: dto.next_month_cash_yn,
       timezone: dto.timezone
     });
   }
@@ -41,6 +42,7 @@ export class TransferController {
       amount: dto.amount,
       transactionDate: dto.transaction_date,
       memo: dto.memo,
+      nextMonthCashYn: dto.next_month_cash_yn,
       timezone: dto.timezone
     });
   }

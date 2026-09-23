@@ -23,6 +23,7 @@ export interface CreateTransferCommand {
   amount: number;
   transactionDate: string;
   memo?: string;
+  nextMonthCashYn?: boolean;
   timezone?: string;
 }
 
@@ -34,6 +35,7 @@ export interface UpdateTransferCommand {
   amount?: number;
   transactionDate?: string;
   memo?: string | null;
+  nextMonthCashYn?: boolean;
   timezone?: string;
 }
 
@@ -49,6 +51,8 @@ export interface TransferResult {
   to_account_deleted: boolean;
   amount: number;
   transaction_date: string;
+  /** 보내는 쪽 거래의 "n월 현금 동일 사용" 체크 여부 */
+  next_month_cash_yn: boolean;
   updated_at: string;
 }
 
@@ -110,6 +114,7 @@ export class TransferService {
             transactionDate,
             memo: command.memo ?? null,
             transferGroupId,
+            nextMonthCashYn: command.nextMonthCashYn === true,
             now
           });
 
@@ -138,7 +143,8 @@ export class TransferService {
       command.toAccountId !== undefined ||
       command.amount !== undefined ||
       command.transactionDate !== undefined ||
-      command.memo !== undefined;
+      command.memo !== undefined ||
+      command.nextMonthCashYn !== undefined;
     if (!hasUpdate) {
       throw new AppException(
         "VALIDATION_001",
@@ -246,7 +252,8 @@ export class TransferService {
               amount: newAmount,
               transactionDate: newDate,
               memo: hasMemoUpdate ? (command.memo ?? null) : undefined,
-              hasMemoUpdate
+              hasMemoUpdate,
+              nextMonthCashYn: command.nextMonthCashYn
             },
             balanceChanges
           );
@@ -482,6 +489,7 @@ export class TransferService {
       to_account_deleted: accountInfo.toDeleted,
       amount: fromTx.amount.toNumber(),
       transaction_date: fromTx.transactionDate.toISOString().split("T")[0],
+      next_month_cash_yn: fromTx.nextMonthCashYn,
       updated_at: updatedAt.toISOString()
     };
   }

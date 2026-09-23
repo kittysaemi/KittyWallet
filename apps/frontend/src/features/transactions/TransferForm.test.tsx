@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { TransferForm } from "./TransferForm";
@@ -262,5 +262,104 @@ describe("TransferForm", () => {
       ).not.toBeInTheDocument();
       expect(screen.getByRole("button", { name: "수정 완료" })).toBeEnabled();
     });
+  });
+});
+
+describe("TransferForm - n월 현금 동일 사용 (#426)", () => {
+  const editInitialData = {
+    transfer_group_id: "tg-1",
+    from_account_id: 1,
+    to_account_id: 2,
+    amount: 10000,
+    transaction_date: "2026-01-15",
+    memo: null
+  };
+
+  it("보내는 계좌를 선택해야 체크박스가 메모 아래에 표시된다", async () => {
+    const user = userEvent.setup();
+    render(<TransferForm onSuccess={vi.fn()} />, { wrapper: createWrapper() });
+    await screen.findAllByText("생활통장", { selector: "option" });
+    expect(screen.queryByRole("checkbox", { name: /현금 동일 사용/ })).not.toBeInTheDocument();
+
+    const [fromSelect] = screen.getAllByRole("combobox");
+    await user.selectOptions(fromSelect, "1");
+
+    const checkbox = screen.getByRole("checkbox", { name: /월 현금 동일 사용$/ });
+    expect(checkbox).not.toBeChecked();
+    // 메모 입력 뒤(아래)에 위치한다.
+    expect(
+      screen.getByLabelText("메모 (선택)").compareDocumentPosition(checkbox) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
+  it("체크 후 등록하면 계좌이동 생성 API에 next_month_cash_yn=true를 전달한다", async () => {
+    const user = userEvent.setup();
+    vi.mocked(transactionApi.createTransfer).mockResolvedValue({ success: true, data: null, error: null });
+    render(<TransferForm onSuccess={vi.fn()} />, { wrapper: createWrapper() });
+    await screen.findAllByText("생활통장", { selector: "option" });
+    const [fromSelect, toSelect] = screen.getAllByRole("combobox");
+    await user.selectOptions(fromSelect, "1");
+    await user.selectOptions(toSelect, "2");
+    await user.type(screen.getByLabelText("이동 금액"), "10000");
+    await user.click(screen.getByRole("checkbox", { name: /월 현금 동일 사용$/ }));
+
+    await user.click(screen.getByRole("button", { name: "계좌이동 등록" }));
+
+    await waitFor(() => expect(transactionApi.createTransfer).toHaveBeenCalled());
+    // useMutation이 mutationFn에 컨텍스트를 두 번째 인자로 넘기므로 첫 번째 인자(요청 본문)만 확인한다.
+    expect(vi.mocked(transactionApi.createTransfer).mock.calls[0][0]).toEqual(
+      expect.objectContaining({ from_account_id: 1, to_account_id: 2, next_month_cash_yn: true })
+    );
+  });
+
+  it("수정 화면은 저장된 체크 상태를 표시하고, 날짜를 바꾸면 라벨의 월이 즉시 갱신된다(12월 → 1월)", async () => {
+    render(
+      <TransferForm onSuccess={vi.fn()} initialData={{ ...editInitialData, next_month_cash_yn: true }} />,
+      { wrapper: createWrapper() }
+    );
+
+    const checkbox = await screen.findByRole("checkbox", { name: "2월 현금 동일 사용" });
+    expect(checkbox).toBeChecked();
+
+    fireEvent.change(screen.getByLabelText("날짜"), { target: { value: "2025-12-03" } });
+    expect(screen.getByRole("checkbox", { name: "1월 현금 동일 사용" })).toBeChecked();
+  });
+
+  it("수정 시 체크 해제 값을 계좌이동 수정 API에 전달한다", async () => {
+    const user = userEvent.setup();
+    vi.mocked(transactionApi.updateTransfer).mockResolvedValue({ success: true, data: null, error: null });
+    render(
+      <TransferForm onSuccess={vi.fn()} initialData={{ ...editInitialData, next_month_cash_yn: true }} />,
+      { wrapper: createWrapper() }
+    );
+    await screen.findAllByText("생활통장", { selector: "option" });
+
+    await user.click(screen.getByRole("checkbox", { name: "2월 현금 동일 사용" }));
+    await user.click(screen.getByRole("button", { name: "수정 완료" }));
+
+    await waitFor(() =>
+      expect(transactionApi.updateTransfer).toHaveBeenCalledWith(
+        "tg-1",
+        expect.objectContaining({ next_month_cash_yn: false })
+      )
+    );
+  });
+
+  it("삭제된 계좌가 포함된 읽기 전용 수정 화면에서는 체크박스도 비활성화된다", async () => {
+    render(
+      <TransferForm
+        onSuccess={vi.fn()}
+        initialData={{
+          ...editInitialData,
+          to_account_name: "폐쇄통장",
+          to_account_deleted: true,
+          next_month_cash_yn: true
+        }}
+      />,
+      { wrapper: createWrapper() }
+    );
+
+    expect(await screen.findByRole("checkbox", { name: "2월 현금 동일 사용" })).toBeDisabled();
   });
 });

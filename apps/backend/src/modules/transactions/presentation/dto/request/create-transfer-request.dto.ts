@@ -1,4 +1,4 @@
-import { IsDateString, IsIn, IsInt, IsOptional, IsString, MaxLength, Min } from "class-validator";
+import { IsBoolean, IsDateString, IsIn, IsInt, IsOptional, IsString, MaxLength, Min } from "class-validator";
 import { SUPPORTED_TIMEZONES } from "../../../../settings/domain/settings-policy";
 
 export class CreateTransferRequestDto {
@@ -21,6 +21,10 @@ export class CreateTransferRequestDto {
   @IsString()
   @MaxLength(200)
   memo?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  next_month_cash_yn?: boolean;
 
   @IsOptional()
   @IsIn(SUPPORTED_TIMEZONES)
