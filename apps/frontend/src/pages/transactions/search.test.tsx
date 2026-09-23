@@ -56,11 +56,11 @@ class MockIntersectionObserver {
   }
 }
 
-function createWrapper() {
+function createWrapper(tab: "browse" | "keyword" = "keyword") {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return ({ children }: PropsWithChildren) => (
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={["/transactions/search?tab=keyword"]}>{children}</MemoryRouter>
+      <MemoryRouter initialEntries={[`/transactions/search?tab=${tab}`]}>{children}</MemoryRouter>
     </QueryClientProvider>
   );
 }
@@ -123,5 +123,65 @@ describe("거래 검색 - 키워드 검색 (#353)", () => {
       limit: 50
     });
     expect(screen.getByText("총 51건")).toBeInTheDocument();
+  });
+});
+
+describe("거래 검색 - 조회 탭 (#353)", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.stubGlobal("IntersectionObserver", MockIntersectionObserver);
+    vi.mocked(accountApi.getAccounts).mockResolvedValue(empty as never);
+    vi.mocked(cardApi.getCards).mockResolvedValue(empty as never);
+    vi.mocked(categoryApi.getCategories).mockResolvedValue(empty as never);
+    vi.mocked(iconApi.getIcons).mockResolvedValue(empty as never);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  // 탭 버튼과 제출 버튼의 이름이 모두 "조회"라서 폼 제출 버튼을 골라 누른다.
+  const clickSubmit = () =>
+    userEvent.click(
+      screen.getAllByRole("button", { name: "조회" }).find((b) => b.getAttribute("type") === "submit")!
+    );
+
+  it("기간 내 거래가 100건을 넘어도 스크롤하면 다음 결과를 이어 불러와 빠짐없이 표시한다", async () => {
+    const firstPage = Array.from({ length: 50 }, (_, i) => makeTx(i + 1, `조회 ${i + 1}`));
+    const secondPage = Array.from({ length: 50 }, (_, i) => makeTx(i + 51, `조회 ${i + 51}`));
+    vi.mocked(transactionApi.getTransactions).mockImplementation(async (params) => {
+      const page = params?.page ?? 1;
+      if (page === 1) return listPage(firstPage, 101, 1) as never;
+      if (page === 2) return listPage(secondPage, 101, 2) as never;
+      return listPage([makeTx(101, "조회 101")], 101, 3) as never;
+    });
+    render(<TransactionSearchPage />, { wrapper: createWrapper("browse") });
+
+    await clickSubmit();
+
+    expect(await screen.findByText("50건 표시 중")).toBeInTheDocument();
+    expect(transactionApi.getTransactions).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 1, limit: 50, start_date: expect.any(String), end_date: expect.any(String) })
+    );
+
+    act(() => intersect?.());
+    expect(await screen.findByText("100건 표시 중")).toBeInTheDocument();
+
+    act(() => intersect?.());
+    expect(await screen.findByText("조회 101")).toBeInTheDocument();
+    expect(screen.getByText("총 101건")).toBeInTheDocument();
+    expect(transactionApi.getTransactions).toHaveBeenLastCalledWith(expect.objectContaining({ page: 3, limit: 50 }));
+  });
+
+  it("결과를 모두 불러오면 더 불러오지 않고 총 건수를 표시한다", async () => {
+    vi.mocked(transactionApi.getTransactions).mockResolvedValue(listPage([makeTx(1, "조회 단건")], 1, 1) as never);
+    render(<TransactionSearchPage />, { wrapper: createWrapper("browse") });
+
+    await clickSubmit();
+
+    expect(await screen.findByText("조회 단건")).toBeInTheDocument();
+    expect(screen.getByText("총 1건")).toBeInTheDocument();
+    expect(intersect).toBeNull();
+    expect(transactionApi.getTransactions).toHaveBeenCalledTimes(1);
   });
 });
