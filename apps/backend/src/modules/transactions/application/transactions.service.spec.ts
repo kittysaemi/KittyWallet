@@ -28,6 +28,7 @@ function makeTx(overrides: Record<string, unknown> = {}) {
     installmentTotalCount: null,
     interest: 0,
     transferGroupId: null,
+    nextMonthCashYn: false,
     deletedYn: false,
     syncedAt: new Date("2026-06-20T03:00:00Z"),
     createdAt: new Date("2026-06-20T03:00:00Z"),
@@ -396,6 +397,165 @@ describe("TransactionsService - 계좌이동 정합성 가드 (#389 후속)", ()
 
       expect(mockRepo.softDeleteWithBalance).toHaveBeenCalledTimes(1);
       expect(result.deleted_yn).toBe(true);
+    });
+  });
+});
+
+describe("TransactionsService - n월 현금 동일 사용 (next_month_cash_yn, #426)", () => {
+  let service: TransactionsService;
+  const account = {
+    accountId: 1n,
+    deletedYn: false,
+    useYn: true,
+    initialBalance: makeDecimal(1000000),
+    allowNegativeBalance: false,
+    negativeBalanceLimit: makeDecimal(0)
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    service = new TransactionsService(mockRepo);
+    (mockRepo.findCategory as jest.Mock).mockResolvedValue({ categoryId: 1n, categoryName: "식비" });
+    (mockRepo.findAccount as jest.Mock).mockResolvedValue(account);
+    (mockRepo.findOwnedAccount as jest.Mock).mockResolvedValue(account);
+    (mockRepo.findCard as jest.Mock).mockResolvedValue({ cardId: 1n, useYn: true, deletedYn: false });
+    (mockRepo.findOwnedCard as jest.Mock).mockResolvedValue({ cardId: 1n, useYn: true, deletedYn: false });
+    (mockRepo.findAccountTransactionsForBalance as jest.Mock).mockResolvedValue([]);
+  });
+
+  describe("createTransaction", () => {
+    const accountExpense = {
+      userId: 1n,
+      walletType: "ACCOUNT" as const,
+      walletId: 1n,
+      categoryId: 1n,
+      transactionType: "EXPENSE" as const,
+      amount: 30000,
+      transactionDate: "2026-06-15"
+    };
+
+    beforeEach(() => {
+      (mockRepo.createWithAccountBalanceUpdate as jest.Mock).mockResolvedValue(
+        makeTx({ walletType: "ACCOUNT" })
+      );
+      (mockRepo.create as jest.Mock).mockResolvedValue(makeTx());
+    });
+
+    it("계좌 지출에 체크하면 true로 저장한다", async () => {
+      await service.createTransaction({ ...accountExpense, nextMonthCashYn: true });
+
+      expect(mockRepo.createWithAccountBalanceUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({ nextMonthCashYn: true }),
+        1n,
+        -30000
+      );
+    });
+
+    it("미전달 시 false로 저장한다", async () => {
+      await service.createTransaction(accountExpense);
+
+      expect(mockRepo.createWithAccountBalanceUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({ nextMonthCashYn: false }),
+        1n,
+        -30000
+      );
+    });
+
+    it("계좌 수입은 체크 값이 와도 false로 저장한다", async () => {
+      await service.createTransaction({
+        ...accountExpense,
+        transactionType: "INCOME",
+        nextMonthCashYn: true
+      });
+
+      expect(mockRepo.createWithAccountBalanceUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({ nextMonthCashYn: false }),
+        1n,
+        30000
+      );
+    });
+
+    it("카드 지출은 체크 값이 와도 저장 입력에 포함하지 않는다(DB 기본값 false)", async () => {
+      await service.createTransaction({ ...accountExpense, walletType: "CARD", nextMonthCashYn: true });
+
+      expect(mockRepo.create).toHaveBeenCalledWith(
+        expect.not.objectContaining({ nextMonthCashYn: true })
+      );
+    });
+  });
+
+  describe("updateTransaction", () => {
+    function mockUpdated() {
+      (mockRepo.updateWithBalances as jest.Mock).mockResolvedValue(
+        makeTx({ walletType: "ACCOUNT", transactionType: "EXPENSE" })
+      );
+    }
+
+    it("계좌 지출에서 체크 값을 전달하면 그 값으로 수정한다", async () => {
+      (mockRepo.findById as jest.Mock).mockResolvedValue(
+        makeTx({ walletType: "ACCOUNT", transactionType: "EXPENSE" })
+      );
+      mockUpdated();
+
+      await service.updateTransaction({ transactionId: 1n, userId: 1n, nextMonthCashYn: true });
+
+      expect(mockRepo.updateWithBalances).toHaveBeenCalledWith(
+        1n,
+        expect.objectContaining({ nextMonthCashYn: true }),
+        expect.any(Array)
+      );
+    });
+
+    it("체크 값 미전달 시 기존 값을 건드리지 않는다", async () => {
+      (mockRepo.findById as jest.Mock).mockResolvedValue(
+        makeTx({ walletType: "ACCOUNT", transactionType: "EXPENSE", nextMonthCashYn: true })
+      );
+      mockUpdated();
+
+      await service.updateTransaction({ transactionId: 1n, userId: 1n, amount: 20000 });
+
+      const [, updateData] = (mockRepo.updateWithBalances as jest.Mock).mock.calls[0];
+      expect(updateData).not.toHaveProperty("nextMonthCashYn");
+    });
+
+    it("체크된 계좌 지출을 카드로 바꾸면 false로 초기화한다", async () => {
+      (mockRepo.findById as jest.Mock).mockResolvedValue(
+        makeTx({ walletType: "ACCOUNT", transactionType: "EXPENSE", nextMonthCashYn: true })
+      );
+      mockUpdated();
+
+      await service.updateTransaction({
+        transactionId: 1n,
+        userId: 1n,
+        walletType: "CARD",
+        walletId: 1
+      });
+
+      expect(mockRepo.updateWithBalances).toHaveBeenCalledWith(
+        1n,
+        expect.objectContaining({ nextMonthCashYn: false }),
+        expect.any(Array)
+      );
+    });
+
+    it("체크된 계좌 지출을 수입으로 바꾸면 체크 값을 true로 보내도 false로 초기화한다", async () => {
+      (mockRepo.findById as jest.Mock).mockResolvedValue(
+        makeTx({ walletType: "ACCOUNT", transactionType: "EXPENSE", nextMonthCashYn: true })
+      );
+      mockUpdated();
+
+      await service.updateTransaction({
+        transactionId: 1n,
+        userId: 1n,
+        transactionType: "INCOME",
+        nextMonthCashYn: true
+      });
+
+      expect(mockRepo.updateWithBalances).toHaveBeenCalledWith(
+        1n,
+        expect.objectContaining({ nextMonthCashYn: false }),
+        expect.any(Array)
+      );
     });
   });
 });

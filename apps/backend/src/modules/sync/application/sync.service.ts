@@ -201,7 +201,8 @@ export class SyncService {
       amount: this.requiredNumber(payload, "amount"),
       memo: typeof payload.memo === "string" ? payload.memo : undefined,
       transactionDate: this.requiredString(payload, "transaction_date"),
-      ...(installmentMonths !== undefined && { installmentMonths })
+      ...(installmentMonths !== undefined && { installmentMonths }),
+      nextMonthCashYn: payload.next_month_cash_yn === true
     };
   }
 
@@ -213,7 +214,9 @@ export class SyncService {
       transactionType: this.optionalString(payload, "transaction_type"),
       amount: this.optionalNumber(payload, "amount"),
       memo: typeof payload.memo === "string" || payload.memo === null ? payload.memo : undefined,
-      transactionDate: this.optionalString(payload, "transaction_date")
+      transactionDate: this.optionalString(payload, "transaction_date"),
+      nextMonthCashYn:
+        typeof payload.next_month_cash_yn === "boolean" ? payload.next_month_cash_yn : undefined
     };
   }
 

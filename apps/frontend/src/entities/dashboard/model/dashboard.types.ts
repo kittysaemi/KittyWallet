@@ -42,6 +42,16 @@ export interface DashboardTransaction {
   installment_original_amount?: number | null;
 }
 
+export interface CashExpenseForecast {
+  target_year: number;
+  target_month: number;
+  start_date: string;
+  end_date: string;
+  account_checked_expense_amount: number;
+  card_expense_amount: number;
+  total_amount: number;
+}
+
 export interface SyncSummary {
   has_pending_sync: boolean;
   pending_count: number;
@@ -59,6 +69,7 @@ export interface DashboardData {
   asset_summary: AssetSummary;
   spending_summary: SpendingSummary;
   recent_transactions: DashboardTransaction[];
+  cash_expense_forecast: CashExpenseForecast;
   sync_summary: SyncSummary;
   cache_policy: CachePolicy;
 }

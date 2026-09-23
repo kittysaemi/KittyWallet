@@ -56,6 +56,7 @@ export interface CreateTransactionInput {
   installmentId?: bigint | null;
   installmentSeq?: number | null;
   installmentTotalCount?: number | null;
+  nextMonthCashYn?: boolean;
 }
 
 export interface CreateInstallmentInput {
@@ -373,6 +374,7 @@ export class TransactionsRepository {
           amount: input.amount,
           transactionDate: input.transactionDate,
           memo: input.memo ?? null,
+          nextMonthCashYn: input.nextMonthCashYn ?? false,
           deletedYn: false,
           syncedAt: input.syncedAt ?? null,
           ...(input.syncClientId != null
