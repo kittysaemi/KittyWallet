@@ -1,3 +1,10 @@
+## [1.46.1](https://github.com/kittysaemi/KittyWallet/compare/v1.46.0...v1.46.1) (2026-09-23)
+
+
+### Bug Fixes
+
+* **deploy:** 배포 전 DB 백업 무결성 확인의 SIGPIPE로 인한 Deploy 실패 수정 ([33db654](https://github.com/kittysaemi/KittyWallet/commit/33db6546440fae4d693cfb985db44142bd9f6c32)), closes [#421](https://github.com/kittysaemi/KittyWallet/issues/421) [#428](https://github.com/kittysaemi/KittyWallet/issues/428)
+
 # [1.46.0](https://github.com/kittysaemi/KittyWallet/compare/v1.45.3...v1.46.0) (2026-09-23)
 
 
