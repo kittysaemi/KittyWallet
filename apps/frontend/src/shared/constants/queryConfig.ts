@@ -39,10 +39,8 @@ export const QUERY_LIMIT = {
   TOP5: 5,
   /** 대시보드 "최근 내역" — 계좌이동 제외 후에도 항상 6개가 채워지도록 백엔드가 쿼리 단계에서 계좌이동을 걸러내고 이 개수만큼 반환한다 */
   DASHBOARD_RECENT: 6,
-  /** 날짜 범위 조회 (달력 히트맵 하루 상세, 기간별 검색) */
-  DATE_RANGE: 100,
-  /** 키워드 검색 — 서버 검색 결과를 스크롤 시 이 개수씩 이어서 불러온다 */
-  KEYWORD_PAGE: 50,
+  /** 거래 검색(조회·키워드) — 결과를 스크롤 시 이 개수씩 이어서 불러온다 */
+  SEARCH_PAGE: 50,
   /** 거래 목록 API(GET /transactions)의 1회 요청 최대 limit. 전체 조회는 이 크기로 페이지를 이어 받는다 */
   TRANSACTION_API_MAX: 100,
 } as const;
