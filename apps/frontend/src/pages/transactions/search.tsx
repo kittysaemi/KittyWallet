@@ -1,5 +1,5 @@
 import React from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { ChevronDown, Circle, Search, X } from "lucide-react";
 import { useNavigate, useNavigationType, useSearchParams } from "react-router-dom";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
@@ -11,6 +11,7 @@ import { iconApi } from "../../entities/icon/api/iconApi";
 import type { IconItem } from "../../entities/icon/model/icon.types";
 import { IconRenderer } from "../../shared/ui/IconRenderer";
 import { useTimezone } from "../../shared/hooks/useTimezone";
+import { useInfiniteScrollTrigger } from "../../shared/hooks/useInfiniteScrollTrigger";
 import { getTodayInTimezone } from "../../shared/utils/date";
 import { STALE_TIME, QUERY_LIMIT } from "../../shared/constants/queryConfig";
 import { KOREAN_TEXT_INPUT_PROPS } from "../../shared/constants/inputIme";
@@ -493,27 +494,36 @@ const KeywordTab: React.FC<{ iconMap: Map<number, IconItem>; categoryIconMap: Ma
     _sc.keyword = { keyword, submittedKeyword, triggered, searched };
   }, [keyword, submittedKeyword, triggered, searched]);
 
-  const query = useQuery({
-    queryKey: ["transactions", "keyword-all"],
-    queryFn: () =>
-      transactionApi.getTransactions({ limit: QUERY_LIMIT.KEYWORD_SEARCH }),
-    enabled: triggered,
+  // 메모·카테고리명·계좌명·카드명 검색은 서버에서 전체 기간을 대상으로 수행하고(#353),
+  // 결과는 KEYWORD_PAGE건씩 받아 목록 끝까지 스크롤하면 다음 페이지를 자동으로 이어 불러온다.
+  const query = useInfiniteQuery({
+    queryKey: ["transactions", "keyword", submittedKeyword],
+    queryFn: ({ pageParam }) =>
+      transactionApi.getTransactions({
+        keyword: submittedKeyword,
+        page: pageParam,
+        limit: QUERY_LIMIT.KEYWORD_PAGE
+      }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.reduce((sum, p) => sum + (p.data?.items.length ?? 0), 0);
+      const total = lastPage.data?.total_count ?? 0;
+      return lastPage.success && loaded < total ? allPages.length + 1 : undefined;
+    },
+    enabled: triggered && submittedKeyword !== "",
     staleTime: STALE_TIME.MINUTE
   });
 
-  const filtered = React.useMemo(() => {
-    const all = query.data?.data?.items ?? [];
-    const kw = submittedKeyword.toLowerCase();
-    const matched = submittedKeyword
-      ? all.filter(
-          (tx) =>
-            (tx.memo ?? "").toLowerCase().includes(kw) ||
-            tx.wallet_name.toLowerCase().includes(kw) ||
-            tx.category_name.toLowerCase().includes(kw)
-        )
-      : all;
-    return deduplicateInstallments(matched);
-  }, [query.data, submittedKeyword]);
+  const filtered = React.useMemo(
+    () => deduplicateInstallments(query.data?.pages.flatMap((p) => p.data?.items ?? []) ?? []),
+    [query.data]
+  );
+
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = query;
+  const loadMoreRef = useInfiniteScrollTrigger<HTMLDivElement>(
+    !!hasNextPage && !isFetchingNextPage,
+    () => void fetchNextPage()
+  );
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -581,7 +591,20 @@ const KeywordTab: React.FC<{ iconMap: Map<number, IconItem>; categoryIconMap: Ma
           {query.isError && !query.data && <ErrorCard onRetry={() => query.refetch()} />}
           {!query.isLoading && !query.isError && filtered.length === 0 && <EmptyCard />}
           {filtered.length > 0 && (
-            <ResultList items={filtered} iconMap={iconMap} categoryIconMap={categoryIconMap} showOriginalInstallmentAmount />
+            <ResultList
+              items={filtered}
+              iconMap={iconMap}
+              categoryIconMap={categoryIconMap}
+              showOriginalInstallmentAmount
+              countLabel={hasNextPage ? `${filtered.length}건 표시 중` : undefined}
+            />
+          )}
+          {hasNextPage && (
+            <div ref={loadMoreRef} className="flex justify-center py-4" aria-live="polite">
+              {isFetchingNextPage && (
+                <span className="text-xs text-[var(--color-text-secondary)]">더 불러오는 중...</span>
+              )}
+            </div>
           )}
         </>
       )}
@@ -630,7 +653,9 @@ const ResultList: React.FC<{
   iconMap: Map<number, IconItem>;
   categoryIconMap: Map<number, number>;
   showOriginalInstallmentAmount?: boolean;
-}> = ({ items, iconMap, categoryIconMap, showOriginalInstallmentAmount }) => {
+  /** 건수 표시 문구. 생략하면 "총 N건" */
+  countLabel?: string;
+}> = ({ items, iconMap, categoryIconMap, showOriginalInstallmentAmount, countLabel }) => {
   const grouped = groupByDate(items);
 
   function getDisplayAmount(t: TransactionItem): number {
@@ -642,7 +667,7 @@ const ResultList: React.FC<{
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="px-1 text-xs text-[var(--color-text-secondary)]">총 {items.length}건</p>
+      <p className="px-1 text-xs text-[var(--color-text-secondary)]">{countLabel ?? `총 ${items.length}건`}</p>
       {Array.from(grouped.entries()).map(([date, txList]) => {
         const income = txList.filter((t) => t.transaction_type === "INCOME").reduce((s, t) => s + getDisplayAmount(t), 0);
         const expense = txList.filter((t) => t.transaction_type === "EXPENSE").reduce((s, t) => s + getDisplayAmount(t), 0);

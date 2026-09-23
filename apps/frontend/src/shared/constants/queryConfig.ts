@@ -41,6 +41,8 @@ export const QUERY_LIMIT = {
   DASHBOARD_RECENT: 6,
   /** 날짜 범위 조회 (달력 히트맵 하루 상세, 기간별 검색) */
   DATE_RANGE: 100,
-  /** 키워드 검색 — 전체 불러와 클라이언트 필터링 */
-  KEYWORD_SEARCH: 300,
+  /** 키워드 검색 — 서버 검색 결과를 스크롤 시 이 개수씩 이어서 불러온다 */
+  KEYWORD_PAGE: 50,
+  /** 거래 목록 API(GET /transactions)의 1회 요청 최대 limit. 전체 조회는 이 크기로 페이지를 이어 받는다 */
+  TRANSACTION_API_MAX: 100,
 } as const;

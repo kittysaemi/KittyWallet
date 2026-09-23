@@ -469,13 +469,12 @@ const HeatmapContent: React.FC<{
 
   const selectedTransactionsQuery = useQuery({
     queryKey: ["transactions", "calendar-day", selectedDate],
+    // 하루 합계와 목록이 항상 일치하도록 건수 제한 없이 전체를 조회한다(#353).
     queryFn: () =>
-      transactionApi.getTransactions({
+      transactionApi.getAllTransactions({
         start_date: selectedDate!,
         end_date: selectedDate!,
-        transaction_type: "EXPENSE",
-        page: 1,
-        limit: QUERY_LIMIT.DATE_RANGE
+        transaction_type: "EXPENSE"
       }),
     enabled: selectedDate != null,
     staleTime: STALE_TIME.SHORT
@@ -1290,14 +1289,13 @@ const CategoryExpenseDetailModal: React.FC<{
 
   const query = useQuery({
     queryKey: ["transactions", "category-expense-detail", categoryId, dateRange.start_date, dateRange.end_date],
+    // 팝업 합계가 카테고리 금액과 항상 일치하도록 건수 제한 없이 전체를 조회한다(#353).
     queryFn: () =>
-      transactionApi.getTransactions({
+      transactionApi.getAllTransactions({
         category_id: categoryId,
         transaction_type: "EXPENSE",
         start_date: dateRange.start_date,
-        end_date: dateRange.end_date,
-        page: 1,
-        limit: QUERY_LIMIT.KEYWORD_SEARCH
+        end_date: dateRange.end_date
       }),
     staleTime: STALE_TIME.SHORT,
     retry: isOffline ? false : RETRY.STANDARD
