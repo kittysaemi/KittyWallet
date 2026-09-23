@@ -196,7 +196,8 @@ jobs:
               exit 0
             fi
 
-            BACKUP_DIR="/root/kittywallet-backup/$(date +%Y%m%d-%H%M%S)"
+            BACKUP_ROOT="/root/kittywallet-backup"
+            BACKUP_DIR="$BACKUP_ROOT/$(date +%Y%m%d-%H%M%S)"
             mkdir -p "$BACKUP_DIR"
             docker exec kittywallet-postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -F c' > "$BACKUP_DIR/kittywallet_backup.dump"
 
@@ -210,6 +211,12 @@ jobs:
             docker run --rm -v "$BACKUP_DIR:/backup" postgres:16-alpine \
               pg_restore --list /backup/kittywallet_backup.dump > "$BACKUP_DIR/kittywallet_backup.toc"
             head -5 "$BACKUP_DIR/kittywallet_backup.toc"
+
+            # Keep only the latest backup (#430). Runs only after the new
+            # backup passed the integrity check above, so a verified backup
+            # always remains.
+            echo "== Remove previous backups =="
+            find "$BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d ! -path "$BACKUP_DIR" -print -exec rm -rf {} +
 
       - name: Deploy with Docker Compose
         uses: appleboy/ssh-action@v1.2.0
