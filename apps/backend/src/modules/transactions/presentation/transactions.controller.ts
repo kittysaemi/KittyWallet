@@ -93,6 +93,7 @@ export class TransactionsController {
       memo: dto.memo,
       transactionDate: dto.transaction_date,
       interest: dto.interest,
+      nextMonthCashYn: dto.next_month_cash_yn,
       timezone: dto.timezone
     });
   }
@@ -129,7 +130,8 @@ export class TransactionsController {
       memo: dto.memo,
       transactionDate: dto.transaction_date,
       timezone: dto.timezone,
-      installmentMonths: dto.installment?.installment_months
+      installmentMonths: dto.installment?.installment_months,
+      nextMonthCashYn: dto.next_month_cash_yn
     });
   }
 }

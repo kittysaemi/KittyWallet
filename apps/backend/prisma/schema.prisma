@@ -269,6 +269,7 @@ model Transaction {
   installmentTotalCount Int?           @map("installment_total_count")
   interest             Int             @default(0)
   transferGroupId      String?         @map("transfer_group_id")
+  nextMonthCashYn      Boolean         @default(false) @map("next_month_cash_yn")
   deletedYn            Boolean         @default(false) @map("deleted_yn")
   syncedAt             DateTime?       @map("synced_at")
   createdAt            DateTime        @default(now()) @map("created_at")

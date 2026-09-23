@@ -59,6 +59,49 @@ describe("DashboardRepository", () => {
     );
   });
 
+  describe("getCashExpenseForecastAmounts", () => {
+    const startDate = new Date("2026-09-01T00:00:00.000Z");
+    const endDate = new Date("2026-09-30T00:00:00.000Z");
+
+    it("계좌는 체크된 지출만, 카드는 할부 회차 포함 지출 전체를 통계 제외 설정 없이 집계한다", async () => {
+      prisma.transaction.aggregate.mockResolvedValue({ _sum: { amount: null, interest: null } });
+
+      await repository.getCashExpenseForecastAmounts(BigInt(1), startDate, endDate);
+
+      const baseWhere = {
+        userId: BigInt(1),
+        deletedYn: false,
+        transactionType: TransactionType.EXPENSE,
+        transactionDate: { gte: startDate, lte: endDate },
+        transferGroupId: null,
+        category: { categoryName: { not: "계좌금액이동" } }
+      };
+      expect(prisma.transaction.aggregate).toHaveBeenCalledWith({
+        where: { ...baseWhere, walletType: "ACCOUNT", nextMonthCashYn: true },
+        _sum: { amount: true }
+      });
+      expect(prisma.transaction.aggregate).toHaveBeenCalledWith({
+        where: { ...baseWhere, walletType: "CARD" },
+        _sum: { amount: true, interest: true }
+      });
+    });
+
+    it("카드 금액에는 할부 이자를 더하고, 결과가 없으면 0을 반환한다", async () => {
+      prisma.transaction.aggregate
+        .mockResolvedValueOnce({ _sum: { amount: { toNumber: () => 50000 } } })
+        .mockResolvedValueOnce({ _sum: { amount: { toNumber: () => 30000 }, interest: 1200 } });
+
+      await expect(
+        repository.getCashExpenseForecastAmounts(BigInt(1), startDate, endDate)
+      ).resolves.toEqual({ account_checked_expense_amount: 50000, card_expense_amount: 31200 });
+
+      prisma.transaction.aggregate.mockResolvedValue({ _sum: { amount: null, interest: null } });
+      await expect(
+        repository.getCashExpenseForecastAmounts(BigInt(1), startDate, endDate)
+      ).resolves.toEqual({ account_checked_expense_amount: 0, card_expense_amount: 0 });
+    });
+  });
+
   describe("getRecentTransactions", () => {
     it("includes the first installment leg but excludes later legs, and does not restrict the date range to the current month", async () => {
       prisma.transaction.findMany.mockResolvedValue([]);

@@ -38,6 +38,7 @@ interface UpdateTransactionCommand {
   memo?: string | null;
   transactionDate?: string;
   interest?: number;
+  nextMonthCashYn?: boolean;
   timezone?: string;
 }
 
@@ -70,6 +71,7 @@ interface CreateTransactionCommand {
   transactionDate: string;
   timezone?: string;
   installmentMonths?: number;
+  nextMonthCashYn?: boolean;
   syncClientId?: bigint;
   clientTempId?: string;
 }
@@ -94,6 +96,7 @@ export interface TransactionItem {
   interest: number;
   memo: string | null;
   transaction_date: string;
+  next_month_cash_yn: boolean;
   created_at: string;
   updated_at: string;
   installment_id?: number | null;
@@ -138,6 +141,11 @@ export interface CreateTransactionResult {
   synced_at: string | null;
   installment_id?: number;
   transactions?: InstallmentTransactionItem[];
+}
+
+// "n월 현금 동일 사용"(next_month_cash_yn)은 계좌 지출 거래에만 저장할 수 있다(거래정책 3장).
+function isNextMonthCashEligible(walletType: string, transactionType: string): boolean {
+  return walletType === "ACCOUNT" && transactionType === "EXPENSE";
 }
 
 @Injectable()
@@ -192,7 +200,8 @@ export class TransactionsService {
       command.amount !== undefined ||
       command.memo !== undefined ||
       command.transactionDate !== undefined ||
-      command.interest !== undefined;
+      command.interest !== undefined ||
+      command.nextMonthCashYn !== undefined;
     if (!hasUpdate) {
       throw new AppException(
         "VALIDATION_001",
@@ -308,6 +317,14 @@ export class TransactionsService {
       );
     }
 
+    // "n월 현금 동일 사용"은 계좌 지출 거래에서만 의미가 있다. 수정 결과가 카드이거나 수입이면
+    // 전달 여부와 무관하게 false로 되돌려, 대시보드 현금 지출 예상 집계에 잘못 남지 않게 한다.
+    const nextMonthCashYn = isNextMonthCashEligible(effWalletType, effTransactionType)
+      ? command.nextMonthCashYn
+      : existing.nextMonthCashYn
+        ? false
+        : undefined;
+
     const updateData: Prisma.TransactionUpdateInput = {
       ...(effWalletType !== existing.walletType ? { walletType: effWalletType } : {}),
       ...(effWalletId !== existing.walletId ? { walletId: effWalletId } : {}),
@@ -320,7 +337,8 @@ export class TransactionsService {
       ...(command.amount !== undefined ? { amount: command.amount } : {}),
       ...(command.memo !== undefined ? { memo: command.memo } : {}),
       ...(command.transactionDate !== undefined ? { transactionDate: effDate } : {}),
-      ...(command.interest !== undefined ? { interest: command.interest } : {})
+      ...(command.interest !== undefined ? { interest: command.interest } : {}),
+      ...(nextMonthCashYn !== undefined ? { nextMonthCashYn } : {})
     };
 
     let updated;
@@ -583,6 +601,7 @@ export class TransactionsService {
       interest: t.interest,
       memo: t.memo,
       transaction_date: t.transactionDate.toISOString().split("T")[0],
+      next_month_cash_yn: t.nextMonthCashYn,
       created_at: t.createdAt.toISOString(),
       updated_at: t.updatedAt.toISOString(),
       ...(t.installmentId ? { installment_id: Number(t.installmentId) } : {}),
@@ -651,6 +670,9 @@ export class TransactionsService {
             amount: command.amount,
             transactionDate,
             memo: command.memo,
+            nextMonthCashYn:
+              command.nextMonthCashYn === true &&
+              isNextMonthCashEligible(command.walletType, command.transactionType),
             syncedAt: now,
             syncClientId: command.syncClientId ?? null,
             clientTempId: command.clientTempId ?? null

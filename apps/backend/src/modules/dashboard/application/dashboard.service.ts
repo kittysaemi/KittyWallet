@@ -17,18 +17,25 @@ export class DashboardService {
     const baseDateStr = query.base_date ?? getTodayInTimezone();
     const baseDate = new Date(`${baseDateStr}T00:00:00.000Z`);
     const { startDate, endDate } = this.calcPeriod(summaryPeriod, baseDate);
+    const forecastPeriod = this.calcCashExpenseForecastPeriod(baseDate);
 
     const user = await this.dashboardRepository.getUser(userId);
     if (!user) {
       throw new AppException("DASHBOARD_002", "대시보드 조회 실패", HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    const [assetSummary, spendingSummary, recentTransactions, lastSyncedAt] = await Promise.all([
-      this.dashboardRepository.getAssetSummary(userId),
-      this.dashboardRepository.getSpendingSummary(userId, startDate, endDate),
-      this.dashboardRepository.getRecentTransactions(userId, recentLimit),
-      this.dashboardRepository.getLastSyncedAt(userId)
-    ]);
+    const [assetSummary, spendingSummary, recentTransactions, lastSyncedAt, forecastAmounts] =
+      await Promise.all([
+        this.dashboardRepository.getAssetSummary(userId),
+        this.dashboardRepository.getSpendingSummary(userId, startDate, endDate),
+        this.dashboardRepository.getRecentTransactions(userId, recentLimit),
+        this.dashboardRepository.getLastSyncedAt(userId),
+        this.dashboardRepository.getCashExpenseForecastAmounts(
+          userId,
+          forecastPeriod.startDate,
+          forecastPeriod.endDate
+        )
+      ]);
 
     return {
       user: {
@@ -46,6 +53,15 @@ export class DashboardService {
         ...spendingSummary
       },
       recent_transactions: recentTransactions,
+      cash_expense_forecast: {
+        target_year: forecastPeriod.targetYear,
+        target_month: forecastPeriod.targetMonth,
+        start_date: forecastPeriod.startDate.toISOString().split("T")[0],
+        end_date: forecastPeriod.endDate.toISOString().split("T")[0],
+        ...forecastAmounts,
+        total_amount:
+          forecastAmounts.account_checked_expense_amount + forecastAmounts.card_expense_amount
+      },
       sync_summary: {
         has_pending_sync: false,
         pending_count: 0,
@@ -56,6 +72,28 @@ export class DashboardService {
         cacheable: true,
         recommended_stale_time_seconds: 60
       }
+    };
+  }
+
+  // 현금 지출 예상은 summary_period와 무관하게 base_date가 속한 달력 월(1일~말일)의 거래로
+  // "다음 달" 지출을 예상한다. 12월이면 대상은 다음 해 1월이다.
+  private calcCashExpenseForecastPeriod(baseDate: Date): {
+    startDate: Date;
+    endDate: Date;
+    targetYear: number;
+    targetMonth: number;
+  } {
+    const year = baseDate.getUTCFullYear();
+    const month = baseDate.getUTCMonth();
+    const startDate = new Date(Date.UTC(year, month, 1));
+    // Date.UTC(year, month + 1, 0)은 해당 월의 말일이다(DATE 컬럼과 같은 UTC 자정 기준).
+    const endDate = new Date(Date.UTC(year, month + 1, 0));
+    const target = new Date(Date.UTC(year, month + 1, 1));
+    return {
+      startDate,
+      endDate,
+      targetYear: target.getUTCFullYear(),
+      targetMonth: target.getUTCMonth() + 1
     };
   }
 

@@ -23,6 +23,11 @@ export interface SpendingSummaryData {
   transaction_count: number;
 }
 
+export interface CashExpenseForecastAmounts {
+  account_checked_expense_amount: number;
+  card_expense_amount: number;
+}
+
 export interface RecentTransactionData {
   transaction_id: number;
   wallet_type: string;
@@ -124,6 +129,41 @@ export class DashboardRepository {
       card_expense_amount,
       net_amount: income_amount - expense_amount,
       transaction_count
+    };
+  }
+
+  // "n월 현금 지출 예상 금액"(대시보드API.md cash_expense_forecast) 집계.
+  // 소비 요약과 달리 카테고리 통계 제외 설정을 적용하지 않고, 계좌이동 거래는 제외한다.
+  async getCashExpenseForecastAmounts(
+    userId: bigint,
+    startDate: Date,
+    endDate: Date
+  ): Promise<CashExpenseForecastAmounts> {
+    const baseWhere = {
+      userId,
+      deletedYn: false,
+      transactionType: TransactionType.EXPENSE,
+      transactionDate: { gte: startDate, lte: endDate },
+      transferGroupId: null,
+      category: { categoryName: { not: TRANSFER_CATEGORY_NAME } }
+    };
+
+    const [accountResult, cardResult] = await Promise.all([
+      this.prisma.transaction.aggregate({
+        where: { ...baseWhere, walletType: "ACCOUNT", nextMonthCashYn: true },
+        _sum: { amount: true }
+      }),
+      // 카드는 할부 회차를 포함한 월별 거래 전체를 합산하며, 할부 이자도 청구액에 포함한다.
+      this.prisma.transaction.aggregate({
+        where: { ...baseWhere, walletType: "CARD" },
+        _sum: { amount: true, interest: true }
+      })
+    ]);
+
+    return {
+      account_checked_expense_amount: accountResult._sum.amount?.toNumber() ?? 0,
+      card_expense_amount:
+        (cardResult._sum.amount?.toNumber() ?? 0) + Number(cardResult._sum.interest ?? 0)
     };
   }
 

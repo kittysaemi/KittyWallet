@@ -8,6 +8,12 @@ export function getMonthInTimezone(timezone?: string): string {
   return getTodayInTimezone(timezone).slice(0, 7);
 }
 
+/** "YYYY-MM-DD" 날짜의 다음 달 월 숫자(1~12). 12월이면 1을 반환한다. */
+export function getNextMonthNumber(dateValue: string): number {
+  const month = Number(dateValue.slice(5, 7));
+  return month === 12 ? 1 : month + 1;
+}
+
 export function toDateValue(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }

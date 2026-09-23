@@ -299,3 +299,98 @@ describe("SyncService - 카드할부 동기화", () => {
     });
   });
 });
+
+describe("SyncService - n월 현금 동일 사용 (next_month_cash_yn, #426)", () => {
+  let service: SyncService;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    service = new SyncService(mockPrisma, mockTransactionsService);
+    (mockPrisma.syncClient.upsert as jest.Mock).mockResolvedValue(BASE_CLIENT);
+    (mockPrisma.syncClient.update as jest.Mock).mockResolvedValue(BASE_CLIENT);
+    (mockPrisma.syncHistory.create as jest.Mock).mockResolvedValue({});
+    (mockPrisma.transaction.findFirst as jest.Mock).mockResolvedValue(null);
+    (mockPrisma.transaction.update as jest.Mock).mockResolvedValue({});
+    (mockTransactionsService.createTransaction as jest.Mock).mockResolvedValue({
+      transaction_id: 300,
+      updated_at: NOW_ISO,
+      synced_at: null
+    });
+    (mockTransactionsService.updateTransaction as jest.Mock).mockResolvedValue({
+      transaction_id: 300,
+      wallet_type: "ACCOUNT",
+      wallet_id: 1,
+      transaction_type: "EXPENSE",
+      amount: 50000,
+      transaction_date: "2026-06-20",
+      updated_at: NOW_ISO
+    });
+  });
+
+  const createPayload = {
+    wallet_type: "ACCOUNT",
+    wallet_id: 1,
+    category_id: 2,
+    transaction_type: "EXPENSE",
+    amount: 50000,
+    transaction_date: "2026-06-20"
+  };
+
+  it("CREATE payload의 next_month_cash_yn=true를 전달한다", async () => {
+    await service.upload({
+      userId: 1n,
+      clientId: "client-1",
+      items: [
+        {
+          client_temp_id: "temp-401",
+          server_id: null,
+          sync_action: "CREATE",
+          payload: { ...createPayload, next_month_cash_yn: true }
+        }
+      ]
+    });
+
+    expect(mockTransactionsService.createTransaction).toHaveBeenCalledWith(
+      expect.objectContaining({ nextMonthCashYn: true })
+    );
+  });
+
+  it("CREATE payload에 값이 없으면 false로 전달한다", async () => {
+    await service.upload({
+      userId: 1n,
+      clientId: "client-1",
+      items: [
+        { client_temp_id: "temp-402", server_id: null, sync_action: "CREATE", payload: createPayload }
+      ]
+    });
+
+    expect(mockTransactionsService.createTransaction).toHaveBeenCalledWith(
+      expect.objectContaining({ nextMonthCashYn: false })
+    );
+  });
+
+  it("UPDATE payload에 값이 있으면 전달하고, 없으면 undefined(기존 값 유지)로 전달한다", async () => {
+    await service.upload({
+      userId: 1n,
+      clientId: "client-1",
+      items: [
+        {
+          client_temp_id: "temp-403",
+          server_id: 300,
+          sync_action: "UPDATE",
+          payload: { next_month_cash_yn: false }
+        },
+        {
+          client_temp_id: "temp-404",
+          server_id: 300,
+          sync_action: "UPDATE",
+          payload: { amount: 60000 }
+        }
+      ]
+    });
+
+    const calls = (mockTransactionsService.updateTransaction as jest.Mock).mock.calls;
+    expect(calls[0][0]).toMatchObject({ nextMonthCashYn: false });
+    expect(calls[1][0].nextMonthCashYn).toBeUndefined();
+  });
+});

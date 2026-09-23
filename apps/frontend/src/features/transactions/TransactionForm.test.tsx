@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { TransactionForm } from "./TransactionForm";
@@ -176,5 +176,114 @@ describe("TransactionForm - IME 힌트 (#353)", () => {
     const amount = await screen.findByLabelText("금액");
     await userEvent.type(amount, "12a34ㄱ5");
     expect((amount as HTMLInputElement).value).toBe("12,345");
+  });
+});
+
+describe("TransactionForm - n월 현금 동일 사용 (#426)", () => {
+  const mockCategory = { category_id: 1, category_name: "식비", icon_id: 0 };
+
+  async function selectWallet(name: string) {
+    await userEvent.click(await screen.findByRole("button", { name: "지갑 선택" }));
+    await userEvent.click(await screen.findByRole("button", { name }));
+  }
+
+  it("지갑을 고르기 전에는 체크박스가 없고, 계좌 지출을 고르면 노출된다", async () => {
+    render(<TransactionForm onSuccess={vi.fn()} />, { wrapper: createWrapper() });
+    await screen.findByRole("button", { name: "지갑 선택" });
+    expect(screen.queryByRole("checkbox", { name: /현금 동일 사용/ })).not.toBeInTheDocument();
+
+    await selectWallet("생활통장");
+    expect(screen.getByRole("checkbox", { name: /현금 동일 사용/ })).not.toBeChecked();
+  });
+
+  it("라벨의 n은 거래 날짜의 다음 달이며 날짜를 바꾸면 갱신된다(12월 → 1월)", async () => {
+    render(<TransactionForm onSuccess={vi.fn()} />, { wrapper: createWrapper() });
+    await selectWallet("생활통장");
+
+    fireEvent.change(screen.getByLabelText("날짜"), { target: { value: "2026-09-15" } });
+    expect(screen.getByRole("checkbox", { name: "10월 현금 동일 사용" })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("날짜"), { target: { value: "2025-12-03" } });
+    expect(screen.getByRole("checkbox", { name: "1월 현금 동일 사용" })).toBeInTheDocument();
+  });
+
+  it("카드 지갑이나 수입으로 바꾸면 체크박스를 숨긴다", async () => {
+    render(<TransactionForm onSuccess={vi.fn()} />, { wrapper: createWrapper() });
+    await selectWallet("생활통장");
+    expect(screen.getByRole("checkbox", { name: /현금 동일 사용/ })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "수입" }));
+    expect(screen.queryByRole("checkbox", { name: /현금 동일 사용/ })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "지출" }));
+    await userEvent.click(screen.getByRole("button", { name: "생활통장" }));
+    await userEvent.click(await screen.findByRole("button", { name: "삼성카드" }));
+    expect(screen.queryByRole("checkbox", { name: /현금 동일 사용/ })).not.toBeInTheDocument();
+  });
+
+  it("계좌 지출에서 체크 후 등록하면 next_month_cash_yn=true로 전송한다", async () => {
+    vi.mocked(categoryApi.getCategories).mockResolvedValue(makeResponse([mockCategory]) as never);
+    Object.defineProperty(window.navigator, "onLine", { configurable: true, value: true });
+    render(<TransactionForm onSuccess={vi.fn()} />, { wrapper: createWrapper() });
+
+    await userEvent.type(screen.getByLabelText("금액"), "30000");
+    fireEvent.change(screen.getByLabelText("날짜"), { target: { value: "2026-09-15" } });
+    await selectWallet("생활통장");
+    await userEvent.click(screen.getByRole("button", { name: "카테고리 선택" }));
+    await userEvent.click(await screen.findByRole("button", { name: "식비" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "10월 현금 동일 사용" }));
+    await userEvent.click(screen.getByRole("button", { name: "거래 등록" }));
+
+    expect(vi.mocked(transactionApi.createTransaction).mock.calls[0][0]).toMatchObject(
+      { wallet_type: "ACCOUNT", amount: 30000, next_month_cash_yn: true }
+    );
+  });
+
+  it("체크 후 카드로 바꿔 등록하면 next_month_cash_yn=false로 전송한다", async () => {
+    vi.mocked(categoryApi.getCategories).mockResolvedValue(makeResponse([mockCategory]) as never);
+    Object.defineProperty(window.navigator, "onLine", { configurable: true, value: true });
+    render(<TransactionForm onSuccess={vi.fn()} />, { wrapper: createWrapper() });
+
+    await userEvent.type(screen.getByLabelText("금액"), "30000");
+    fireEvent.change(screen.getByLabelText("날짜"), { target: { value: "2026-09-15" } });
+    await selectWallet("생활통장");
+    await userEvent.click(screen.getByRole("checkbox", { name: "10월 현금 동일 사용" }));
+    await userEvent.click(screen.getByRole("button", { name: "생활통장" }));
+    await userEvent.click(await screen.findByRole("button", { name: "삼성카드" }));
+    await userEvent.click(screen.getByRole("button", { name: "카테고리 선택" }));
+    await userEvent.click(await screen.findByRole("button", { name: "식비" }));
+    await userEvent.click(screen.getByRole("button", { name: "거래 등록" }));
+
+    expect(vi.mocked(transactionApi.createTransaction).mock.calls[0][0]).toMatchObject(
+      { wallet_type: "CARD", next_month_cash_yn: false }
+    );
+  });
+
+  it("수정 화면에서는 저장된 체크 상태를 그대로 표시한다", async () => {
+    render(
+      <TransactionForm
+        onSuccess={vi.fn()}
+        transactionId={100}
+        initialData={{
+          transaction_id: 100,
+          wallet_type: "ACCOUNT",
+          wallet_id: 1,
+          wallet_name: "생활통장",
+          wallet_deleted: false,
+          category_id: 1,
+          category_name: "식비",
+          transaction_type: "EXPENSE",
+          amount: 30000,
+          memo: null,
+          transaction_date: "2026-09-15",
+          next_month_cash_yn: true,
+          created_at: "2026-09-15T00:00:00Z",
+          updated_at: "2026-09-15T00:00:00Z"
+        }}
+      />,
+      { wrapper: createWrapper() }
+    );
+
+    expect(await screen.findByRole("checkbox", { name: "10월 현금 동일 사용" })).toBeChecked();
   });
 });

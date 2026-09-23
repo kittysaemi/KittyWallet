@@ -63,7 +63,20 @@ const makeTx = (id: number, date: string) => ({
   updated_at: `${date}T00:00:00Z`
 });
 
-const dashboardResponse = (recentTransactions: ReturnType<typeof makeTx>[]) => ({
+const makeForecast = (targetMonth: number, totalAmount: number) => ({
+  target_year: 2026,
+  target_month: targetMonth,
+  start_date: "2026-09-01",
+  end_date: "2026-09-30",
+  account_checked_expense_amount: totalAmount,
+  card_expense_amount: 0,
+  total_amount: totalAmount
+});
+
+const dashboardResponse = (
+  recentTransactions: ReturnType<typeof makeTx>[],
+  cashExpenseForecast = makeForecast(10, 0)
+) => ({
   success: true,
   data: {
     user: { user_id: 1, nickname: "미냥이" },
@@ -79,6 +92,7 @@ const dashboardResponse = (recentTransactions: ReturnType<typeof makeTx>[]) => (
       transaction_count: recentTransactions.length
     },
     recent_transactions: recentTransactions,
+    cash_expense_forecast: cashExpenseForecast,
     sync_summary: { has_pending_sync: false, pending_count: 0, failed_count: 0, last_synced_at: null },
     cache_policy: { cacheable: true, recommended_stale_time_seconds: 60 }
   },
@@ -126,5 +140,46 @@ describe("DashboardPage — 최근 내역", () => {
     render(<DashboardPage />, { wrapper: createWrapper() });
 
     expect(await screen.findByText("최근 거래가 없습니다.")).toBeInTheDocument();
+  });
+});
+
+describe("DashboardPage — n월 현금 지출 예상 금액", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    Object.defineProperty(window.navigator, "onLine", { configurable: true, value: true });
+    mockedCategoryApi.getCategories.mockResolvedValue(emptyCategories);
+    mockedIconApi.getIcons.mockResolvedValue(emptyIcons);
+  });
+
+  it("API의 target_month와 total_amount를 한 줄로 표시한다", async () => {
+    mockedDashboardApi.getDashboard.mockResolvedValue(dashboardResponse([], makeForecast(10, 200000)));
+
+    render(<DashboardPage />, { wrapper: createWrapper() });
+
+    expect(await screen.findByText("10월 현금 지출 예상 금액 :")).toBeInTheDocument();
+    expect(screen.getByTestId("cash-expense-forecast")).toHaveTextContent(
+      "10월 현금 지출 예상 금액 :200,000원"
+    );
+    // 금액은 라벨과 분리된 오른쪽 정렬 요소로 표시한다.
+    expect(screen.getByText("200,000원")).toHaveClass("text-right");
+  });
+
+  it("금액이 0이어도 카드를 숨기지 않고 0원을 표시한다", async () => {
+    mockedDashboardApi.getDashboard.mockResolvedValue(dashboardResponse([], makeForecast(1, 0)));
+
+    render(<DashboardPage />, { wrapper: createWrapper() });
+
+    expect(await screen.findByText("1월 현금 지출 예상 금액 :")).toBeInTheDocument();
+    expect(screen.getByTestId("cash-expense-forecast")).toHaveTextContent("0원");
+  });
+
+  it("최근 내역보다 아래(대시보드 최하단)에 표시한다", async () => {
+    mockedDashboardApi.getDashboard.mockResolvedValue(dashboardResponse([], makeForecast(10, 5000)));
+
+    render(<DashboardPage />, { wrapper: createWrapper() });
+
+    const forecast = await screen.findByText("10월 현금 지출 예상 금액 :");
+    const recent = screen.getByText("최근 내역");
+    expect(recent.compareDocumentPosition(forecast) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

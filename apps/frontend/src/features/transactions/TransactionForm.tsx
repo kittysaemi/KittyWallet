@@ -19,7 +19,7 @@ import { IconRenderer } from "../../shared/ui/IconRenderer";
 import { Button } from "../../shared/ui/Button";
 import { Input } from "../../shared/ui/Input";
 import { useTimezone } from "../../shared/hooks/useTimezone";
-import { getTodayInTimezone } from "../../shared/utils/date";
+import { getNextMonthNumber, getTodayInTimezone } from "../../shared/utils/date";
 import { STALE_TIME } from "../../shared/constants/queryConfig";
 import { KOREAN_TEXT_INPUT_PROPS } from "../../shared/constants/inputIme";
 import { useNumericFieldProps } from "../../shared/hooks/useNumericFieldProps";
@@ -250,6 +250,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const [date, setDate] = React.useState<string>(() => initialData?.transaction_date ?? getTodayInTimezone(timezone));
   const [memo, setMemo] = React.useState<string>(initialData?.memo ?? "");
   const [installmentMonthsStr, setInstallmentMonthsStr] = React.useState<string>("");
+  const [nextMonthCash, setNextMonthCash] = React.useState<boolean>(
+    initialData?.next_month_cash_yn ?? false
+  );
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [apiError, setApiError] = React.useState<string>("");
 
@@ -353,6 +356,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   });
 
   const mutation = isEditMode ? updateMutation : createMutation;
+
+  // "n월 현금 동일 사용"은 계좌 지출 거래에서만 노출한다. 카드/수입으로 바꾸면 체크박스를 숨기고
+  // false로 저장한다(체크 상태는 되돌아왔을 때를 위해 화면 state에만 남겨둔다).
+  const nextMonthCashEligible = walletType === "ACCOUNT" && walletId > 0 && txType === "EXPENSE";
+  const nextMonthCashPayload = { next_month_cash_yn: nextMonthCashEligible && nextMonthCash };
 
   function handleTxTypeChange(type: "INCOME" | "EXPENSE") {
     setTxType(type);
@@ -468,7 +476,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             client_temp_id: offline.client_temp_id,
             server_id: isEditMode && transactionId ? String(transactionId) : undefined,
             action: isEditMode ? "UPDATE" : "CREATE",
-            payload: { ...parsed.data, ...installmentPayload }
+            payload: { ...parsed.data, ...installmentPayload, ...nextMonthCashPayload }
           });
           usePwaStore.getState().setSyncStatus("pending_sync");
           invalidateTransactionRelatedQueries(queryClient);
@@ -496,10 +504,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         amount: parsed.data.amount,
         memo: parsed.data.memo ?? null,
         transaction_date: parsed.data.transaction_date,
+        ...nextMonthCashPayload,
         timezone
       });
     } else {
-      createMutation.mutate({ ...parsed.data, timezone, ...installmentPayload });
+      createMutation.mutate({ ...parsed.data, timezone, ...installmentPayload, ...nextMonthCashPayload });
       void runSyncQueue(queryClient);
     }
   }
@@ -801,6 +810,23 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         autoComplete="off"
         {...KOREAN_TEXT_INPUT_PROPS}
       />
+
+      {/* n월 현금 동일 사용 (계좌 지출만) */}
+      {nextMonthCashEligible && (
+        <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 py-2">
+          <input
+            type="checkbox"
+            name="next_month_cash_yn"
+            checked={nextMonthCash}
+            onChange={(e) => setNextMonthCash(e.target.checked)}
+            disabled={isSaving}
+            className="h-5 w-5 shrink-0 accent-[var(--color-primary)]"
+          />
+          <span className="text-sm font-medium text-[var(--color-text-primary)]">
+            {date ? `${getNextMonthNumber(date)}월 현금 동일 사용` : "다음 달 현금 동일 사용"}
+          </span>
+        </label>
+      )}
 
       {/* API 에러 */}
       {apiError && (

@@ -276,6 +276,23 @@ const DashboardPage: React.FC = () => {
           </div>
         ) : null}
 
+        {/* ── n월 현금 지출 예상 금액 ── */}
+        {query.isLoading ? (
+          <div className="mb-4"><SkeletonCard rows={1} /></div>
+        ) : data?.cash_expense_forecast ? (
+          <div
+            data-testid="cash-expense-forecast"
+            className={`${cardClass} mb-4 flex items-center justify-between gap-3 px-5 py-4`}
+          >
+            <p className="text-sm font-medium text-[var(--color-text-secondary)]">
+              {data.cash_expense_forecast.target_month}월 현금 지출 예상 금액 :
+            </p>
+            <p className="shrink-0 text-right text-base font-bold text-[var(--color-text-primary)]">
+              {fmt(data.cash_expense_forecast.total_amount)}원
+            </p>
+          </div>
+        ) : null}
+
       </div>
 
     </div>

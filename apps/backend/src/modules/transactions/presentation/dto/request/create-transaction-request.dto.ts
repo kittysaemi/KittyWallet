@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsDateString,
   IsIn,
   IsInt,
@@ -52,4 +53,8 @@ export class CreateTransactionRequestDto {
   @ValidateNested()
   @Type(() => InstallmentDto)
   installment?: InstallmentDto;
+
+  @IsOptional()
+  @IsBoolean()
+  next_month_cash_yn?: boolean;
 }

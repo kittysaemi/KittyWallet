@@ -1,4 +1,4 @@
-import { IsDateString, IsIn, IsInt, IsOptional, IsString, MaxLength, Min, ValidateIf } from "class-validator";
+import { IsBoolean, IsDateString, IsIn, IsInt, IsOptional, IsString, MaxLength, Min, ValidateIf } from "class-validator";
 import { SUPPORTED_TIMEZONES } from "../../../../settings/domain/settings-policy";
 
 export class UpdateTransactionRequestDto {
@@ -39,6 +39,10 @@ export class UpdateTransactionRequestDto {
   @IsInt()
   @Min(0)
   interest?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  next_month_cash_yn?: boolean;
 
   @IsOptional()
   @IsIn(SUPPORTED_TIMEZONES)

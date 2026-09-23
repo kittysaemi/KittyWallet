@@ -13,6 +13,8 @@ export interface TransactionItem {
   interest?: number;
   memo: string | null;
   transaction_date: string;
+  /** "n월 현금 동일 사용" 체크 여부. 계좌 지출 거래에서만 true일 수 있다. */
+  next_month_cash_yn?: boolean;
   created_at: string;
   updated_at: string;
   installment_id?: number | null;
@@ -63,6 +65,7 @@ export interface CreateTransactionRequest {
   transaction_date: string;
   timezone?: string;
   installment?: { installment_months: number };
+  next_month_cash_yn?: boolean;
 }
 
 export interface CreateTransactionResult {
@@ -82,6 +85,7 @@ export interface UpdateTransactionRequest {
   interest?: number;
   memo?: string | null;
   transaction_date?: string;
+  next_month_cash_yn?: boolean;
   timezone?: string;
 }
 
