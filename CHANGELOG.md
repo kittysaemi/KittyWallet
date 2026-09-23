@@ -1,3 +1,10 @@
+# [1.49.0](https://github.com/kittysaemi/KittyWallet/compare/v1.48.0...v1.49.0) (2026-09-23)
+
+
+### Features
+
+* **category:** 카테고리 목록을 이름순으로 정렬 ([32b55b5](https://github.com/kittysaemi/KittyWallet/commit/32b55b5fc4f282b1d14cadfccaea2343087b4bdb)), closes [#353](https://github.com/kittysaemi/KittyWallet/issues/353)
+
 # [1.48.0](https://github.com/kittysaemi/KittyWallet/compare/v1.47.0...v1.48.0) (2026-09-23)
 
 
