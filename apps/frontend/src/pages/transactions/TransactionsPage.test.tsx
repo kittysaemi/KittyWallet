@@ -738,7 +738,10 @@ describe("TransactionsPage — 기간 이동 바텀시트", () => {
     await waitFor(() => expect(mockedTransactionApi.getTransactions).toHaveBeenCalled());
 
     const today = getTodayInTimezone();
-    const [y, m] = today.split("-");
+    const [y, m, d] = today.split("-");
+    // 말일에는 "오늘 이후 같은 달" 기간이 없으므로, 화면은 위치 조회 없이 1페이지로 이동한다.
+    const lastDayOfMonth = new Date(Date.UTC(Number(y), Number(m), 0)).getUTCDate();
+    const isMonthEnd = Number(d) === lastDayOfMonth;
     await userEvent.click(screen.getByRole("button", { name: `${y}년 ${parseInt(m, 10)}월` }));
 
     expect(screen.getByText("기간 이동")).toBeInTheDocument();
@@ -747,8 +750,14 @@ describe("TransactionsPage — 기간 이동 바텀시트", () => {
 
     await waitFor(() => {
       const mainListCalls = mockedTransactionApi.getTransactions.mock.calls.filter(([p]) => p?.limit === 20);
-      expect(mainListCalls.at(-1)?.[0]).toMatchObject({ page: 2 });
+      expect(mainListCalls.at(-1)?.[0]).toMatchObject({ page: isMonthEnd ? 1 : 2 });
     });
+
+    if (isMonthEnd) {
+      // 말일 예외: 오늘 이후 건수 조회(limit: 1)를 하지 않아야 한다.
+      const positionCalls = mockedTransactionApi.getTransactions.mock.calls.filter(([p]) => p?.limit === 1);
+      expect(positionCalls).toHaveLength(0);
+    }
 
     expect(screen.queryByText("기간 이동")).not.toBeInTheDocument();
   });
