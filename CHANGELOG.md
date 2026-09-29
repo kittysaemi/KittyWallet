@@ -1,3 +1,15 @@
+# [1.50.0](https://github.com/kittysaemi/KittyWallet/compare/v1.49.2...v1.50.0) (2026-09-29)
+
+
+### Bug Fixes
+
+* **test:** 거래내역 '오늘' 이동 테스트의 말일 예외 처리 추가 ([79a37b2](https://github.com/kittysaemi/KittyWallet/commit/79a37b277c259d0c109cba09644657a171ea29aa)), closes [#439](https://github.com/kittysaemi/KittyWallet/issues/439)
+
+
+### Features
+
+* **dashboard:** 예산 계산기 원본 조회 API 추가 ([4680f3b](https://github.com/kittysaemi/KittyWallet/commit/4680f3bcb51af519ca0e1d300f43eaeb6e35d50c)), closes [#436](https://github.com/kittysaemi/KittyWallet/issues/436) [#439](https://github.com/kittysaemi/KittyWallet/issues/439)
+
 ## [1.49.2](https://github.com/kittysaemi/KittyWallet/compare/v1.49.1...v1.49.2) (2026-09-23)
 
 
