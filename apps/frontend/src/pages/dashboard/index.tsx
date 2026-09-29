@@ -18,6 +18,11 @@ import { iconApi } from "../../entities/icon/api/iconApi";
 import type { IconItem } from "../../entities/icon/model/icon.types";
 import { TransactionReadOnlyRow } from "../../entities/transaction/ui/TransactionReadOnlyRow";
 import PwaInstallBanner from "../../shared/ui/PwaInstallBanner";
+import { usePwaStore } from "../../pwa/state/pwa.store";
+import {
+  BudgetCalculatorButton,
+  BudgetCalculatorModal
+} from "../../features/budget-calculator/ui/BudgetCalculatorModal";
 
 const cardClass =
   "rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] shadow-[0_4px_16px_var(--color-card-shadow)]";
@@ -63,6 +68,10 @@ const DashboardPage: React.FC = () => {
   const isOffline = !navigator.onLine;
   const navigationType = useNavigationType();
   const pageRef = React.useRef<HTMLDivElement>(null);
+  // 예산 계산기 버튼은 온라인·오프라인 전환을 바로 반영해야 하므로 PWA 네트워크 상태를 구독한다.
+  const isNetworkOffline = usePwaStore((state) => state.networkStatus) === "offline";
+  const [isBudgetCalculatorOpen, setIsBudgetCalculatorOpen] = React.useState(false);
+  const closeBudgetCalculator = React.useCallback(() => setIsBudgetCalculatorOpen(false), []);
 
   const query = useQuery({
     queryKey: ["dashboard"],
@@ -280,20 +289,31 @@ const DashboardPage: React.FC = () => {
         {query.isLoading ? (
           <div className="mb-4"><SkeletonCard rows={1} /></div>
         ) : data?.cash_expense_forecast ? (
-          <div
-            data-testid="cash-expense-forecast"
-            className={`${cardClass} mb-4 flex items-center justify-between gap-3 px-5 py-4`}
-          >
-            <p className="text-sm font-medium text-[var(--color-text-secondary)]">
-              {data.cash_expense_forecast.target_month}월 현금 지출 예상 금액 :
-            </p>
-            <p className="shrink-0 text-right text-base font-bold text-[var(--color-text-primary)]">
-              {fmt(data.cash_expense_forecast.total_amount)}원
-            </p>
+          // 예산 계산기 버튼은 현금 지출 예상 카드 내부가 아니라 오른쪽 바깥의 형제 요소로 둔다.
+          <div className="mb-4 flex items-stretch gap-2">
+            <div
+              data-testid="cash-expense-forecast"
+              className={`${cardClass} flex min-w-0 flex-1 items-center justify-between gap-3 px-5 py-4`}
+            >
+              <p className="text-sm font-medium text-[var(--color-text-secondary)]">
+                {data.cash_expense_forecast.target_month}월 현금 지출 예상 금액 :
+              </p>
+              <p className="shrink-0 text-right text-base font-bold text-[var(--color-text-primary)]">
+                {fmt(data.cash_expense_forecast.total_amount)}원
+              </p>
+            </div>
+            <BudgetCalculatorButton
+              disabled={isNetworkOffline}
+              onClick={() => setIsBudgetCalculatorOpen(true)}
+            />
           </div>
         ) : null}
 
       </div>
+
+      {isBudgetCalculatorOpen && (
+        <BudgetCalculatorModal onClose={closeBudgetCalculator} />
+      )}
 
     </div>
   );
