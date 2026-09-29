@@ -17,6 +17,12 @@ const hasRequestDestination =
 
 export const runtimeCaching: RuntimeCaching = [
   {
+    // 예산 계산기 원본은 Cache Storage에 저장하지 않는다(캐시정책.md Budget Calculator Source API).
+    // workbox는 먼저 등록된 규칙을 적용하므로 아래 dashboard 규칙보다 앞에 둔다.
+    urlPattern: startsWithApiPath("/kittywallet/api/v1/dashboard/budget-calculator-source"),
+    handler: "NetworkOnly"
+  },
+  {
     urlPattern: startsWithApiPath("/kittywallet/api/v1/dashboard"),
     handler: "NetworkFirst",
     options: {
