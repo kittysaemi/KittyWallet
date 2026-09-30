@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { TransactionForm } from "./TransactionForm";
@@ -9,7 +9,6 @@ import { cardApi } from "../../entities/card/api/cardApi";
 import { categoryApi } from "../../entities/category/api/categoryApi";
 import { iconApi } from "../../entities/icon/api/iconApi";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
-import { settingsApi } from "../../entities/settings/api/settingsApi";
 import { usePwaStore } from "../../pwa/state/pwa.store";
 import { getTodayInTimezone } from "../../shared/utils/date";
 
@@ -26,9 +25,6 @@ vi.mock("../../entities/category/api/categoryApi", () => ({
 }));
 vi.mock("../../entities/icon/api/iconApi", () => ({
   iconApi: { getIcons: vi.fn() }
-}));
-vi.mock("../../entities/settings/api/settingsApi", () => ({
-  settingsApi: { getSettings: vi.fn() }
 }));
 vi.mock("../../entities/transaction/api/transactionApi", () => ({
   transactionApi: {
@@ -87,11 +83,6 @@ beforeEach(() => {
   vi.mocked(cardApi.getCards).mockResolvedValue(makeResponse([mockCard]));
   vi.mocked(categoryApi.getCategories).mockResolvedValue(makeResponse([]));
   vi.mocked(iconApi.getIcons).mockResolvedValue(makeResponse([]));
-  vi.mocked(settingsApi.getSettings).mockResolvedValue({
-    success: true,
-    data: { settings: undefined as never, updated_at: null },
-    error: null
-  });
   vi.mocked(transactionApi.createTransaction).mockResolvedValue({
     success: true,
     data: null,
@@ -302,24 +293,6 @@ describe("TransactionForm - n월 현금 동일 사용 (#426)", () => {
 describe("TransactionForm - 고정지출 체크박스 (#443)", () => {
   const mockCategory = { category_id: 1, category_name: "구독", icon_id: 0 };
 
-  function mockSetting(enabled: boolean) {
-    vi.mocked(settingsApi.getSettings).mockResolvedValue({
-      success: true,
-      data: {
-        settings: {
-          theme: "cat-pink",
-          currency: "KRW",
-          sync_enabled: true,
-          timezone: "Asia/Seoul",
-          transaction_list_page_size: 20,
-          fixed_expense_auto_enabled: enabled
-        },
-        updated_at: null
-      },
-      error: null
-    });
-  }
-
   async function selectWallet(name: string) {
     await userEvent.click(await screen.findByRole("button", { name: "지갑 선택" }));
     await userEvent.click(await screen.findByRole("button", { name }));
@@ -329,16 +302,7 @@ describe("TransactionForm - 고정지출 체크박스 (#443)", () => {
     usePwaStore.getState().setNetworkStatus("online");
   });
 
-  it("설정이 꺼져 있으면 카드 일시불 지출에도 표시하지 않는다", async () => {
-    mockSetting(false);
-    render(<TransactionForm onSuccess={vi.fn()} />, { wrapper: createWrapper() });
-    await selectWallet("삼성카드");
-    await waitFor(() => expect(settingsApi.getSettings).toHaveBeenCalled());
-    expect(screen.queryByRole("checkbox", { name: "고정지출" })).not.toBeInTheDocument();
-  });
-
-  it("설정이 켜져 있으면 이번 달 카드 일시불 지출에만 표시하고, 계좌를 고르면 숨긴다", async () => {
-    mockSetting(true);
+  it("고정지출 자동화 설정과 무관하게 이번 달 카드 일시불 지출에 표시하고, 할부·계좌면 숨긴다", async () => {
     render(<TransactionForm onSuccess={vi.fn()} />, { wrapper: createWrapper() });
     await selectWallet("삼성카드");
     expect(await screen.findByRole("checkbox", { name: "고정지출" })).not.toBeChecked();
@@ -352,7 +316,6 @@ describe("TransactionForm - 고정지출 체크박스 (#443)", () => {
   });
 
   it("지난달 날짜이거나 오프라인이면 표시하지 않는다", async () => {
-    mockSetting(true);
     render(<TransactionForm onSuccess={vi.fn()} />, { wrapper: createWrapper() });
     await selectWallet("삼성카드");
     expect(await screen.findByRole("checkbox", { name: "고정지출" })).toBeInTheDocument();
@@ -372,7 +335,6 @@ describe("TransactionForm - 고정지출 체크박스 (#443)", () => {
   });
 
   it("체크 후 등록하면 fixed_expense_yn=true로 전송한다", async () => {
-    mockSetting(true);
     vi.mocked(categoryApi.getCategories).mockResolvedValue(makeResponse([mockCategory]) as never);
     Object.defineProperty(window.navigator, "onLine", { configurable: true, value: true });
     render(<TransactionForm onSuccess={vi.fn()} />, { wrapper: createWrapper() });

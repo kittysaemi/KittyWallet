@@ -15,8 +15,6 @@ import { cardApi } from "../../entities/card/api/cardApi";
 import { categoryApi } from "../../entities/category/api/categoryApi";
 import { sortCategoriesByName } from "../../entities/category/lib/sortCategories";
 import { iconApi } from "../../entities/icon/api/iconApi";
-import { settingsApi } from "../../entities/settings/api/settingsApi";
-import { normalizeAppSettings } from "../../entities/settings/model/theme";
 import type { IconItem } from "../../entities/icon/model/icon.types";
 import { IconRenderer } from "../../shared/ui/IconRenderer";
 import { Button } from "../../shared/ui/Button";
@@ -287,14 +285,6 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     queryFn: () => categoryApi.getCategories(true),
     staleTime: STALE_TIME.MEDIUM
   });
-  const settingsQuery = useQuery({
-    queryKey: ["settings"],
-    queryFn: settingsApi.getSettings,
-    staleTime: STALE_TIME.MEDIUM
-  });
-  const fixedExpenseAutoEnabled = normalizeAppSettings(
-    settingsQuery.data?.data?.settings
-  ).fixed_expense_auto_enabled;
   const networkStatus = usePwaStore((state) => state.networkStatus);
   const iconsQuery = useQuery({
     queryKey: ["icons", "select"],
@@ -378,15 +368,15 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const nextMonthCashPayload = { next_month_cash_yn: nextMonthCashEligible && nextMonthCash };
 
   // "고정지출"은 카드 일시불 지출 거래에만 저장한다(화면정의 고정지출 체크박스).
-  // 대상이 아니게 되면 false로 저장하고, 설정 꺼짐·지난달 이전 날짜·오프라인 때문에 숨긴 경우에는
-  // 값을 보내지 않아 저장된 값을 유지한다.
+  // 대상이 아니게 되면 false로 저장하고, 지난달 이전 날짜·오프라인 때문에 숨긴 경우에는
+  // 값을 보내지 않아 저장된 값을 유지한다. 고정지출 자동화 설정은 자동 등록 on/off만 제어하므로
+  // 체크박스 표시와 무관하다.
   const isInstallmentInput =
     isInstallmentTx || (!!installmentMonthsStr && parseInt(installmentMonthsStr, 10) >= 2);
   const fixedExpenseTypeEligible =
     walletType === "CARD" && walletId > 0 && txType === "EXPENSE" && !isInstallmentInput;
   const fixedExpenseVisible =
     fixedExpenseTypeEligible &&
-    fixedExpenseAutoEnabled &&
     networkStatus === "online" &&
     date.slice(0, 7) === today.slice(0, 7);
   const fixedExpensePayload: { fixed_expense_yn?: boolean } = fixedExpenseVisible
@@ -868,7 +858,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         </label>
       )}
 
-      {/* 고정지출 (카드 일시불 지출, 설정 켜짐, 이번 달 거래, 온라인일 때만) */}
+      {/* 고정지출 (카드 일시불 지출, 이번 달 거래, 온라인일 때만. 자동화 설정과 무관) */}
       {fixedExpenseVisible && (
         <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 py-2">
           <input
