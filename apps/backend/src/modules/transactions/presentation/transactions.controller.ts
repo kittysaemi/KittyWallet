@@ -94,6 +94,7 @@ export class TransactionsController {
       transactionDate: dto.transaction_date,
       interest: dto.interest,
       nextMonthCashYn: dto.next_month_cash_yn,
+      fixedExpenseYn: dto.fixed_expense_yn,
       timezone: dto.timezone
     });
   }
@@ -131,7 +132,8 @@ export class TransactionsController {
       transactionDate: dto.transaction_date,
       timezone: dto.timezone,
       installmentMonths: dto.installment?.installment_months,
-      nextMonthCashYn: dto.next_month_cash_yn
+      nextMonthCashYn: dto.next_month_cash_yn,
+      fixedExpenseYn: dto.fixed_expense_yn
     });
   }
 }

@@ -57,4 +57,8 @@ export class CreateTransactionRequestDto {
   @IsOptional()
   @IsBoolean()
   next_month_cash_yn?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  fixed_expense_yn?: boolean;
 }

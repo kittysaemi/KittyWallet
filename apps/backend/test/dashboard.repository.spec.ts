@@ -110,13 +110,16 @@ describe("DashboardRepository", () => {
     it("includes the first installment leg but excludes later legs, and does not restrict the date range to the current month", async () => {
       prisma.transaction.findMany.mockResolvedValue([]);
 
-      await repository.getRecentTransactions(BigInt(1), 5);
+      const today = new Date("2026-09-30T00:00:00.000Z");
+      await repository.getRecentTransactions(BigInt(1), 5, today);
 
       expect(prisma.transaction.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: {
             userId: BigInt(1),
             deletedYn: false,
+            // 카드 고정지출 자동 등록 등 오늘 이후 날짜 거래는 제외한다(#443).
+            transactionDate: { lte: today },
             OR: [{ installmentId: null }, { installmentSeq: 1 }],
             transferGroupId: null,
             category: { categoryName: { not: "계좌금액이동" } }
@@ -130,7 +133,7 @@ describe("DashboardRepository", () => {
     it("excludes account-transfer transactions at the query level so the requested limit is always filled — both transferGroupId-tagged transfers and legacy category-name-only transfers (created before the transferGroupId column existed)", async () => {
       prisma.transaction.findMany.mockResolvedValue([]);
 
-      await repository.getRecentTransactions(BigInt(1), 6);
+      await repository.getRecentTransactions(BigInt(1), 6, new Date("2026-09-30T00:00:00.000Z"));
 
       const [args] = prisma.transaction.findMany.mock.calls[0];
       expect(args.where.transferGroupId).toBe(null);
@@ -159,7 +162,11 @@ describe("DashboardRepository", () => {
         }
       ] as unknown as never);
 
-      const [item] = await repository.getRecentTransactions(BigInt(1), 5);
+      const [item] = await repository.getRecentTransactions(
+        BigInt(1),
+        5,
+        new Date("2026-09-30T00:00:00.000Z")
+      );
 
       expect(item.installment_seq).toBe(1);
       expect(item.installment_total_count).toBe(3);

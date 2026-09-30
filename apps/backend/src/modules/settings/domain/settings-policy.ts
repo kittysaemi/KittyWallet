@@ -10,7 +10,8 @@ export const SETTING_DEFAULTS = {
   currency: "KRW",
   sync_enabled: true,
   timezone: DEFAULT_TIMEZONE,
-  transaction_list_page_size: 20
+  transaction_list_page_size: 20,
+  fixed_expense_auto_enabled: false
 } as const;
 
 export type SettingKey = keyof typeof SETTING_DEFAULTS;
@@ -20,6 +21,7 @@ export interface SettingsMap {
   sync_enabled: boolean;
   timezone: TimezoneSetting;
   transaction_list_page_size: number;
+  fixed_expense_auto_enabled: boolean;
 }
 
 export type SettingValue = SettingsMap[SettingKey];
@@ -61,6 +63,7 @@ function normalizeSettingValue(key: SettingKey, value: unknown): SettingValue {
       }
       break;
     case "sync_enabled":
+    case "fixed_expense_auto_enabled":
       if (typeof value === "boolean") {
         return value;
       }

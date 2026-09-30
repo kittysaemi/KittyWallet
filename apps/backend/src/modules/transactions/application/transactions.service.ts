@@ -39,6 +39,7 @@ interface UpdateTransactionCommand {
   transactionDate?: string;
   interest?: number;
   nextMonthCashYn?: boolean;
+  fixedExpenseYn?: boolean;
   timezone?: string;
 }
 
@@ -72,6 +73,7 @@ interface CreateTransactionCommand {
   timezone?: string;
   installmentMonths?: number;
   nextMonthCashYn?: boolean;
+  fixedExpenseYn?: boolean;
   syncClientId?: bigint;
   clientTempId?: string;
 }
@@ -97,6 +99,7 @@ export interface TransactionItem {
   memo: string | null;
   transaction_date: string;
   next_month_cash_yn: boolean;
+  fixed_expense_yn: boolean;
   created_at: string;
   updated_at: string;
   installment_id?: number | null;
@@ -146,6 +149,15 @@ export interface CreateTransactionResult {
 // "n월 현금 동일 사용"(next_month_cash_yn)은 계좌 지출 거래에만 저장할 수 있다(거래정책 3장).
 function isNextMonthCashEligible(walletType: string, transactionType: string): boolean {
   return walletType === "ACCOUNT" && transactionType === "EXPENSE";
+}
+
+// "고정지출"(fixed_expense_yn)은 카드 일시불 지출 거래에만 저장할 수 있다(거래정책 3장).
+function isFixedExpenseEligible(
+  walletType: string,
+  transactionType: string,
+  isInstallment: boolean
+): boolean {
+  return walletType === "CARD" && transactionType === "EXPENSE" && !isInstallment;
 }
 
 @Injectable()
@@ -201,7 +213,8 @@ export class TransactionsService {
       command.memo !== undefined ||
       command.transactionDate !== undefined ||
       command.interest !== undefined ||
-      command.nextMonthCashYn !== undefined;
+      command.nextMonthCashYn !== undefined ||
+      command.fixedExpenseYn !== undefined;
     if (!hasUpdate) {
       throw new AppException(
         "VALIDATION_001",
@@ -325,6 +338,17 @@ export class TransactionsService {
         ? false
         : undefined;
 
+    // "고정지출"도 같은 방식으로, 수정 결과가 카드 일시불 지출이 아니면 false로 되돌린다.
+    const fixedExpenseYn = isFixedExpenseEligible(
+      effWalletType,
+      effTransactionType,
+      existing.installmentId !== null
+    )
+      ? command.fixedExpenseYn
+      : existing.fixedExpenseYn
+        ? false
+        : undefined;
+
     const updateData: Prisma.TransactionUpdateInput = {
       ...(effWalletType !== existing.walletType ? { walletType: effWalletType } : {}),
       ...(effWalletId !== existing.walletId ? { walletId: effWalletId } : {}),
@@ -338,7 +362,8 @@ export class TransactionsService {
       ...(command.memo !== undefined ? { memo: command.memo } : {}),
       ...(command.transactionDate !== undefined ? { transactionDate: effDate } : {}),
       ...(command.interest !== undefined ? { interest: command.interest } : {}),
-      ...(nextMonthCashYn !== undefined ? { nextMonthCashYn } : {})
+      ...(nextMonthCashYn !== undefined ? { nextMonthCashYn } : {}),
+      ...(fixedExpenseYn !== undefined ? { fixedExpenseYn } : {})
     };
 
     let updated;
@@ -605,6 +630,7 @@ export class TransactionsService {
       memo: t.memo,
       transaction_date: t.transactionDate.toISOString().split("T")[0],
       next_month_cash_yn: t.nextMonthCashYn,
+      fixed_expense_yn: t.fixedExpenseYn,
       created_at: t.createdAt.toISOString(),
       updated_at: t.updatedAt.toISOString(),
       ...(t.installmentId ? { installment_id: Number(t.installmentId) } : {}),
@@ -744,6 +770,9 @@ export class TransactionsService {
       amount: command.amount,
       transactionDate,
       memo: command.memo,
+      fixedExpenseYn:
+        command.fixedExpenseYn === true &&
+        isFixedExpenseEligible(command.walletType, command.transactionType, false),
       syncedAt: now,
       syncClientId: command.syncClientId ?? null,
       clientTempId: command.clientTempId ?? null
