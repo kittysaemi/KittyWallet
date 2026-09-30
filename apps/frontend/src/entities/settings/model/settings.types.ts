@@ -10,6 +10,8 @@ export interface AppSettings {
   sync_enabled: boolean;
   timezone: TimezoneSetting;
   transaction_list_page_size: number;
+  /** 카드 고정지출 자동 등록 사용 여부(기본 false). false면 고정지출 체크박스를 표시하지 않는다. */
+  fixed_expense_auto_enabled: boolean;
 }
 
 export interface SettingsData {

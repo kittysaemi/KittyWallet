@@ -42,7 +42,8 @@ const AppSettingsPage: React.FC = () => {
     appSettings.theme !== savedSettings.theme ||
     appSettings.currency !== savedSettings.currency ||
     appSettings.sync_enabled !== savedSettings.sync_enabled ||
-    appSettings.timezone !== savedSettings.timezone;
+    appSettings.timezone !== savedSettings.timezone ||
+    appSettings.fixed_expense_auto_enabled !== savedSettings.fixed_expense_auto_enabled;
 
   React.useEffect(() => {
     if (settingsQuery.data?.success && settingsQuery.data.data) {
@@ -219,6 +220,26 @@ const AppSettingsPage: React.FC = () => {
                   type="checkbox"
                   checked={appSettings.sync_enabled}
                   onChange={(e) => handleChangeAppSetting("sync_enabled", e.target.checked)}
+                  className="h-5 w-5 accent-[var(--color-primary)]"
+                />
+              </label>
+
+              <label className="flex min-h-11 items-center justify-between gap-3 rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] px-3 py-2">
+                <span>
+                  <span className="block text-sm font-medium text-[var(--color-text-primary)]">
+                    고정지출 자동화
+                  </span>
+                  <span className="block text-xs text-[var(--color-text-secondary)]">
+                    고정지출로 체크한 카드 일시불 지출을 다음 달 1일에 자동으로 등록합니다.
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  aria-label="고정지출 자동화 사용"
+                  checked={appSettings.fixed_expense_auto_enabled}
+                  onChange={(e) =>
+                    handleChangeAppSetting("fixed_expense_auto_enabled", e.target.checked)
+                  }
                   className="h-5 w-5 accent-[var(--color-primary)]"
                 />
               </label>
