@@ -1,3 +1,10 @@
+## [1.52.1](https://github.com/kittysaemi/KittyWallet/compare/v1.52.0...v1.52.1) (2026-09-30)
+
+
+### Bug Fixes
+
+* **transactions:** 고정지출 체크박스를 자동화 설정과 무관하게 표시 ([6546cc3](https://github.com/kittysaemi/KittyWallet/commit/6546cc3f0bcffd3ddb27857fcb2944116f53f8f8)), closes [#443](https://github.com/kittysaemi/KittyWallet/issues/443)
+
 # [1.52.0](https://github.com/kittysaemi/KittyWallet/compare/v1.51.0...v1.52.0) (2026-09-30)
 
 
