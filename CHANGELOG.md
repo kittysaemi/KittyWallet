@@ -1,3 +1,10 @@
+# [1.51.0](https://github.com/kittysaemi/KittyWallet/compare/v1.50.0...v1.51.0) (2026-09-30)
+
+
+### Features
+
+* **dashboard:** 월간 예산 계산기 버튼·팝업·로컬 계산 추가 ([90a6fae](https://github.com/kittysaemi/KittyWallet/commit/90a6fae02fc792d9ab6b836a9806502cf4490c28)), closes [#436](https://github.com/kittysaemi/KittyWallet/issues/436) [#437](https://github.com/kittysaemi/KittyWallet/issues/437)
+
 # [1.50.0](https://github.com/kittysaemi/KittyWallet/compare/v1.49.2...v1.50.0) (2026-09-29)
 
 
