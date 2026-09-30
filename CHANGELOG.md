@@ -1,3 +1,11 @@
+# [1.52.0](https://github.com/kittysaemi/KittyWallet/compare/v1.51.0...v1.52.0) (2026-09-30)
+
+
+### Features
+
+* **transactions:** 고정지출 체크박스·자동화 설정 토글 ([732cbd8](https://github.com/kittysaemi/KittyWallet/commit/732cbd86290ccb8147139bf89856f121aa6e1d94)), closes [#443](https://github.com/kittysaemi/KittyWallet/issues/443)
+* **transactions:** 카드 고정지출 필드·설정·월초 자동 등록 예약 작업 ([f3905a7](https://github.com/kittysaemi/KittyWallet/commit/f3905a77805567490eb8e2c0b597d182d6a1328c)), closes [#443](https://github.com/kittysaemi/KittyWallet/issues/443)
+
 # [1.51.0](https://github.com/kittysaemi/KittyWallet/compare/v1.50.0...v1.51.0) (2026-09-30)
 
 
