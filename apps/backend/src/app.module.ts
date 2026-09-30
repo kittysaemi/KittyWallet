@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { APP_GUARD, APP_INTERCEPTOR } from "@nestjs/core";
 import { ConfigModule } from "@nestjs/config";
+import { ScheduleModule } from "@nestjs/schedule";
 import { PrismaModule } from "./database/prisma.module";
 import { HealthModule } from "./modules/health/health.module";
 import { AuthModule } from "./modules/auth/auth.module";
@@ -17,6 +18,7 @@ import { SyncModule } from "./modules/sync/sync.module";
 import { ManifestModule } from "./modules/manifest/manifest.module";
 import { ReceiptAnalysisModule } from "./modules/receipt-analysis/receipt-analysis.module";
 import { TextParsingModule } from "./modules/text-parsing/text-parsing.module";
+import { FixedExpenseModule } from "./modules/fixed-expense/fixed-expense.module";
 import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
 import { ApiResponseInterceptor } from "./common/interceptors/api-response.interceptor";
 
@@ -41,6 +43,8 @@ import { ApiResponseInterceptor } from "./common/interceptors/api-response.inter
     ManifestModule,
     ReceiptAnalysisModule,
     TextParsingModule,
+    ScheduleModule.forRoot(),
+    FixedExpenseModule,
   ],
   providers: [
     {

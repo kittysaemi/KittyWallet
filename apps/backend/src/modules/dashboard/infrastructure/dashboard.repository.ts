@@ -172,11 +172,16 @@ export class DashboardRepository {
     };
   }
 
-  async getRecentTransactions(userId: bigint, limit: number): Promise<RecentTransactionData[]> {
+  async getRecentTransactions(
+    userId: bigint,
+    limit: number,
+    today: Date
+  ): Promise<RecentTransactionData[]> {
     const transactions = await this.prisma.transaction.findMany({
       where: {
         userId,
         deletedYn: false,
+        transactionDate: { lte: today },
         // 할부의 실제 구매(1회차)는 최근 발생한 거래이므로 표시하되, 아직 발생하지 않은
         // 이후 회차(미래 청구분)는 최근내역에서 제외한다.
         OR: [{ installmentId: null }, { installmentSeq: 1 }],

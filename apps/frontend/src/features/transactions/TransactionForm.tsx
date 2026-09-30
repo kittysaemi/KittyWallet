@@ -15,6 +15,8 @@ import { cardApi } from "../../entities/card/api/cardApi";
 import { categoryApi } from "../../entities/category/api/categoryApi";
 import { sortCategoriesByName } from "../../entities/category/lib/sortCategories";
 import { iconApi } from "../../entities/icon/api/iconApi";
+import { settingsApi } from "../../entities/settings/api/settingsApi";
+import { normalizeAppSettings } from "../../entities/settings/model/theme";
 import type { IconItem } from "../../entities/icon/model/icon.types";
 import { IconRenderer } from "../../shared/ui/IconRenderer";
 import { Button } from "../../shared/ui/Button";
@@ -254,6 +256,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const [nextMonthCash, setNextMonthCash] = React.useState<boolean>(
     initialData?.next_month_cash_yn ?? false
   );
+  const [fixedExpense, setFixedExpense] = React.useState<boolean>(
+    initialData?.fixed_expense_yn ?? false
+  );
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [apiError, setApiError] = React.useState<string>("");
 
@@ -282,6 +287,15 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     queryFn: () => categoryApi.getCategories(true),
     staleTime: STALE_TIME.MEDIUM
   });
+  const settingsQuery = useQuery({
+    queryKey: ["settings"],
+    queryFn: settingsApi.getSettings,
+    staleTime: STALE_TIME.MEDIUM
+  });
+  const fixedExpenseAutoEnabled = normalizeAppSettings(
+    settingsQuery.data?.data?.settings
+  ).fixed_expense_auto_enabled;
+  const networkStatus = usePwaStore((state) => state.networkStatus);
   const iconsQuery = useQuery({
     queryKey: ["icons", "select"],
     queryFn: () => iconApi.getIcons(true),
@@ -362,6 +376,24 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   // false로 저장한다(체크 상태는 되돌아왔을 때를 위해 화면 state에만 남겨둔다).
   const nextMonthCashEligible = walletType === "ACCOUNT" && walletId > 0 && txType === "EXPENSE";
   const nextMonthCashPayload = { next_month_cash_yn: nextMonthCashEligible && nextMonthCash };
+
+  // "고정지출"은 카드 일시불 지출 거래에만 저장한다(화면정의 고정지출 체크박스).
+  // 대상이 아니게 되면 false로 저장하고, 설정 꺼짐·지난달 이전 날짜·오프라인 때문에 숨긴 경우에는
+  // 값을 보내지 않아 저장된 값을 유지한다.
+  const isInstallmentInput =
+    isInstallmentTx || (!!installmentMonthsStr && parseInt(installmentMonthsStr, 10) >= 2);
+  const fixedExpenseTypeEligible =
+    walletType === "CARD" && walletId > 0 && txType === "EXPENSE" && !isInstallmentInput;
+  const fixedExpenseVisible =
+    fixedExpenseTypeEligible &&
+    fixedExpenseAutoEnabled &&
+    networkStatus === "online" &&
+    date.slice(0, 7) === today.slice(0, 7);
+  const fixedExpensePayload: { fixed_expense_yn?: boolean } = fixedExpenseVisible
+    ? { fixed_expense_yn: fixedExpense }
+    : fixedExpenseTypeEligible
+      ? {}
+      : { fixed_expense_yn: false };
 
   function handleTxTypeChange(type: "INCOME" | "EXPENSE") {
     setTxType(type);
@@ -506,10 +538,17 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         memo: parsed.data.memo ?? null,
         transaction_date: parsed.data.transaction_date,
         ...nextMonthCashPayload,
+        ...fixedExpensePayload,
         timezone
       });
     } else {
-      createMutation.mutate({ ...parsed.data, timezone, ...installmentPayload, ...nextMonthCashPayload });
+      createMutation.mutate({
+        ...parsed.data,
+        timezone,
+        ...installmentPayload,
+        ...nextMonthCashPayload,
+        ...fixedExpensePayload
+      });
       void runSyncQueue(queryClient);
     }
   }
@@ -826,6 +865,21 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           <span className="text-sm font-medium text-[var(--color-text-primary)]">
             {date ? `${getNextMonthNumber(date)}월 현금 동일 사용` : "다음 달 현금 동일 사용"}
           </span>
+        </label>
+      )}
+
+      {/* 고정지출 (카드 일시불 지출, 설정 켜짐, 이번 달 거래, 온라인일 때만) */}
+      {fixedExpenseVisible && (
+        <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-3 py-2">
+          <input
+            type="checkbox"
+            name="fixed_expense_yn"
+            checked={fixedExpense}
+            onChange={(e) => setFixedExpense(e.target.checked)}
+            disabled={isSaving}
+            className="h-5 w-5 shrink-0 accent-[var(--color-primary)]"
+          />
+          <span className="text-sm font-medium text-[var(--color-text-primary)]">고정지출</span>
         </label>
       )}
 

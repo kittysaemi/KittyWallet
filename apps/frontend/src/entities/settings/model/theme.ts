@@ -14,7 +14,8 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   currency: "KRW",
   sync_enabled: true,
   timezone: DEFAULT_TIMEZONE,
-  transaction_list_page_size: 20
+  transaction_list_page_size: 20,
+  fixed_expense_auto_enabled: false
 };
 
 const THEME_PRIMARY_COLORS: Record<ThemeSetting, string> = {

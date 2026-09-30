@@ -28,7 +28,12 @@ export class DashboardService {
       await Promise.all([
         this.dashboardRepository.getAssetSummary(userId),
         this.dashboardRepository.getSpendingSummary(userId, startDate, endDate),
-        this.dashboardRepository.getRecentTransactions(userId, recentLimit),
+        // 카드 고정지출 자동 등록으로 생긴 미래 날짜 거래는 최근 내역에서 제외한다(오늘까지만).
+        this.dashboardRepository.getRecentTransactions(
+          userId,
+          recentLimit,
+          new Date(`${getTodayInTimezone()}T00:00:00.000Z`)
+        ),
         this.dashboardRepository.getLastSyncedAt(userId),
         this.dashboardRepository.getCashExpenseForecastAmounts(
           userId,

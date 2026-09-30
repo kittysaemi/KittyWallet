@@ -45,6 +45,10 @@ export class UpdateTransactionRequestDto {
   next_month_cash_yn?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  fixed_expense_yn?: boolean;
+
+  @IsOptional()
   @IsIn(SUPPORTED_TIMEZONES)
   timezone?: string;
 }
