@@ -9,7 +9,7 @@ import { useNumericFieldProps } from "../../../shared/hooks/useNumericFieldProps
 import { useTimezone } from "../../../shared/hooks/useTimezone";
 import { Button } from "../../../shared/ui/Button";
 import { Input } from "../../../shared/ui/Input";
-import { getMonthInTimezone } from "../../../shared/utils/date";
+import { getMonthInTimezone, getTodayInTimezone } from "../../../shared/utils/date";
 import {
   calculateBudget,
   formatMonthLabel,
@@ -18,7 +18,7 @@ import {
 } from "../lib/calculateBudget";
 
 // 월간 예산 계산기(화면정의.md "예산 계산기 버튼과 팝업 정책", 예산계산기정책.md).
-// 입력값·후보 선택·결과는 이 컴포넌트의 local state로만 두고, 팝업을 닫으면 모두 폐기한다.
+// 입력값·결과는 이 컴포넌트의 local state로만 두고, 팝업을 닫으면 모두 폐기한다.
 // Zustand·URL·설정·localStorage·IndexedDB·Cache Storage·Sync Queue에 저장하지 않는다.
 
 export const BUDGET_CALCULATOR_SOURCE_QUERY_KEY = ["budget-calculator-source"] as const;
@@ -63,10 +63,14 @@ interface CalculationSnapshot {
   result: BudgetCalculationResult;
   accountName: string;
   baseMonthLabel: string;
+  balanceDate: string;
   nextMonthLabel: string;
+  minimumBalance: number;
+  nextMonthIncome: number;
 }
 
 interface FieldErrors {
+  baseDate?: string;
   account?: string;
   minimumBalance?: string;
   nextMonthIncome?: string;
@@ -99,12 +103,15 @@ export const BudgetCalculatorModal: React.FC<{ onClose: () => void }> = ({ onClo
   const isOffline = usePwaStore((state) => state.networkStatus) === "offline";
 
   const currentMonth = getMonthInTimezone(timezone);
-  // 처음 열면 현재 월을 기본 선택한다. 오늘(일)은 기간 경계를 정하지 않는다.
+  const lastMonth = shiftMonth(currentMonth, -1);
+  const today = getTodayInTimezone(timezone);
+  // 기준 월은 이번 달·지난달만 선택하며, 처음 열면 이번 달을 선택한다.
   const [baseMonth, setBaseMonth] = React.useState(currentMonth);
+  // 잔액 기준일: 지난달일 때만 입력한다. 이번 달이면 서버가 오늘 기준 잔액을 쓴다.
+  const [baseDate, setBaseDate] = React.useState("");
   const [baseAccountId, setBaseAccountId] = React.useState(0);
   const [minimumBalanceStr, setMinimumBalanceStr] = React.useState("");
   const [nextMonthIncomeStr, setNextMonthIncomeStr] = React.useState("");
-  const [selectedCandidateIds, setSelectedCandidateIds] = React.useState<Set<string>>(() => new Set());
   const [errors, setErrors] = React.useState<FieldErrors>({});
   const [snapshot, setSnapshot] = React.useState<CalculationSnapshot | null>(null);
 
@@ -129,11 +136,16 @@ export const BudgetCalculatorModal: React.FC<{ onClose: () => void }> = ({ onClo
     };
   }, [queryClient]);
 
+  const isLastMonth = baseMonth !== currentMonth;
+  const requestBaseDate = isLastMonth ? baseDate : undefined;
+  // 지난달이면 오늘 이전(오늘 포함) 잔액 기준일이 있어야 조회한다.
+  const isBaseDateReady = !isLastMonth || (!!baseDate && baseDate <= today);
+
   const sourceQuery = useQuery({
-    queryKey: [...BUDGET_CALCULATOR_SOURCE_QUERY_KEY, baseMonth],
-    queryFn: () => budgetCalculatorApi.getSource(baseMonth),
+    queryKey: [...BUDGET_CALCULATOR_SOURCE_QUERY_KEY, baseMonth, requestBaseDate ?? ""],
+    queryFn: () => budgetCalculatorApi.getSource(baseMonth, requestBaseDate),
     // 오프라인이면 캐시로 계산하지 않도록 조회하지 않는다.
-    enabled: !isOffline,
+    enabled: !isOffline && isBaseDateReady,
     staleTime: 0,
     gcTime: 0,
     retry: false
@@ -156,35 +168,33 @@ export const BudgetCalculatorModal: React.FC<{ onClose: () => void }> = ({ onClo
     return map;
   }, [accountsQuery.data]);
 
-  const walletNameOf = React.useCallback(
-    (sourceType: "ACCOUNT" | "CARD", walletId: number) => {
-      if (sourceType === "ACCOUNT") {
-        return source?.accounts.find((a) => a.account_id === walletId)?.account_name ?? "계좌";
-      }
-      return source?.cards.find((c) => c.card_id === walletId)?.card_name ?? "카드";
-    },
-    [source]
-  );
-
   function changeMonth(delta: number) {
     const next = shiftMonth(baseMonth, delta);
-    if (next > currentMonth) return;
+    if (next > currentMonth || next < lastMonth) return;
     setBaseMonth(next);
-    // 후보는 기준 월마다 달라지므로 선택을 초기화한다.
-    setSelectedCandidateIds(new Set());
+    setErrors((prev) => ({ ...prev, baseDate: undefined }));
   }
 
-  function toggleCandidate(itemId: string) {
-    setSelectedCandidateIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(itemId)) next.delete(itemId);
-      else next.add(itemId);
-      return next;
-    });
+  function changeBaseDate(value: string) {
+    setBaseDate(value);
+    setErrors((prev) => ({
+      ...prev,
+      baseDate: value > today ? "오늘 이후 날짜는 잔액 기준일로 선택할 수 없습니다." : undefined
+    }));
   }
 
   function handleCalculate() {
-    if (isOffline || !source) return;
+    if (isOffline) return;
+    if (!isBaseDateReady) {
+      setErrors((prev) => ({
+        ...prev,
+        baseDate: baseDate
+          ? "오늘 이후 날짜는 잔액 기준일로 선택할 수 없습니다."
+          : "잔액 기준일을 입력해 주세요."
+      }));
+      return;
+    }
+    if (!source) return;
     const nextErrors: FieldErrors = {};
     const minimumBalance = parseAmount(minimumBalanceStr);
     const nextMonthIncome = parseAmount(nextMonthIncomeStr);
@@ -203,8 +213,7 @@ export const BudgetCalculatorModal: React.FC<{ onClose: () => void }> = ({ onClo
     const result = calculateBudget(source, {
       baseAccountId,
       minimumBalance,
-      nextMonthIncome,
-      selectedCandidateIds
+      nextMonthIncome
     });
     if (!result) return;
     // 재계산하면 기존 결과를 저장하지 않고 새 결과로 교체한다.
@@ -212,12 +221,15 @@ export const BudgetCalculatorModal: React.FC<{ onClose: () => void }> = ({ onClo
       result,
       accountName: account.account_name,
       baseMonthLabel: formatMonthLabel(baseMonth),
-      nextMonthLabel: `${source.next_period.year}년 ${source.next_period.month}월`
+      balanceDate: source.balance_date,
+      nextMonthLabel: `${source.next_period.year}년 ${source.next_period.month}월`,
+      minimumBalance,
+      nextMonthIncome
     });
   }
 
-  const candidates = source?.next_period_items.candidates ?? [];
-  const canCalculate = !isOffline && !!source;
+  // 지난달에 잔액 기준일이 없으면 계산하기에서 입력 안내를 표시한다.
+  const canCalculate = !isOffline && (!!source || !isBaseDateReady);
 
   return (
     <div
@@ -255,7 +267,8 @@ export const BudgetCalculatorModal: React.FC<{ onClose: () => void }> = ({ onClo
                   type="button"
                   aria-label="이전 달"
                   onClick={() => changeMonth(-1)}
-                  className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)]"
+                  disabled={baseMonth <= lastMonth}
+                  className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)] disabled:cursor-not-allowed disabled:opacity-30"
                 >
                   <ChevronLeft size={18} />
                 </button>
@@ -273,6 +286,18 @@ export const BudgetCalculatorModal: React.FC<{ onClose: () => void }> = ({ onClo
                 </button>
               </div>
             </div>
+
+            {isLastMonth && (
+              <Input
+                label="잔액 기준일"
+                name="budget-base-date"
+                type="date"
+                value={baseDate}
+                max={today}
+                onChange={(e) => changeBaseDate(e.target.value)}
+                error={errors.baseDate}
+              />
+            )}
 
             <div className="flex flex-col gap-1">
               <label htmlFor="budget-base-account" className="text-sm font-medium text-[var(--color-text-secondary)]">
@@ -336,44 +361,6 @@ export const BudgetCalculatorModal: React.FC<{ onClose: () => void }> = ({ onClo
               error={errors.nextMonthIncome}
               {...numericFieldProps}
             />
-
-            {source && (
-              <fieldset className="flex flex-col gap-2">
-                <legend className="mb-1 text-sm font-medium text-[var(--color-text-secondary)]">
-                  반영 후보 <span className="text-xs text-[var(--color-text-caption)]">(선택한 항목만 다음 달 예측에 반영)</span>
-                </legend>
-                {candidates.length === 0 ? (
-                  <p className="text-xs text-[var(--color-text-caption)]">반영 후보가 없습니다.</p>
-                ) : (
-                  candidates.map((c) => {
-                    const name = c.memo?.trim() || c.category_name;
-                    return (
-                      <label
-                        key={c.item_id}
-                        className="flex cursor-pointer items-start gap-3 rounded-xl border border-[var(--color-border-primary)] px-3 py-2"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedCandidateIds.has(c.item_id)}
-                          onChange={() => toggleCandidate(c.item_id)}
-                          className="mt-1 h-4 w-4 accent-[var(--color-primary-hover)]"
-                          aria-label={`${name} 반영`}
-                        />
-                        <span className="flex min-w-0 flex-1 flex-col">
-                          <span className="flex items-center justify-between gap-2 text-sm text-[var(--color-text-primary)]">
-                            <span className="truncate">{name}</span>
-                            <span className="shrink-0 font-semibold">{fmt(c.amount)}원</span>
-                          </span>
-                          <span className="text-xs text-[var(--color-text-caption)]">
-                            {walletNameOf(c.source_type, c.wallet_id)} · {c.reason}
-                          </span>
-                        </span>
-                      </label>
-                    );
-                  })
-                )}
-              </fieldset>
-            )}
           </div>
 
           {/* ── 계산하기 ── */}
@@ -412,21 +399,31 @@ export const BudgetCalculatorModal: React.FC<{ onClose: () => void }> = ({ onClo
                 <ResultCard
                   title={`다음 달 수입 전 ${snapshot.accountName} 예상 잔여금`}
                   amount={snapshot.result.remainingBalance}
-                  details={[`기준 월 ${snapshot.baseMonthLabel}`]}
-                  note="다른 계좌의 현금 고정지출도 기준 계좌 재원으로 충당한다고 가정한 추정값입니다."
+                  details={[
+                    `기준 월 ${snapshot.baseMonthLabel}`,
+                    `기준 잔액(${snapshot.balanceDate}) ${fmt(snapshot.result.breakdown.baseBalance)}원`,
+                    `현금 동일 사용 ${fmt(snapshot.result.breakdown.cashSameUseExpense)}원`,
+                    `카드 사용액 ${fmt(snapshot.result.breakdown.baseCardExpense)}원`
+                  ]}
+                  note="다른 계좌의 현금 동일 사용 지출도 기준 계좌 재원으로 충당한다고 가정한 추정값입니다."
                 />
                 <ResultCard
                   title="최소 유지금액을 지키기 위해 필요한 추가 예상 수입"
                   amount={snapshot.result.requiredAdditionalIncome}
-                  details={[`기준 월 ${snapshot.baseMonthLabel}`]}
+                  details={[
+                    `최소 유지금액 ${fmt(snapshot.minimumBalance)}원`,
+                    `1번 결과 ${fmt(snapshot.result.remainingBalance)}원`
+                  ]}
                 />
                 <ResultCard
                   title="다음 달 추가 카드 사용 여유"
                   amount={snapshot.result.nextMonthCardAllowance}
                   details={[
                     `다음 달 ${snapshot.nextMonthLabel}`,
-                    `자동 반영 ${fmt(snapshot.result.breakdown.automaticTotal)}원`,
-                    `선택 후보 ${fmt(snapshot.result.breakdown.selectedCandidateTotal)}원`
+                    `예상 수입 ${fmt(snapshot.nextMonthIncome)}원`,
+                    `현금 동일 사용 ${fmt(snapshot.result.breakdown.cashSameUseExpense)}원`,
+                    `다음 달 할부 ${fmt(snapshot.result.breakdown.nextInstallment)}원`,
+                    `카드 고정지출 ${fmt(snapshot.result.breakdown.cardFixedExpense)}원`
                   ]}
                 />
               </ol>

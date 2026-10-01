@@ -10,8 +10,8 @@ export interface BudgetPeriod {
 export interface BudgetAccount {
   account_id: number;
   account_name: string;
-  opening_balance: number;
-  base_period_income_amount: number;
+  /** 잔액 기준일(그날 포함)의 계좌 잔액 */
+  balance: number;
 }
 
 export interface BudgetCard {
@@ -19,9 +19,11 @@ export interface BudgetCard {
   card_name: string;
 }
 
-export interface BudgetCashExpense {
+/** 기준 월 "n월 현금 동일 사용" 체크 계좌 지출(계좌이동 보내는 쪽 포함) */
+export interface BudgetCashSameUseExpense {
   transaction_id: number;
   account_id: number;
+  account_name: string;
   category_name: string;
   memo: string | null;
   transaction_date: string;
@@ -39,51 +41,33 @@ export interface BudgetCardExpense {
   total_amount: number;
 }
 
-export type BudgetClassification = "AUTOMATIC" | "CANDIDATE";
-
-export interface BudgetCashFixedItem {
-  item_id: string;
-  account_id: number;
-  category_name: string;
-  memo: string | null;
-  amount: number;
-  classification: BudgetClassification;
-  reason: string;
-}
-
-export interface BudgetCardFixedItem {
+export interface BudgetInstallment {
   item_id: string;
   card_id: number;
   category_name: string;
   memo: string | null;
-  amount: number;
-  classification: BudgetClassification;
-  reason: string;
+  transaction_date: string;
+  installment_seq: number | null;
+  total_amount: number;
 }
 
-export interface BudgetCandidate {
-  item_id: string;
-  source_type: "ACCOUNT" | "CARD";
-  wallet_id: number;
+export interface BudgetCardFixedExpense {
+  transaction_id: number;
+  card_id: number;
   category_name: string;
   memo: string | null;
-  amount: number;
-  classification: BudgetClassification;
-  reason: string;
+  transaction_date: string;
+  total_amount: number;
 }
 
 export interface BudgetCalculatorSource {
   base_period: BudgetPeriod;
   next_period: BudgetPeriod;
+  balance_date: string;
   accounts: BudgetAccount[];
   cards: BudgetCard[];
-  base_period_items: {
-    cash_expenses: BudgetCashExpense[];
-    card_expenses: BudgetCardExpense[];
-  };
-  next_period_items: {
-    cash_fixed_items: BudgetCashFixedItem[];
-    card_fixed_items: BudgetCardFixedItem[];
-    candidates: BudgetCandidate[];
-  };
+  cash_same_use_expenses: BudgetCashSameUseExpense[];
+  base_period_card_expenses: BudgetCardExpense[];
+  next_period_installments: BudgetInstallment[];
+  card_fixed_expenses: BudgetCardFixedExpense[];
 }

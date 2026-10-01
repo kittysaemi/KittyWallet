@@ -2,36 +2,23 @@ import { validate } from "class-validator";
 import { plainToInstance } from "class-transformer";
 import { AppException } from "../src/common/exceptions/app.exception";
 import { GetBudgetCalculatorSourceUseCase } from "../src/modules/dashboard/application/use-cases/get-budget-calculator-source.use-case";
-import { BudgetCalculatorConfig } from "../src/modules/dashboard/domain/budget-calculator-config";
 import { BudgetCalculatorRepository } from "../src/modules/dashboard/infrastructure/budget-calculator.repository";
 import { BudgetCalculatorSourceQueryDto } from "../src/modules/dashboard/presentation/dto/request/budget-calculator-source-query.dto";
-
-const config: BudgetCalculatorConfig = {
-  observationMonths: 6,
-  automaticMinOccurrences: 3,
-  candidateMinOccurrences: 2,
-  intervalTolerancePercent: 20,
-  intervalToleranceMinDays: 3,
-  amountTolerancePercent: 20,
-  candidateRecentMonths: 3
-};
 
 function expense(
   id: number,
   date: string,
   amount: number,
-  overrides: Partial<{ walletId: bigint; interest: number; nextMonthCashYn: boolean; memo: string }> = {}
+  overrides: Partial<{ walletId: bigint; interest: number; memo: string; categoryName: string }> = {}
 ) {
   return {
     transactionId: BigInt(id),
     walletId: 1n,
-    categoryId: 10n,
     categoryName: "생활",
     memo: "메모",
     transactionDate: new Date(`${date}T00:00:00.000Z`),
     amount,
     interest: 0,
-    nextMonthCashYn: false,
     ...overrides
   };
 }
@@ -41,179 +28,177 @@ describe("GetBudgetCalculatorSourceUseCase", () => {
     getUserTimezoneSetting: jest.fn(),
     getAccounts: jest.fn(),
     getCards: jest.fn(),
-    getAccountBalanceDeltasBefore: jest.fn(),
-    getAccountIncomeInPeriod: jest.fn(),
-    getExpensesInPeriod: jest.fn(),
+    getAccountBalanceDeltasUntil: jest.fn(),
+    getCashSameUseExpenses: jest.fn(),
+    getCardExpensesInPeriod: jest.fn(),
     getCardInstallmentsInPeriod: jest.fn(),
-    getRecurringSourceTransactions: jest.fn()
+    getCardFixedExpensesInPeriod: jest.fn()
   } as unknown as jest.Mocked<BudgetCalculatorRepository>;
-  const useCase = new GetBudgetCalculatorSourceUseCase(repo, config);
+  const useCase = new GetBudgetCalculatorSourceUseCase(repo);
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // 사용자 시간대(Asia/Seoul) 기준 오늘은 2026-09-20이다.
     jest.useFakeTimers().setSystemTime(new Date("2026-09-20T03:00:00.000Z"));
     repo.getUserTimezoneSetting.mockResolvedValue("Asia/Seoul");
     repo.getAccounts.mockResolvedValue([
-      { accountId: 1n, accountName: "CMA_RP", initialBalance: 1000000 },
-      { accountId: 2n, accountName: "생활비 통장", initialBalance: 0 }
+      { accountId: 1n, accountName: "생활비 통장", initialBalance: 1000000 },
+      { accountId: 2n, accountName: "적금 통장", initialBalance: 0 }
     ]);
     repo.getCards.mockResolvedValue([{ cardId: 5n, cardName: "신한카드" }]);
-    repo.getAccountBalanceDeltasBefore.mockResolvedValue(new Map([["1", 300000]]));
-    repo.getAccountIncomeInPeriod.mockResolvedValue(new Map([["1", 3000000]]));
-    repo.getExpensesInPeriod.mockImplementation(async (_userId, walletType) =>
-      walletType === "ACCOUNT"
-        ? [
-            expense(100, "2026-09-05", 200000, { walletId: 2n, memo: "관리비", nextMonthCashYn: true }),
-            expense(101, "2026-09-15", 12000)
-          ]
-        : [expense(200, "2026-09-18", 50000, { walletId: 5n, interest: 1500 })]
-    );
-    repo.getCardInstallmentsInPeriod.mockResolvedValue([
+    repo.getAccountBalanceDeltasUntil.mockResolvedValue(new Map([["1", 300000]]));
+    repo.getCashSameUseExpenses.mockResolvedValue([
+      { ...expense(100, "2026-09-05", 200000, { memo: "보험료" }), accountName: "생활비 통장" },
       {
-        transactionId: 300n,
-        walletId: 5n,
-        installmentId: 20n,
-        installmentSeq: 4,
-        categoryName: "가전",
-        memo: "냉장고",
-        amount: 80000,
-        interest: 2000
+        ...expense(101, "2026-09-10", 300000, { categoryName: "계좌금액이동", memo: "적금" }),
+        accountName: "생활비 통장"
       }
     ]);
-    repo.getRecurringSourceTransactions.mockResolvedValue([]);
+    repo.getCardExpensesInPeriod.mockResolvedValue([
+      expense(200, "2026-09-18", 50000, { walletId: 5n, interest: 1500 })
+    ]);
+    repo.getCardInstallmentsInPeriod.mockResolvedValue([
+      {
+        ...expense(300, "2026-10-10", 80000, { walletId: 5n, interest: 2000, memo: "냉장고" }),
+        installmentId: 20n,
+        installmentSeq: 4
+      }
+    ]);
+    repo.getCardFixedExpensesInPeriod.mockResolvedValue([
+      expense(400, "2026-09-25", 55000, { walletId: 5n, memo: "통신비" })
+    ]);
   });
 
   afterEach(() => {
     jest.useRealTimers();
   });
 
-  it("기준 월 시작 잔액 = 초기 잔액 + 기준 월 이전 거래 합계이며 현재 잔액을 쓰지 않는다", async () => {
+  it("이번 달이면 오늘(사용자 시간대)까지의 거래로 계좌 잔액을 재구성한다", async () => {
     const result = await useCase.execute(1n, "2026-09");
 
-    const [, accountIds, beforeDate] = repo.getAccountBalanceDeltasBefore.mock.calls[0];
+    const [, accountIds, balanceDate] = repo.getAccountBalanceDeltasUntil.mock.calls[0];
     expect(accountIds).toEqual([1n, 2n]);
-    expect(beforeDate.toISOString()).toBe("2026-09-01T00:00:00.000Z");
+    expect(balanceDate.toISOString()).toBe("2026-09-20T00:00:00.000Z");
+    expect(result.balance_date).toBe("2026-09-20");
     expect(result.accounts).toEqual([
-      { account_id: 1, account_name: "CMA_RP", opening_balance: 1300000, base_period_income_amount: 3000000 },
-      { account_id: 2, account_name: "생활비 통장", opening_balance: 0, base_period_income_amount: 0 }
+      { account_id: 1, account_name: "생활비 통장", balance: 1300000 },
+      { account_id: 2, account_name: "적금 통장", balance: 0 }
     ]);
   });
 
-  it("기준 월·다음 달 기간과 기준 월 실제 지출을 항목 단위로 반환한다(카드는 amount + interest)", async () => {
+  it("이번 달 요청이면 base_date를 읽지 않는다", async () => {
+    const result = await useCase.execute(1n, "2026-09", "2026-09-01");
+
+    expect(result.balance_date).toBe("2026-09-20");
+  });
+
+  it("지난달이면 입력한 잔액 기준일까지의 거래로 잔액을 재구성한다", async () => {
+    const result = await useCase.execute(1n, "2026-08", "2026-08-31");
+
+    const [, , balanceDate] = repo.getAccountBalanceDeltasUntil.mock.calls[0];
+    expect(balanceDate.toISOString()).toBe("2026-08-31T00:00:00.000Z");
+    expect(result.balance_date).toBe("2026-08-31");
+    expect(result.base_period).toEqual({ year: 2026, month: 8, start_date: "2026-08-01", end_date: "2026-08-31" });
+    expect(result.next_period).toEqual({ year: 2026, month: 9, start_date: "2026-09-01", end_date: "2026-09-30" });
+  });
+
+  it("지난달의 잔액 기준일은 오늘까지 허용하고 범위 제한은 두지 않는다", async () => {
+    await expect(useCase.execute(1n, "2026-08", "2026-09-20")).resolves.toBeDefined();
+    await expect(useCase.execute(1n, "2026-08", "2025-01-15")).resolves.toBeDefined();
+  });
+
+  it.each([
+    ["2026-08", undefined, "잔액 기준일을 입력해 주세요."],
+    ["2026-08", "2026-02-30", "잔액 기준일 형식이 올바르지 않습니다."],
+    ["2026-08", "2026-09-21", "오늘 이후 날짜는 잔액 기준일로 선택할 수 없습니다."],
+    ["2026-07", "2026-07-31", "이번 달 또는 지난달만 선택할 수 있습니다."],
+    ["2026-10", undefined, "이번 달 또는 지난달만 선택할 수 있습니다."]
+  ])("base_month=%s, base_date=%s는 VALIDATION_001로 거부하고 원본을 조회하지 않는다", async (month, date, message) => {
+    await expect(useCase.execute(1n, month, date)).rejects.toMatchObject({
+      code: "VALIDATION_001",
+      statusCode: 400,
+      message
+    });
+    expect(repo.getAccounts).not.toHaveBeenCalled();
+  });
+
+  it("1월이면 지난달은 전년도 12월이다", async () => {
+    jest.setSystemTime(new Date("2027-01-05T03:00:00.000Z"));
+
+    await expect(useCase.execute(1n, "2026-12", "2026-12-31")).resolves.toBeDefined();
+  });
+
+  it("기준 월의 현금 동일 사용 지출(계좌이동 보내는 쪽 포함)을 기준 월 기간으로 조회해 항목 단위로 반환한다", async () => {
     const result = await useCase.execute(1n, "2026-09");
 
-    expect(result.base_period).toEqual({ year: 2026, month: 9, start_date: "2026-09-01", end_date: "2026-09-30" });
-    expect(result.next_period).toEqual({ year: 2026, month: 10, start_date: "2026-10-01", end_date: "2026-10-31" });
-    expect(result.base_period_items.cash_expenses.map((e) => e.transaction_id)).toEqual([100, 101]);
-    expect(result.base_period_items.card_expenses[0]).toMatchObject({
+    const [, startDate, endDate] = repo.getCashSameUseExpenses.mock.calls[0];
+    expect(startDate.toISOString()).toBe("2026-09-01T00:00:00.000Z");
+    expect(endDate.toISOString()).toBe("2026-09-30T00:00:00.000Z");
+    expect(result.cash_same_use_expenses).toEqual([
+      {
+        transaction_id: 100,
+        account_id: 1,
+        account_name: "생활비 통장",
+        category_name: "생활",
+        memo: "보험료",
+        transaction_date: "2026-09-05",
+        amount: 200000
+      },
+      {
+        transaction_id: 101,
+        account_id: 1,
+        account_name: "생활비 통장",
+        category_name: "계좌금액이동",
+        memo: "적금",
+        transaction_date: "2026-09-10",
+        amount: 300000
+      }
+    ]);
+  });
+
+  it("카드 사용액·다음 달 할부·카드 고정지출은 amount + interest로 반환한다", async () => {
+    const result = await useCase.execute(1n, "2026-09");
+
+    const [, nextStart, nextEnd] = repo.getCardInstallmentsInPeriod.mock.calls[0];
+    expect(nextStart.toISOString()).toBe("2026-10-01T00:00:00.000Z");
+    expect(nextEnd.toISOString()).toBe("2026-10-31T00:00:00.000Z");
+    expect(result.base_period_card_expenses[0]).toMatchObject({
       card_id: 5,
       amount: 50000,
       interest: 1500,
       total_amount: 51500
     });
+    expect(result.next_period_installments).toEqual([
+      {
+        item_id: "installment-20-4",
+        card_id: 5,
+        category_name: "생활",
+        memo: "냉장고",
+        transaction_date: "2026-10-10",
+        installment_seq: 4,
+        total_amount: 82000
+      }
+    ]);
+    expect(result.card_fixed_expenses).toEqual([
+      expect.objectContaining({ transaction_id: 400, card_id: 5, total_amount: 55000 })
+    ]);
     expect(result.cards).toEqual([{ card_id: 5, card_name: "신한카드" }]);
   });
 
-  it("다음 달 할부 회차는 회차 금액 + 이자로, n월 현금 동일 사용 체크 거래는 현금 고정지출로 반영한다", async () => {
+  it("응답에 계산 결과·반복 판별 항목을 포함하지 않는다", async () => {
     const result = await useCase.execute(1n, "2026-09");
 
-    expect(result.next_period_items.card_fixed_items).toEqual([
-      expect.objectContaining({ item_id: "installment-20-4", card_id: 5, amount: 82000, classification: "AUTOMATIC" })
-    ]);
-    expect(result.next_period_items.cash_fixed_items).toEqual([
-      expect.objectContaining({ item_id: "cash-next-month-100", account_id: 2, amount: 200000 })
-    ]);
-  });
-
-  it("체크 거래와 같은 반복 지출은 반복 판별로 한 번 더 반영하지 않는다", async () => {
-    repo.getRecurringSourceTransactions.mockResolvedValue(
-      ["2026-06-05", "2026-07-05", "2026-08-05"].map((date, i) => ({
-        transactionId: BigInt(400 + i),
-        walletType: "ACCOUNT" as const,
-        walletId: 2n,
-        categoryId: 10n,
-        categoryName: "생활",
-        memo: "관리비",
-        transactionDate: new Date(`${date}T00:00:00.000Z`),
-        amount: 200000
-      }))
-    );
-
-    const result = await useCase.execute(1n, "2026-09");
-
-    expect(result.next_period_items.cash_fixed_items).toHaveLength(1);
-    expect(result.next_period_items.cash_fixed_items[0].item_id).toBe("cash-next-month-100");
-  });
-
-  it("반복 판별은 기준 월 직전 6개 완료 월만 조회하고 AUTOMATIC/CANDIDATE를 나눠 반환한다", async () => {
-    repo.getRecurringSourceTransactions.mockResolvedValue([
-      ...["2026-06-10", "2026-07-10", "2026-08-10"].map((date, i) => ({
-        transactionId: BigInt(500 + i),
-        walletType: "CARD" as const,
-        walletId: 5n,
-        categoryId: 11n,
-        categoryName: "통신",
-        memo: "통신비",
-        transactionDate: new Date(`${date}T00:00:00.000Z`),
-        amount: 55000
-      })),
-      ...["2026-07-28", "2026-08-27"].map((date, i) => ({
-        transactionId: BigInt(600 + i),
-        walletType: "CARD" as const,
-        walletId: 5n,
-        categoryId: 12n,
-        categoryName: "의료",
-        memo: "병원",
-        transactionDate: new Date(`${date}T00:00:00.000Z`),
-        amount: 35000
-      }))
-    ]);
-
-    const result = await useCase.execute(1n, "2026-09");
-
-    const [, startDate, beforeDate] = repo.getRecurringSourceTransactions.mock.calls[0];
-    expect(startDate.toISOString()).toBe("2026-03-01T00:00:00.000Z");
-    expect(beforeDate.toISOString()).toBe("2026-09-01T00:00:00.000Z");
-    expect(result.next_period_items.card_fixed_items.map((i) => i.item_id)).toEqual([
-      "installment-20-4",
-      "card-recurring-502"
-    ]);
-    expect(result.next_period_items.candidates).toEqual([
-      expect.objectContaining({
-        item_id: "candidate-601",
-        source_type: "CARD",
-        wallet_id: 5,
-        amount: 35000,
-        classification: "CANDIDATE"
-      })
-    ]);
-  });
-
-  it("응답에 예정 지출(pending)·기준 월 후보·계산 결과를 포함하지 않는다", async () => {
-    const result = await useCase.execute(1n, "2026-09");
-
-    expect(Object.keys(result.base_period_items)).toEqual(["cash_expenses", "card_expenses"]);
     expect(Object.keys(result)).toEqual([
       "base_period",
       "next_period",
+      "balance_date",
       "accounts",
       "cards",
-      "base_period_items",
-      "next_period_items"
+      "cash_same_use_expenses",
+      "base_period_card_expenses",
+      "next_period_installments",
+      "card_fixed_expenses"
     ]);
-  });
-
-  it("오늘(사용자 시간대) 기준 미래 월은 VALIDATION_001로 거부하고 원본을 조회하지 않는다", async () => {
-    await expect(useCase.execute(1n, "2026-10")).rejects.toMatchObject({
-      code: "VALIDATION_001",
-      statusCode: 400
-    });
-    expect(repo.getAccounts).not.toHaveBeenCalled();
-  });
-
-  it("현재 월과 과거 월은 허용한다", async () => {
-    await expect(useCase.execute(1n, "2026-09")).resolves.toBeDefined();
-    await expect(useCase.execute(1n, "2025-12")).resolves.toBeDefined();
   });
 
   it("원본 조회 중 오류가 나면 DASHBOARD_002를 반환한다", async () => {
@@ -236,7 +221,8 @@ describe("BudgetCalculatorSourceQueryDto", () => {
     expect(await errorsOf({ base_month: "2026-9" })).not.toHaveLength(0);
   });
 
-  it("YYYY-MM 형식은 통과한다", async () => {
+  it("YYYY-MM 형식은 통과하고 base_date는 선택 값이다", async () => {
     expect(await errorsOf({ base_month: "2026-09" })).toHaveLength(0);
+    expect(await errorsOf({ base_month: "2026-08", base_date: "2026-08-31" })).toHaveLength(0);
   });
 });
