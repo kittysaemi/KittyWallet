@@ -1,4 +1,5 @@
 import { Decimal } from "@prisma/client/runtime/library";
+import { getTodayInTimezone } from "../../../common/utils/date.util";
 import { TransactionsRepository } from "../infrastructure/transactions.repository";
 import { TransactionsService } from "./transactions.service";
 
@@ -76,6 +77,7 @@ const mockRepo = {
   findCardsByIds: jest.fn(),
   findAccountTransactionsForBalance: jest.fn(),
   sumCardExpense: jest.fn(),
+  getUserTimezoneSetting: jest.fn(),
   updateWithBalances: jest.fn(),
   softDeleteWithBalance: jest.fn()
 } as unknown as TransactionsRepository;
@@ -644,4 +646,62 @@ describe("TransactionsService - 고정지출 (fixed_expense_yn, #443)", () => {
       expect.any(Array)
     );
   });
+});
+
+describe("TransactionsService.getTransactions - 미래 날짜 거래 제외 (#443)", () => {
+  let service: TransactionsService;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    service = new TransactionsService(mockRepo);
+    (mockRepo.findMany as jest.Mock).mockResolvedValue([]);
+    (mockRepo.count as jest.Mock).mockResolvedValue(0);
+    (mockRepo.sumCardExpense as jest.Mock).mockResolvedValue(0);
+    (mockRepo.findAccountsByIds as jest.Mock).mockResolvedValue([]);
+    (mockRepo.findCardsByIds as jest.Mock).mockResolvedValue([]);
+  });
+
+  const command = {
+    userId: 1n,
+    startDate: "2026-06-01",
+    endDate: "2026-06-30",
+    walletType: "CARD",
+    walletId: 3,
+    page: 1,
+    limit: 20,
+    sort: "transaction_date_desc"
+  };
+
+  // getTodayInTimezone은 이 파일 상단에서 "2026-06-20"으로 고정된다.
+  const visibleUntil = new Date("2026-06-20T00:00:00.000Z");
+
+  it("사용자 설정 timezone 기준 오늘을 목록·건수·카드 기간 사용액에 같은 기준으로 전달한다", async () => {
+    (mockRepo.getUserTimezoneSetting as jest.Mock).mockResolvedValue("Asia/Seoul");
+
+    await service.getTransactions(command);
+
+    expect(mockRepo.getUserTimezoneSetting).toHaveBeenCalledWith(1n);
+    expect(getTodayInTimezone).toHaveBeenCalledWith("Asia/Seoul");
+    expect((mockRepo.findMany as jest.Mock).mock.calls[0][0].visibleUntil).toEqual(visibleUntil);
+    expect((mockRepo.count as jest.Mock).mock.calls[0][0].visibleUntil).toEqual(visibleUntil);
+    expect(mockRepo.sumCardExpense).toHaveBeenCalledWith(
+      1n,
+      3n,
+      new Date("2026-06-01"),
+      new Date("2026-06-30"),
+      visibleUntil
+    );
+  });
+
+  it.each([null, "Mars/Base"])(
+    "timezone 설정이 %p이면 기본값(Asia/Seoul) 기준 오늘을 사용한다",
+    async (setting) => {
+      (mockRepo.getUserTimezoneSetting as jest.Mock).mockResolvedValue(setting);
+
+      await service.getTransactions(command);
+
+      expect(getTodayInTimezone).toHaveBeenCalledWith("Asia/Seoul");
+      expect((mockRepo.findMany as jest.Mock).mock.calls[0][0].visibleUntil).toEqual(visibleUntil);
+    }
+  );
 });

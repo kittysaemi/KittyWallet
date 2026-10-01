@@ -14,7 +14,8 @@ describe("StatisticsService", () => {
     groupAmountsByCategory: jest.fn(),
     groupCategoryAmountsByInstallmentOrigin: jest.fn(),
     groupExpensesByWalletAndCategory: jest.fn(),
-    groupIncomesByWalletAndCategory: jest.fn()
+    groupIncomesByWalletAndCategory: jest.fn(),
+    getUserTimezoneSetting: jest.fn()
   } as unknown as jest.Mocked<StatisticsRepository>;
 
   const service = new StatisticsService(statisticsRepository);

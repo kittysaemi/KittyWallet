@@ -77,6 +77,7 @@ describe("TransactionsService", () => {
     findCardsByIds: jest.fn(),
     count: jest.fn(),
     sumCardExpense: jest.fn(),
+    getUserTimezoneSetting: jest.fn(),
     create: jest.fn(),
     createWithAccountBalanceUpdate: jest.fn(),
     update: jest.fn(),
@@ -141,7 +142,9 @@ describe("TransactionsService", () => {
         BigInt(1),
         BigInt(3),
         undefined,
-        undefined
+        undefined,
+        // 미래 날짜 거래 제외 기준(#443): 2026-06-01T00:00Z = 2026-06-01 09:00 Asia/Seoul
+        new Date("2026-06-01T00:00:00.000Z")
       );
     });
 
@@ -229,7 +232,9 @@ describe("TransactionsService", () => {
         BigInt(1),
         BigInt(3),
         undefined,
-        undefined
+        undefined,
+        // 미래 날짜 거래 제외 기준(#443): 2026-06-01T00:00Z = 2026-06-01 09:00 Asia/Seoul
+        new Date("2026-06-01T00:00:00.000Z")
       );
     });
 
@@ -277,7 +282,8 @@ describe("TransactionsService", () => {
         BigInt(1),
         BigInt(3),
         new Date("2026-06-01"),
-        new Date("2026-06-30")
+        new Date("2026-06-30"),
+        new Date("2026-06-01T00:00:00.000Z")
       );
     });
   });

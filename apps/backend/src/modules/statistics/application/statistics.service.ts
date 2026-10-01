@@ -2,6 +2,7 @@ import { HttpStatus, Injectable } from "@nestjs/common";
 import { Prisma, TransactionType, WalletType } from "@prisma/client";
 import { AppException } from "../../../common/exceptions/app.exception";
 import { getTodayInTimezone } from "../../../common/utils/date.util";
+import { resolveTimezoneSetting } from "../../settings/domain/settings-policy";
 import {
   StatisticsRepository,
   TransactionTypeAmountGroup,
@@ -55,11 +56,22 @@ interface AmountSummary {
 export class StatisticsService {
   constructor(private readonly statisticsRepository: StatisticsRepository) {}
 
+  // 오늘 이후 날짜의 할부가 아닌 거래는 통계에서 제외한다(#443). 오늘은 사용자 설정 timezone
+  // 기준이며, 조회할 때마다 판단하므로 해당 날짜가 되면 별도 처리 없이 집계된다.
+  private async resolveVisibleUntil(userId: bigint): Promise<Date> {
+    const timezone = resolveTimezoneSetting(
+      await this.statisticsRepository.getUserTimezoneSetting(userId)
+    );
+    return new Date(`${getTodayInTimezone(timezone)}T00:00:00.000Z`);
+  }
+
   async getMonthlyStatistics(command: GetMonthlyStatisticsCommand) {
+    const visibleUntil = await this.resolveVisibleUntil(command.userId);
     const month = command.month ?? getTodayInTimezone().slice(0, 7);
     const { startDate, endDate } = this.parseMonth(month);
     const condition = {
       userId: command.userId,
+      visibleUntil,
       startDate,
       endDate,
       walletType: this.toWalletType(command.walletType),
@@ -97,6 +109,7 @@ export class StatisticsService {
   }
 
   async getCategoryStatistics(command: GetCategoryStatisticsCommand) {
+    const visibleUntil = await this.resolveVisibleUntil(command.userId);
     const { startDate, endDate } = this.parseDateRange(command.startDate, command.endDate);
     const transactionType = this.toTransactionType(command.transactionType ?? "EXPENSE");
     this.validateWalletTransactionType(command.walletType, transactionType);
@@ -104,6 +117,7 @@ export class StatisticsService {
     const useInstallmentOrigin = transactionType === TransactionType.EXPENSE;
     const condition = {
       userId: command.userId,
+      visibleUntil,
       startDate,
       endDate,
       transactionType,
@@ -135,10 +149,12 @@ export class StatisticsService {
   }
 
   async getPeriodStatistics(command: GetPeriodStatisticsCommand) {
+    const visibleUntil = await this.resolveVisibleUntil(command.userId);
     const { startDate, endDate } = this.parseDateRange(command.startDate, command.endDate);
     const groupBy = command.groupBy ?? "DAY";
     const dailyGroups = await this.statisticsRepository.groupDailyAmountsByTransactionType({
       userId: command.userId,
+      visibleUntil,
       startDate,
       endDate,
       walletType: this.toWalletType(command.walletType),
@@ -173,10 +189,12 @@ export class StatisticsService {
   }
 
   async getSummaryStatistics(command: GetVisualizationCommand) {
+    const visibleUntil = await this.resolveVisibleUntil(command.userId);
     const month = command.month ?? getTodayInTimezone().slice(0, 7);
     const { startDate, endDate } = this.parseMonth(month);
     const condition = {
       userId: command.userId,
+      visibleUntil,
       startDate,
       endDate,
       walletType: this.toWalletType(command.walletType),
@@ -211,12 +229,14 @@ export class StatisticsService {
   }
 
   async getCategoryTopStatistics(command: GetVisualizationCommand) {
+    const visibleUntil = await this.resolveVisibleUntil(command.userId);
     const month = command.month ?? getTodayInTimezone().slice(0, 7);
     const { startDate, endDate } = this.parseMonth(month);
     const isIncome = command.transactionType === "INCOME";
     const txType = isIncome ? TransactionType.INCOME : TransactionType.EXPENSE;
     const groups = await this.statisticsRepository.groupAmountsByCategory({
       userId: command.userId,
+      visibleUntil,
       startDate,
       endDate,
       walletType: this.toWalletType(command.walletType),
@@ -258,12 +278,14 @@ export class StatisticsService {
   }
 
   async getCalendarStatistics(command: GetVisualizationCommand) {
+    const visibleUntil = await this.resolveVisibleUntil(command.userId);
     const month = command.month ?? getTodayInTimezone().slice(0, 7);
     const { startDate, endDate } = this.parseMonth(month);
     // 달력 히트맵은 할부 회차를 매달 중복 집계하지 않고, 최초 구매일에 원금 기준으로 1회만 집계한다.
     // (카테고리 통계 #369와 동일한 2-pass 방식)
     const dailyGroups = await this.statisticsRepository.groupDailyExpenseAmountsByInstallmentOrigin({
       userId: command.userId,
+      visibleUntil,
       startDate,
       endDate,
       walletType: this.toWalletType(command.walletType),
@@ -287,10 +309,12 @@ export class StatisticsService {
   }
 
   async getSankeyStatistics(command: GetVisualizationCommand) {
+    const visibleUntil = await this.resolveVisibleUntil(command.userId);
     const month = command.month ?? getTodayInTimezone().slice(0, 7);
     const { startDate, endDate } = this.parseMonth(month);
     const condition = {
       userId: command.userId,
+      visibleUntil,
       startDate,
       endDate,
       walletType: this.toWalletType(command.walletType),
@@ -358,10 +382,12 @@ export class StatisticsService {
   }
 
   async getSankeyIncomeStatistics(command: GetVisualizationCommand) {
+    const visibleUntil = await this.resolveVisibleUntil(command.userId);
     const month = command.month ?? getTodayInTimezone().slice(0, 7);
     const { startDate, endDate } = this.parseMonth(month);
     const condition = {
       userId: command.userId,
+      visibleUntil,
       startDate,
       endDate,
       walletType: this.toWalletType(command.walletType),
@@ -455,7 +481,8 @@ export class StatisticsService {
   }
 
   async getCategoryExpenseStatistics(command: GetCategoryExpenseStatisticsCommand) {
-    const condition = this.buildCategoryExpenseCondition(command);
+    const visibleUntil = await this.resolveVisibleUntil(command.userId);
+    const condition = this.buildCategoryExpenseCondition(command, visibleUntil);
     const groups = await this.statisticsRepository.groupCategoryAmountsByInstallmentOrigin(condition);
     const totalAmount = groups.reduce((sum, g) => sum + this.toNumber(g.amount), 0);
 
@@ -476,9 +503,13 @@ export class StatisticsService {
     };
   }
 
-  private buildCategoryExpenseCondition(command: GetCategoryExpenseStatisticsCommand) {
+  private buildCategoryExpenseCondition(
+    command: GetCategoryExpenseStatisticsCommand,
+    visibleUntil: Date
+  ) {
     const base = {
       userId: command.userId,
+      visibleUntil,
       transactionType: TransactionType.EXPENSE,
       walletType: this.toWalletType(command.walletType),
       walletId: command.walletId

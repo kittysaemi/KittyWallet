@@ -53,6 +53,13 @@ export function mergeWithDefaultSettings(settings: PartialSettingsMap): Settings
   };
 }
 
+// 저장된 timezone 설정값을 검증해 돌려준다. 미설정이거나 지원하지 않는 값이면 기본값을 쓴다.
+export function resolveTimezoneSetting(value: unknown): TimezoneSetting {
+  return SUPPORTED_TIMEZONES.includes(value as TimezoneSetting)
+    ? (value as TimezoneSetting)
+    : DEFAULT_TIMEZONE;
+}
+
 function normalizeSettingValue(key: SettingKey, value: unknown): SettingValue {
   switch (key) {
     case "theme":

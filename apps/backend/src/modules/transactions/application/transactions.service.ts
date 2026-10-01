@@ -2,6 +2,7 @@ import { HttpStatus, Injectable } from "@nestjs/common";
 import { Prisma, TransactionType, WalletType } from "@prisma/client";
 import { AppException } from "../../../common/exceptions/app.exception";
 import { getTodayInTimezone } from "../../../common/utils/date.util";
+import { resolveTimezoneSetting } from "../../settings/domain/settings-policy";
 import { BalanceViolationError, TransferGroupMismatchError } from "../domain/errors";
 import {
   AccountBalanceTransaction,
@@ -460,6 +461,13 @@ export class TransactionsService {
       );
     }
 
+    // 오늘 이후 날짜의 할부가 아닌 거래는 목록·건수·카드 기간 사용액에서 제외한다(#443).
+    // 오늘은 사용자 설정 timezone 기준이며, 조회할 때마다 판단하므로 해당 날짜가 되면 조회된다.
+    const timezone = resolveTimezoneSetting(
+      await this.transactionsRepository.getUserTimezoneSetting(command.userId)
+    );
+    const visibleUntil = new Date(`${getTodayInTimezone(timezone)}T00:00:00.000Z`);
+
     const condition: FindTransactionsCondition = {
       userId: command.userId,
       startDate: command.startDate ? new Date(command.startDate) : undefined,
@@ -477,7 +485,8 @@ export class TransactionsService {
         walletId: BigInt(ref.walletId)
       })),
       excludeInstallment: command.excludeInstallment,
-      transactionType: command.transactionType as TransactionType | undefined
+      transactionType: command.transactionType as TransactionType | undefined,
+      visibleUntil
     };
 
     const orderBy = this.buildOrderBy(command.sort);
@@ -504,7 +513,8 @@ export class TransactionsService {
             command.userId,
             BigInt(singleWallet!.walletId),
             condition.startDate,
-            condition.endDate
+            condition.endDate,
+            visibleUntil
           )
         : Promise.resolve(null)
     ]);
