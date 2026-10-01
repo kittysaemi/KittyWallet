@@ -1,13 +1,12 @@
 import { Injectable } from "@nestjs/common";
 import { Prisma, TransactionType } from "@prisma/client";
 import { PrismaService } from "../../../database/prisma.service";
-import { RecurringSourceTransaction } from "../domain/recurring-expense.classifier";
 
 // 계좌이동 전용 카테고리명. dashboard.repository.ts·transfer.repository.ts와 동일한 값이다.
 // transferGroupId가 없는 레거시 계좌이동 거래를 카테고리명으로 함께 걸러낸다.
 const TRANSFER_CATEGORY_NAME = "계좌금액이동";
 
-// 예산 계산기는 삭제 거래와 계좌이동(보내는 쪽·받는 쪽)을 원본·반복 판별에서 모두 제외한다.
+// 카드 항목은 삭제 거래와 계좌이동을 제외한다.
 const NOT_DELETED_NOT_TRANSFER = {
   deletedYn: false,
   transferGroupId: null,
@@ -28,24 +27,42 @@ export interface BudgetCardRow {
 export interface BudgetExpenseRow {
   transactionId: bigint;
   walletId: bigint;
-  categoryId: bigint;
   categoryName: string;
   memo: string | null;
   transactionDate: Date;
   amount: number;
   interest: number;
-  nextMonthCashYn: boolean;
 }
 
-export interface BudgetInstallmentRow {
-  transactionId: bigint;
-  walletId: bigint;
+export interface BudgetCashExpenseRow extends BudgetExpenseRow {
+  accountName: string;
+}
+
+export interface BudgetInstallmentRow extends BudgetExpenseRow {
   installmentId: bigint;
   installmentSeq: number | null;
-  categoryName: string;
-  memo: string | null;
-  amount: number;
-  interest: number;
+}
+
+const EXPENSE_SELECT = {
+  transactionId: true,
+  walletId: true,
+  memo: true,
+  transactionDate: true,
+  amount: true,
+  interest: true,
+  category: { select: { categoryName: true } }
+} satisfies Prisma.TransactionSelect;
+
+function toExpenseRow(row: Prisma.TransactionGetPayload<{ select: typeof EXPENSE_SELECT }>) {
+  return {
+    transactionId: row.transactionId,
+    walletId: row.walletId,
+    categoryName: row.category.categoryName,
+    memo: row.memo,
+    transactionDate: row.transactionDate,
+    amount: row.amount.toNumber(),
+    interest: row.interest
+  };
 }
 
 @Injectable()
@@ -82,13 +99,13 @@ export class BudgetCalculatorRepository {
   }
 
   /**
-   * 기준 월 시작 시점 잔액 재구성용: 기준 월 이전 계좌 거래의 계좌별 수입·지출 합계.
+   * 잔액 기준일 잔액 재구성용: 기준일까지(그날 포함) 계좌 거래의 계좌별 수입·지출 합계.
    * 실제 잔액 변동을 재현해야 하므로 계좌이동도 포함한다(삭제 거래만 제외).
    */
-  async getAccountBalanceDeltasBefore(
+  async getAccountBalanceDeltasUntil(
     userId: bigint,
     accountIds: bigint[],
-    beforeDate: Date
+    balanceDate: Date
   ): Promise<Map<string, number>> {
     const deltas = new Map<string, number>();
     if (accountIds.length === 0) {
@@ -101,7 +118,7 @@ export class BudgetCalculatorRepository {
         walletType: "ACCOUNT",
         walletId: { in: accountIds },
         deletedYn: false,
-        transactionDate: { lt: beforeDate }
+        transactionDate: { lte: balanceDate }
       },
       _sum: { amount: true }
     });
@@ -114,30 +131,42 @@ export class BudgetCalculatorRepository {
     return deltas;
   }
 
-  /** 기준 월 계좌별 실제 수입 합계(계좌이동 제외). */
-  async getAccountIncomeInPeriod(
+  /**
+   * 기준 월 현금 동일 사용 지출: "n월 현금 동일 사용" 체크된 계좌 지출(계좌이동 보내는 쪽 포함).
+   * 대시보드 현금 지출 예상(dashboard.repository.ts getCashExpenseForecastAmounts)의 계좌 집계와 같은 조건이다.
+   */
+  async getCashSameUseExpenses(
     userId: bigint,
     startDate: Date,
     endDate: Date
-  ): Promise<Map<string, number>> {
-    const rows = await this.prisma.transaction.groupBy({
-      by: ["walletId"],
+  ): Promise<BudgetCashExpenseRow[]> {
+    const rows = await this.prisma.transaction.findMany({
       where: {
-        ...NOT_DELETED_NOT_TRANSFER,
         userId,
+        deletedYn: false,
         walletType: "ACCOUNT",
-        transactionType: TransactionType.INCOME,
+        transactionType: TransactionType.EXPENSE,
+        nextMonthCashYn: true,
         transactionDate: { gte: startDate, lte: endDate }
       },
-      _sum: { amount: true }
+      select: EXPENSE_SELECT,
+      orderBy: [{ transactionDate: "asc" }, { transactionId: "asc" }]
     });
-    return new Map(rows.map((row) => [row.walletId.toString(), row._sum.amount?.toNumber() ?? 0]));
+    // 아카이브된 계좌의 거래도 표시할 수 있도록 계좌명은 삭제 여부와 무관하게 조회한다.
+    const accounts = await this.prisma.account.findMany({
+      where: { userId, accountId: { in: [...new Set(rows.map((row) => row.walletId))] } },
+      select: { accountId: true, accountName: true }
+    });
+    const names = new Map(accounts.map((a) => [a.accountId.toString(), a.accountName]));
+    return rows.map((row) => ({
+      ...toExpenseRow(row),
+      accountName: names.get(row.walletId.toString()) ?? ""
+    }));
   }
 
-  /** 기간 내 계좌 또는 카드 지출(계좌이동·삭제 제외). */
-  async getExpensesInPeriod(
+  /** 기간 내 카드 지출(일시불·할부 회차, 계좌이동·삭제 제외). 자동 등록된 오늘 이후 날짜 거래도 포함한다. */
+  async getCardExpensesInPeriod(
     userId: bigint,
-    walletType: "ACCOUNT" | "CARD",
     startDate: Date,
     endDate: Date
   ): Promise<BudgetExpenseRow[]> {
@@ -145,37 +174,39 @@ export class BudgetCalculatorRepository {
       where: {
         ...NOT_DELETED_NOT_TRANSFER,
         userId,
-        walletType,
+        walletType: "CARD",
         transactionType: TransactionType.EXPENSE,
         transactionDate: { gte: startDate, lte: endDate }
       },
-      select: {
-        transactionId: true,
-        walletId: true,
-        categoryId: true,
-        memo: true,
-        transactionDate: true,
-        amount: true,
-        interest: true,
-        nextMonthCashYn: true,
-        category: { select: { categoryName: true } }
-      },
+      select: EXPENSE_SELECT,
       orderBy: [{ transactionDate: "asc" }, { transactionId: "asc" }]
     });
-    return rows.map((row) => ({
-      transactionId: row.transactionId,
-      walletId: row.walletId,
-      categoryId: row.categoryId,
-      categoryName: row.category.categoryName,
-      memo: row.memo,
-      transactionDate: row.transactionDate,
-      amount: row.amount.toNumber(),
-      interest: row.interest,
-      nextMonthCashYn: row.nextMonthCashYn
-    }));
+    return rows.map(toExpenseRow);
   }
 
-  /** 다음 달에 배정된 카드 할부 회차. */
+  /** 기준 월 카드 고정지출: 고정지출 체크된 카드 일시불 지출(고정지출 자동화 설정과 무관). */
+  async getCardFixedExpensesInPeriod(
+    userId: bigint,
+    startDate: Date,
+    endDate: Date
+  ): Promise<BudgetExpenseRow[]> {
+    const rows = await this.prisma.transaction.findMany({
+      where: {
+        ...NOT_DELETED_NOT_TRANSFER,
+        userId,
+        walletType: "CARD",
+        transactionType: TransactionType.EXPENSE,
+        installmentId: null,
+        fixedExpenseYn: true,
+        transactionDate: { gte: startDate, lte: endDate }
+      },
+      select: EXPENSE_SELECT,
+      orderBy: [{ transactionDate: "asc" }, { transactionId: "asc" }]
+    });
+    return rows.map(toExpenseRow);
+  }
+
+  /** 기간에 배정된 카드 할부 회차. */
   async getCardInstallmentsInPeriod(
     userId: bigint,
     startDate: Date,
@@ -190,68 +221,13 @@ export class BudgetCalculatorRepository {
         installmentId: { not: null },
         transactionDate: { gte: startDate, lte: endDate }
       },
-      select: {
-        transactionId: true,
-        walletId: true,
-        installmentId: true,
-        installmentSeq: true,
-        memo: true,
-        amount: true,
-        interest: true,
-        category: { select: { categoryName: true } }
-      },
+      select: { ...EXPENSE_SELECT, installmentId: true, installmentSeq: true },
       orderBy: [{ transactionDate: "asc" }, { transactionId: "asc" }]
     });
     return rows.map((row) => ({
-      transactionId: row.transactionId,
-      walletId: row.walletId,
+      ...toExpenseRow(row),
       installmentId: row.installmentId as bigint,
-      installmentSeq: row.installmentSeq,
-      categoryName: row.category.categoryName,
-      memo: row.memo,
-      amount: row.amount.toNumber(),
-      interest: row.interest
-    }));
-  }
-
-  /**
-   * 반복 판별 원본: 관찰 구간(기준 월 직전 N개 완료 월)의 계좌·카드 지출.
-   * 할부 회차는 별도(다음 달 할부)로 반영하므로 제외한다.
-   */
-  async getRecurringSourceTransactions(
-    userId: bigint,
-    startDate: Date,
-    beforeDate: Date
-  ): Promise<RecurringSourceTransaction[]> {
-    const rows = await this.prisma.transaction.findMany({
-      where: {
-        ...NOT_DELETED_NOT_TRANSFER,
-        userId,
-        transactionType: TransactionType.EXPENSE,
-        installmentId: null,
-        transactionDate: { gte: startDate, lt: beforeDate }
-      },
-      select: {
-        transactionId: true,
-        walletType: true,
-        walletId: true,
-        categoryId: true,
-        memo: true,
-        transactionDate: true,
-        amount: true,
-        interest: true,
-        category: { select: { categoryName: true } }
-      }
-    });
-    return rows.map((row) => ({
-      transactionId: row.transactionId,
-      walletType: row.walletType,
-      walletId: row.walletId,
-      categoryId: row.categoryId,
-      categoryName: row.category.categoryName,
-      memo: row.memo,
-      transactionDate: row.transactionDate,
-      amount: row.amount.toNumber() + (row.walletType === "CARD" ? row.interest : 0)
+      installmentSeq: row.installmentSeq
     }));
   }
 }
