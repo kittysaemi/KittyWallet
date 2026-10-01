@@ -9,6 +9,8 @@ export interface StatisticsCondition {
   walletType?: WalletType;
   walletId?: bigint;
   transactionType?: TransactionType;
+  // 이 날짜(사용자 설정 timezone 기준 오늘, UTC 자정) 이후의 할부가 아닌 거래를 집계에서 제외한다(#443).
+  visibleUntil?: Date;
 }
 
 export interface TransactionTypeAmountGroup {
@@ -52,6 +54,14 @@ export interface WalletCategoryGroup {
 export class StatisticsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  async getUserTimezoneSetting(userId: bigint): Promise<unknown> {
+    const setting = await this.prisma.userSetting.findUnique({
+      where: { userId_settingKey: { userId, settingKey: "timezone" } },
+      select: { settingValue: true }
+    });
+    return setting?.settingValue ?? null;
+  }
+
   private buildWhere(condition: StatisticsCondition): Prisma.TransactionWhereInput {
     return {
       userId: condition.userId,
@@ -69,7 +79,17 @@ export class StatisticsRepository {
       },
       ...(condition.walletType ? { walletType: condition.walletType } : {}),
       ...(condition.walletId ? { walletId: condition.walletId } : {}),
-      ...(condition.transactionType ? { transactionType: condition.transactionType } : {})
+      ...(condition.transactionType ? { transactionType: condition.transactionType } : {}),
+      // 오늘 이후 날짜의 할부가 아닌 거래(카드 고정지출 자동 등록 거래)는 해당 날짜가 될 때까지
+      // 집계하지 않는다. 할부 회차는 기존 할부 집계 기준을 그대로 따른다(#443).
+      ...(condition.visibleUntil
+        ? {
+            OR: [
+              { transactionDate: { lte: condition.visibleUntil } },
+              { installmentId: { not: null } }
+            ]
+          }
+        : {})
     };
   }
 

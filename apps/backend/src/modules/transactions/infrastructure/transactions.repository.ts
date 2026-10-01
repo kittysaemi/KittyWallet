@@ -42,6 +42,8 @@ export interface FindTransactionsCondition {
   // 할부 거래(installmentId가 있는 거래)를 목록에서 제외한다.
   excludeInstallment?: boolean;
   transactionType?: TransactionType;
+  // 이 날짜(사용자 설정 timezone 기준 오늘, UTC 자정) 이후의 할부가 아닌 거래를 제외한다(#443).
+  visibleUntil?: Date;
 }
 
 export interface CreateTransactionInput {
@@ -80,9 +82,25 @@ export type AccountBalanceTransaction = Pick<
   "transactionId" | "transactionType" | "amount" | "transactionDate"
 >;
 
+// 오늘 이후 날짜의 할부가 아닌 거래(카드 고정지출 자동 등록 거래)는 해당 날짜가 될 때까지
+// 조회·집계에서 제외한다. 할부 회차는 거래일과 무관하게 그대로 조회한다(#443).
+function visibleUntilFilter(visibleUntil?: Date): Prisma.TransactionWhereInput | undefined {
+  return visibleUntil
+    ? { OR: [{ transactionDate: { lte: visibleUntil } }, { installmentId: { not: null } }] }
+    : undefined;
+}
+
 @Injectable()
 export class TransactionsRepository {
   constructor(private readonly prisma: PrismaService) {}
+
+  async getUserTimezoneSetting(userId: bigint): Promise<unknown> {
+    const setting = await this.prisma.userSetting.findUnique({
+      where: { userId_settingKey: { userId, settingKey: "timezone" } },
+      select: { settingValue: true }
+    });
+    return setting?.settingValue ?? null;
+  }
 
   private buildWhere(condition: FindTransactionsCondition): Prisma.TransactionWhereInput {
     const dateFilter: Prisma.DateTimeFilter | undefined =
@@ -128,11 +146,15 @@ export class TransactionsRepository {
         }
       : undefined;
 
+    const andFilters = [keywordFilter, visibleUntilFilter(condition.visibleUntil)].filter(
+      (filter): filter is Prisma.TransactionWhereInput => filter !== undefined
+    );
+
     return {
       userId: condition.userId,
       deletedYn: false,
       ...(dateFilter ? { transactionDate: dateFilter } : {}),
-      ...(keywordFilter ? { AND: [keywordFilter] } : {}),
+      ...(andFilters.length > 0 ? { AND: andFilters } : {}),
       ...walletFilter,
       ...categoryFilter,
       ...(condition.excludeInstallment ? { installmentId: null } : {}),
@@ -344,7 +366,8 @@ export class TransactionsRepository {
     userId: bigint,
     walletId: bigint,
     startDate?: Date,
-    endDate?: Date
+    endDate?: Date,
+    visibleUntil?: Date
   ): Promise<number> {
     const dateFilter: Prisma.DateTimeFilter | undefined =
       startDate || endDate
@@ -361,7 +384,8 @@ export class TransactionsRepository {
         walletId,
         transactionType: "EXPENSE",
         deletedYn: false,
-        ...(dateFilter ? { transactionDate: dateFilter } : {})
+        ...(dateFilter ? { transactionDate: dateFilter } : {}),
+        ...(visibleUntil ? visibleUntilFilter(visibleUntil) : {})
       },
       _sum: { amount: true }
     });

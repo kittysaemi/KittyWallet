@@ -28,7 +28,9 @@ const mockRepo = {
   groupAmountsByCategory: jest.fn(),
   groupCategoryAmountsByInstallmentOrigin: jest.fn(),
   groupExpensesByWalletAndCategory: jest.fn(),
-  groupIncomesByWalletAndCategory: jest.fn()
+  groupIncomesByWalletAndCategory: jest.fn(),
+  groupDailyExpenseAmountsByInstallmentOrigin: jest.fn(),
+  getUserTimezoneSetting: jest.fn()
 } as unknown as StatisticsRepository;
 
 const service = new StatisticsService(mockRepo);
@@ -148,5 +150,79 @@ describe("StatisticsService.getCategoryExpenseStatistics", () => {
       expect(result.items[0].ratio).toBe(33.33);
       expect(result.items[1].ratio).toBe(66.67);
     });
+  });
+});
+
+describe("StatisticsService - 미래 날짜 거래 제외 (#443)", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    // 2026-10-24 15:30 UTC = 2026-10-25 00:30 Asia/Seoul
+    jest.setSystemTime(new Date("2026-10-24T15:30:00Z"));
+    (mockRepo.getUserTimezoneSetting as jest.Mock).mockResolvedValue("Asia/Seoul");
+    (mockRepo.groupAmountsByTransactionType as jest.Mock).mockResolvedValue([]);
+    (mockRepo.groupDailyAmountsByTransactionType as jest.Mock).mockResolvedValue([]);
+    (mockRepo.groupAmountsByCategory as jest.Mock).mockResolvedValue([]);
+    (mockRepo.groupCategoryAmountsByInstallmentOrigin as jest.Mock).mockResolvedValue([]);
+    (mockRepo.groupExpensesByWalletAndCategory as jest.Mock).mockResolvedValue([]);
+    (mockRepo.groupIncomesByWalletAndCategory as jest.Mock).mockResolvedValue([]);
+    (mockRepo.groupDailyExpenseAmountsByInstallmentOrigin as jest.Mock).mockResolvedValue([]);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  const visibleUntil = new Date("2026-10-25T00:00:00.000Z");
+  const repoMethods = [
+    "groupAmountsByTransactionType",
+    "groupDailyAmountsByTransactionType",
+    "groupAmountsByCategory",
+    "groupCategoryAmountsByInstallmentOrigin",
+    "groupExpensesByWalletAndCategory",
+    "groupIncomesByWalletAndCategory",
+    "groupDailyExpenseAmountsByInstallmentOrigin"
+  ] as const;
+
+  function expectAllCallsUseVisibleUntil() {
+    let callCount = 0;
+    for (const method of repoMethods) {
+      for (const [condition] of (mockRepo[method] as jest.Mock).mock.calls) {
+        expect(condition.visibleUntil).toEqual(visibleUntil);
+        callCount++;
+      }
+    }
+    expect(callCount).toBeGreaterThan(0);
+  }
+
+  it.each([
+    ["월별", () => service.getMonthlyStatistics({ userId: 1n, month: "2026-10" })],
+    [
+      "카테고리별",
+      () =>
+        service.getCategoryStatistics({
+          userId: 1n,
+          startDate: "2026-10-01",
+          endDate: "2026-10-31",
+          limit: 10
+        })
+    ],
+    [
+      "기간별",
+      () =>
+        service.getPeriodStatistics({ userId: 1n, startDate: "2026-10-01", endDate: "2026-10-31" })
+    ],
+    ["요약", () => service.getSummaryStatistics({ userId: 1n, month: "2026-10" })],
+    ["Top 5", () => service.getCategoryTopStatistics({ userId: 1n, month: "2026-10" })],
+    ["히트맵", () => service.getCalendarStatistics({ userId: 1n, month: "2026-10" })],
+    ["지출 Sankey", () => service.getSankeyStatistics({ userId: 1n, month: "2026-10" })],
+    ["수입 Sankey", () => service.getSankeyIncomeStatistics({ userId: 1n, month: "2026-10" })],
+    [
+      "카테고리별 지출합계",
+      () => service.getCategoryExpenseStatistics({ userId: 1n, periodType: "all" })
+    ]
+  ])("%s 통계는 사용자 설정 timezone 기준 오늘을 집계 조건에 전달한다", async (_name, run) => {
+    await run();
+    expect(mockRepo.getUserTimezoneSetting).toHaveBeenCalledWith(1n);
+    expectAllCallsUseVisibleUntil();
   });
 });
