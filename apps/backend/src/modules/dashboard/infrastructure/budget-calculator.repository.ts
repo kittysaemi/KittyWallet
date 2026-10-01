@@ -132,8 +132,8 @@ export class BudgetCalculatorRepository {
   }
 
   /**
-   * 기준 월 현금 동일 사용 지출: "n월 현금 동일 사용" 체크된 계좌 지출(계좌이동 보내는 쪽 포함).
-   * 대시보드 현금 지출 예상(dashboard.repository.ts getCashExpenseForecastAmounts)의 계좌 집계와 같은 조건이다.
+   * 기준 월 현금 동일 사용 지출(예산계산기정책.md 6장): "n월 현금 동일 사용"이 체크된 계좌 지출.
+   * 일반 계좌 지출과 계좌이동 보내는 쪽 거래를 모두 포함하므로 계좌이동 필터를 두지 않는다(삭제 거래만 제외).
    */
   async getCashSameUseExpenses(
     userId: bigint,
