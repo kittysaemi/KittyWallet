@@ -1,3 +1,11 @@
+## [1.52.2](https://github.com/kittysaemi/KittyWallet/compare/v1.52.1...v1.52.2) (2026-10-01)
+
+
+### Bug Fixes
+
+* **dashboard:** 예산 계산기 원본 조회를 잔액 기준일·현금 동일 사용 지출 기준으로 변경 ([95a8f8e](https://github.com/kittysaemi/KittyWallet/commit/95a8f8e81cf8434740bddbe74d94c04111235329)), closes [#439](https://github.com/kittysaemi/KittyWallet/issues/439)
+* **dashboard:** 예산 계산기 팝업에 잔액 기준일 입력과 새 산출식 적용 ([3801ac3](https://github.com/kittysaemi/KittyWallet/commit/3801ac34ff05847692826ad7dc74115d0c49b39b)), closes [#437](https://github.com/kittysaemi/KittyWallet/issues/437)
+
 ## [1.52.1](https://github.com/kittysaemi/KittyWallet/compare/v1.52.0...v1.52.1) (2026-09-30)
 
 
