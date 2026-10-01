@@ -1,3 +1,10 @@
+# [1.53.0](https://github.com/kittysaemi/KittyWallet/compare/v1.52.2...v1.53.0) (2026-10-01)
+
+
+### Features
+
+* **transactions:** 미래 날짜 거래를 거래 내역·통계에서 제외 ([188b4c8](https://github.com/kittysaemi/KittyWallet/commit/188b4c8b6a173be0cd2cf5120a6c1c04cc3d280d)), closes [#443](https://github.com/kittysaemi/KittyWallet/issues/443)
+
 ## [1.52.2](https://github.com/kittysaemi/KittyWallet/compare/v1.52.1...v1.52.2) (2026-10-01)
 
 
