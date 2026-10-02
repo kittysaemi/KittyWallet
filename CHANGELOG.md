@@ -1,3 +1,10 @@
+# [1.54.0](https://github.com/kittysaemi/KittyWallet/compare/v1.53.0...v1.54.0) (2026-10-02)
+
+
+### Features
+
+* **transactions:** 자주 쓰는 거래 등록·바로 등록 ([1dea8b3](https://github.com/kittysaemi/KittyWallet/commit/1dea8b3eaebe08c00e0802e8e9c28e8e3d716970))
+
 # [1.53.0](https://github.com/kittysaemi/KittyWallet/compare/v1.52.2...v1.53.0) (2026-10-01)
 
 
