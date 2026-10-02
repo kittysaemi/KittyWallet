@@ -29,6 +29,7 @@ model User {
   settings             UserSetting[]
   cardInstallments     CardInstallment[]
   textParseTrainingSamples TextParseTrainingSample[]
+  favoriteTransactions FavoriteTransaction[]
 
   @@map("USER")
 }
@@ -136,6 +137,7 @@ model Category {
   categoryUserSettings CategoryUserSetting[]
   transactions         Transaction[]
   cardInstallments     CardInstallment[]
+  favoriteTransactions FavoriteTransaction[]
 
   @@unique([userId, categoryName], map: "CATEGORY_user_id_category_name_key")
   @@index([userId])
@@ -364,4 +366,25 @@ model TextParseTrainingSample {
   @@index([userId, profile])
   @@index([createdAt])
   @@map("TEXT_PARSE_TRAINING_SAMPLE")
+}
+
+model FavoriteTransaction {
+  favoriteTransactionId BigInt          @id @default(autoincrement()) @map("favorite_transaction_id")
+  userId                BigInt          @map("user_id")
+  categoryId            BigInt          @map("category_id")
+  walletId              BigInt          @map("wallet_id")
+  transactionType       TransactionType @map("transaction_type")
+  walletType            WalletType      @map("wallet_type")
+  amount                Decimal         @db.Decimal(15, 0)
+  memo                  String?         @db.VarChar(200)
+  deletedYn             Boolean         @default(false) @map("deleted_yn")
+  createdAt             DateTime        @default(now()) @map("created_at")
+  updatedAt             DateTime        @updatedAt @map("updated_at")
+
+  user     User     @relation(fields: [userId], references: [userId])
+  category Category @relation(fields: [categoryId], references: [categoryId])
+
+  @@index([userId])
+  @@index([deletedYn])
+  @@map("FAVORITE_TRANSACTION")
 }

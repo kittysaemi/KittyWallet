@@ -21,6 +21,7 @@ import type {
 import { IconPickerSheet } from "../../features/icons/IconPickerSheet";
 import { IconSelect } from "../../features/icons/IconSelect";
 import { StatisticsExcludeSheet } from "../../features/categories/StatisticsExcludeSheet";
+import { FavoriteTransactionsManageTab } from "../../features/favorite-transactions/FavoriteTransactionsManageTab";
 import { Button } from "../../shared/ui/Button";
 import { IconRenderer } from "../../shared/ui/IconRenderer";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -31,7 +32,7 @@ import {
 } from "../../pwa/cache/cacheInvalidation";
 import { toSupportErrorMessage } from "../../shared/api/apiError";
 
-type ManageTab = "accounts" | "cards" | "categories" | "icons";
+type ManageTab = "accounts" | "cards" | "categories" | "icons" | "favorites";
 
 const cardClass =
   "rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-card)] shadow-[0_4px_16px_var(--color-card-shadow)]";
@@ -1834,10 +1835,11 @@ const TABS: { key: ManageTab; label: string }[] = [
   { key: "accounts", label: "계좌" },
   { key: "cards", label: "카드" },
   { key: "categories", label: "카테고리" },
-  { key: "icons", label: "아이콘" }
+  { key: "icons", label: "아이콘" },
+  { key: "favorites", label: "자주 쓰는 거래" }
 ];
 
-const VALID_TABS = new Set<ManageTab>(["accounts", "cards", "categories", "icons"]);
+const VALID_TABS = new Set<ManageTab>(["accounts", "cards", "categories", "icons", "favorites"]);
 
 const ManagePage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -1858,7 +1860,7 @@ const ManagePage: React.FC = () => {
               key={key}
               type="button"
               onClick={() => setTab(key)}
-              className={`flex-1 py-2.5 text-sm font-semibold transition border-b-2 ${
+              className={`flex-1 whitespace-nowrap px-1 py-2.5 text-sm font-semibold transition border-b-2 ${
                 tab === key
                   ? "border-[var(--color-primary)] text-[var(--color-text-primary)]"
                   : "border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
@@ -1873,6 +1875,7 @@ const ManagePage: React.FC = () => {
         {tab === "cards" && <CardsTab />}
         {tab === "categories" && <CategoriesTab />}
         {tab === "icons" && <IconsTab />}
+        {tab === "favorites" && <FavoriteTransactionsManageTab />}
       </div>
     </div>
   );

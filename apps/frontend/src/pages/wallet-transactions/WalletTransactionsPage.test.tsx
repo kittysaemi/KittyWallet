@@ -8,9 +8,11 @@ import WalletTransactionsPage from "./WalletTransactionsPage";
 import { accountApi } from "../../entities/account/api/accountApi";
 import { cardApi } from "../../entities/card/api/cardApi";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
+import { favoriteTransactionApi } from "../../entities/favorite-transaction/api/favoriteTransactionApi";
 import { categoryApi } from "../../entities/category/api/categoryApi";
 import { iconApi } from "../../entities/icon/api/iconApi";
 import type { TransactionItem } from "../../entities/transaction/model/transaction.types";
+import { usePwaStore } from "../../pwa/state/pwa.store";
 
 vi.mock("../../entities/account/api/accountApi", () => ({
   accountApi: { getAccounts: vi.fn() }
@@ -20,6 +22,10 @@ vi.mock("../../entities/card/api/cardApi", () => ({
 }));
 vi.mock("../../entities/transaction/api/transactionApi", () => ({
   transactionApi: { getTransactions: vi.fn() }
+}));
+vi.mock("../../entities/favorite-transaction/api/favoriteTransactionApi", () => ({
+  FAVORITE_TRANSACTIONS_QUERY_KEY: ["favorite-transactions"],
+  favoriteTransactionApi: { getFavoriteTransactions: vi.fn(), createFavoriteTransaction: vi.fn() }
 }));
 vi.mock("../../entities/category/api/categoryApi", () => ({
   categoryApi: { getCategories: vi.fn() }
@@ -31,11 +37,17 @@ vi.mock("../../entities/icon/api/iconApi", () => ({
 const mockedAccountApi = vi.mocked(accountApi);
 const mockedCardApi = vi.mocked(cardApi);
 const mockedTransactionApi = vi.mocked(transactionApi);
+const mockedFavoriteTransactionApi = vi.mocked(favoriteTransactionApi);
 const mockedCategoryApi = vi.mocked(categoryApi);
 const mockedIconApi = vi.mocked(iconApi);
 
 const EMPTY_CATEGORIES = { success: true, data: { items: [] }, error: null };
 const EMPTY_ICONS = { success: true, data: { items: [] }, error: null };
+const EMPTY_FAVORITES = { success: true, data: { items: [] }, error: null };
+
+beforeEach(() => {
+  usePwaStore.setState({ networkStatus: "online" });
+});
 
 const ACCOUNTS_DATA = {
   success: true,
@@ -141,6 +153,7 @@ describe("WalletTransactionsPage — ACCOUNT", () => {
     mockedAccountApi.getAccounts.mockResolvedValue(ACCOUNTS_DATA);
     mockedCategoryApi.getCategories.mockResolvedValue(EMPTY_CATEGORIES);
     mockedIconApi.getIcons.mockResolvedValue(EMPTY_ICONS);
+    mockedFavoriteTransactionApi.getFavoriteTransactions.mockResolvedValue(EMPTY_FAVORITES);
   });
 
   it("shows 지갑 거래내역 header", async () => {
@@ -213,6 +226,7 @@ describe("WalletTransactionsPage — ACCOUNT", () => {
 
   it("renders error state with retry button", async () => {
     Object.defineProperty(window.navigator, "onLine", { configurable: true, value: false });
+    usePwaStore.setState({ networkStatus: "offline" });
     mockedTransactionApi.getTransactions.mockRejectedValue(new Error("network"));
 
     render(<WalletTransactionsPage walletType="ACCOUNT" />, {
@@ -225,6 +239,7 @@ describe("WalletTransactionsPage — ACCOUNT", () => {
 
   it("retries on error button click", async () => {
     Object.defineProperty(window.navigator, "onLine", { configurable: true, value: false });
+    usePwaStore.setState({ networkStatus: "offline" });
     mockedTransactionApi.getTransactions
       .mockRejectedValueOnce(new Error("fail"))
       .mockResolvedValueOnce(makeTxPage());
@@ -309,7 +324,7 @@ describe("WalletTransactionsPage — ACCOUNT", () => {
       </QueryClientProvider>
     );
 
-    await userEvent.click(await screen.findByRole("button", { name: "거래등록/계좌이동" }));
+    await userEvent.click(await screen.findByRole("button", { name: "거래등록/계좌이동/자주 쓰는 거래" }));
     await userEvent.click(await screen.findByRole("button", { name: "계좌이동" }));
 
     expect(
@@ -347,7 +362,7 @@ describe("WalletTransactionsPage — ACCOUNT", () => {
       </QueryClientProvider>
     );
 
-    await userEvent.click(await screen.findByRole("button", { name: "거래등록/계좌이동" }));
+    await userEvent.click(await screen.findByRole("button", { name: "거래등록/계좌이동/자주 쓰는 거래" }));
     await userEvent.click(await screen.findByRole("button", { name: "거래등록" }));
 
     expect(
@@ -376,6 +391,33 @@ describe("WalletTransactionsPage — ACCOUNT", () => {
 
     expect(await screen.findByRole("button", { name: "더보기" })).toBeInTheDocument();
   });
+
+  it("계좌의 + 추가에서 자주 쓰는 거래 선택 목록을 연다", async () => {
+    mockedTransactionApi.getTransactions.mockResolvedValue(makeTxPage());
+
+    render(<WalletTransactionsPage walletType="ACCOUNT" />, {
+      wrapper: createWrapper("ACCOUNT", "1")
+    });
+
+    await userEvent.click(await screen.findByRole("button", { name: "거래등록/계좌이동/자주 쓰는 거래" }));
+    expect(screen.getByRole("button", { name: "계좌이동" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "자주 쓰는 거래" }));
+
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(mockedFavoriteTransactionApi.getFavoriteTransactions).toHaveBeenCalledTimes(1);
+  });
+
+  it("오프라인에서는 계좌의 자주 쓰는 거래 버튼이 비활성화된다", async () => {
+    usePwaStore.setState({ networkStatus: "offline" });
+    mockedTransactionApi.getTransactions.mockResolvedValue(makeTxPage());
+
+    render(<WalletTransactionsPage walletType="ACCOUNT" />, {
+      wrapper: createWrapper("ACCOUNT", "1")
+    });
+
+    await userEvent.click(await screen.findByRole("button", { name: "거래등록/계좌이동/자주 쓰는 거래" }));
+    expect(screen.getByRole("button", { name: /^자주 쓰는 거래/ })).toBeDisabled();
+  });
 });
 
 describe("WalletTransactionsPage — CARD", () => {
@@ -385,6 +427,7 @@ describe("WalletTransactionsPage — CARD", () => {
     mockedCardApi.getCards.mockResolvedValue(CARDS_DATA);
     mockedCategoryApi.getCategories.mockResolvedValue(EMPTY_CATEGORIES);
     mockedIconApi.getIcons.mockResolvedValue(EMPTY_ICONS);
+    mockedFavoriteTransactionApi.getFavoriteTransactions.mockResolvedValue(EMPTY_FAVORITES);
   });
 
   it("shows card name and period expense amount", async () => {
@@ -437,6 +480,7 @@ describe("WalletTransactionsPage — CARD", () => {
       </QueryClientProvider>
     );
 
+    await userEvent.click(await screen.findByRole("button", { name: "거래등록/자주 쓰는 거래" }));
     await userEvent.click(await screen.findByRole("button", { name: "거래등록" }));
 
     expect(

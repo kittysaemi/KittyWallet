@@ -2,7 +2,7 @@ import React from "react";
 import { STALE_TIME, GC_TIME, RETRY, QUERY_LIMIT } from "../../shared/constants/queryConfig";
 import { useParams, useNavigate, useLocation, useNavigationType, useSearchParams } from "react-router-dom";
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
-import { ArrowLeftRight, ChevronLeft, ChevronRight, Loader2, PenLine, Plus, RefreshCw, WifiOff } from "lucide-react";
+import { ArrowLeftRight, ChevronLeft, ChevronRight, Loader2, PenLine, Plus, RefreshCw, Star, WifiOff } from "lucide-react";
 import { accountApi } from "../../entities/account/api/accountApi";
 import { cardApi } from "../../entities/card/api/cardApi";
 import { transactionApi } from "../../entities/transaction/api/transactionApi";
@@ -10,6 +10,8 @@ import { categoryApi } from "../../entities/category/api/categoryApi";
 import { iconApi } from "../../entities/icon/api/iconApi";
 import type { IconItem } from "../../entities/icon/model/icon.types";
 import { TransactionReadOnlyRow } from "../../entities/transaction/ui/TransactionReadOnlyRow";
+import { FavoriteTransactionPickerSheet } from "../../features/favorite-transactions/FavoriteTransactionPickerSheet";
+import { usePwaStore } from "../../pwa/state/pwa.store";
 import { useTimezone } from "../../shared/hooks/useTimezone";
 import { getTodayInTimezone, getWeekRange, formatWeekLabel, toDateValue } from "../../shared/utils/date";
 
@@ -52,8 +54,9 @@ const WalletTransactionsPage: React.FC<WalletTransactionsPageProps> = ({ walletT
   const [searchParams, setSearchParams] = useSearchParams();
   const timezone = useTimezone();
   const todayStr = getTodayInTimezone(timezone);
-  const isOffline = !navigator.onLine;
+  const isOffline = usePwaStore((state) => state.networkStatus) === "offline";
   const [isEntryExpanded, setIsEntryExpanded] = React.useState(false);
+  const [isFavoritePickerOpen, setIsFavoritePickerOpen] = React.useState(false);
 
   // 상세화면에서 Back(브라우저 뒤로가기 포함)으로 돌아온 경우(POP)에만 스크롤/추가 로드
   // 페이지 수를 복원한다. 다른 화면에서 새로 진입한 경우(PUSH)는 항상 최상단에서 시작한다.
@@ -66,12 +69,6 @@ const WalletTransactionsPage: React.FC<WalletTransactionsPageProps> = ({ walletT
   );
 
   function handleAddClick() {
-    if (walletType === "CARD") {
-      navigate(`/transactions/new?walletType=CARD&walletId=${walletId}`, {
-        state: { returnTo: `${location.pathname}${location.search}` }
-      });
-      return;
-    }
     setIsEntryExpanded((v) => !v);
   }
 
@@ -349,8 +346,12 @@ const WalletTransactionsPage: React.FC<WalletTransactionsPageProps> = ({ walletT
             <button
               type="button"
               onClick={handleAddClick}
-              aria-expanded={walletType === "ACCOUNT" ? isEntryExpanded : undefined}
-              aria-label={walletType === "ACCOUNT" ? "거래등록/계좌이동" : "거래등록"}
+              aria-expanded={isEntryExpanded}
+              aria-label={
+                walletType === "ACCOUNT"
+                  ? "거래등록/계좌이동/자주 쓰는 거래"
+                  : "거래등록/자주 쓰는 거래"
+              }
               className="flex w-full items-center justify-center gap-1.5 border-t border-[var(--color-border-primary)] py-2.5 text-sm font-bold text-[var(--color-primary-hover)] transition hover:bg-[var(--color-bg-secondary)]"
             >
               <Plus
@@ -360,12 +361,12 @@ const WalletTransactionsPage: React.FC<WalletTransactionsPageProps> = ({ walletT
               />
               추가
             </button>
-            {walletType === "ACCOUNT" && isEntryExpanded && (
+            {isEntryExpanded && (
               <div className="flex divide-x divide-[var(--color-border-secondary)] border-t border-[var(--color-border-secondary)]">
                 <button
                   type="button"
                   onClick={() =>
-                    navigate(`/transactions/new?walletType=ACCOUNT&walletId=${walletId}`, {
+                    navigate(`/transactions/new?walletType=${walletType}&walletId=${walletId}`, {
                       state: { returnTo: `${location.pathname}${location.search}` }
                     })
                   }
@@ -374,17 +375,32 @@ const WalletTransactionsPage: React.FC<WalletTransactionsPageProps> = ({ walletT
                   <PenLine size={22} className="text-[var(--color-primary-hover)]" />
                   <span className="text-xs font-semibold text-[var(--color-text-primary)]">거래등록</span>
                 </button>
+                {walletType === "ACCOUNT" && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigate(`/transfer/new?fromAccountId=${walletId}`, {
+                        state: { returnTo: `${location.pathname}${location.search}` }
+                      })
+                    }
+                    className="flex flex-1 flex-col items-center gap-1.5 py-4 transition hover:bg-[var(--color-bg-secondary)]"
+                  >
+                    <ArrowLeftRight size={22} className="text-[var(--color-primary-hover)]" />
+                    <span className="text-xs font-semibold text-[var(--color-text-primary)]">계좌이동</span>
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={() =>
-                    navigate(`/transfer/new?fromAccountId=${walletId}`, {
-                      state: { returnTo: `${location.pathname}${location.search}` }
-                    })
-                  }
-                  className="flex flex-1 flex-col items-center gap-1.5 py-4 transition hover:bg-[var(--color-bg-secondary)]"
+                  disabled={isOffline}
+                  onClick={() => {
+                    setIsEntryExpanded(false);
+                    setIsFavoritePickerOpen(true);
+                  }}
+                  className="flex flex-1 flex-col items-center gap-1.5 py-4 transition hover:bg-[var(--color-bg-secondary)] disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  <ArrowLeftRight size={22} className="text-[var(--color-primary-hover)]" />
-                  <span className="text-xs font-semibold text-[var(--color-text-primary)]">계좌이동</span>
+                  <Star size={22} className="text-[var(--color-primary-hover)]" />
+                  <span className="text-xs font-semibold text-[var(--color-text-primary)]">자주 쓰는 거래</span>
+                  {isOffline && <span className="text-[10px] text-[var(--color-text-caption)]">오프라인</span>}
                 </button>
               </div>
             )}
@@ -505,6 +521,13 @@ const WalletTransactionsPage: React.FC<WalletTransactionsPageProps> = ({ walletT
         )}
         </div>
       </div>
+      {isFavoritePickerOpen && (
+        <FavoriteTransactionPickerSheet
+          wallet={{ walletType, walletId: Number(walletId) }}
+          onClose={() => setIsFavoritePickerOpen(false)}
+          onRegistered={() => setIsFavoritePickerOpen(false)}
+        />
+      )}
     </div>
   );
 };

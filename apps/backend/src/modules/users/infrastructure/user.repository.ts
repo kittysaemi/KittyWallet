@@ -39,6 +39,7 @@ export class UserRepository {
     await this.prisma.$transaction(async (tx) => {
       await tx.syncHistory.deleteMany({ where: { userId } });
       await tx.transaction.deleteMany({ where: { userId } });
+      await tx.favoriteTransaction.deleteMany({ where: { userId } });
       await tx.categoryUserSetting.deleteMany({ where: { userId } });
       await tx.userSetting.deleteMany({ where: { userId } });
       await tx.account.deleteMany({ where: { userId } });

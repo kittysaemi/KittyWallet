@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -22,10 +23,10 @@ vi.mock("../receipt/receiptImageSource", () => ({
   },
 }));
 
-const renderBottomNav = (path = "/dashboard") =>
+const renderBottomNav = (path = "/dashboard", props: ComponentProps<typeof BottomNav> = {}) =>
   render(
     <MemoryRouter initialEntries={[path]}>
-      <BottomNav />
+      <BottomNav {...props} />
     </MemoryRouter>
   );
 
@@ -100,6 +101,29 @@ describe("BottomNav", () => {
       fireEvent.click(screen.getByRole("button", { name: "거래 등록 방식 선택" }));
       fireEvent.click(screen.getByRole("button", { name: "취소" }));
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    it("자주 쓰는 거래 진입 버튼은 콜백이 주어졌을 때 표시되고, 누르면 시트를 닫는다", () => {
+      const onFavoriteTransactionsClick = vi.fn();
+      renderBottomNav("/dashboard", { onFavoriteTransactionsClick });
+
+      fireEvent.click(screen.getByRole("button", { name: "거래 등록 방식 선택" }));
+      fireEvent.click(screen.getByRole("button", { name: "자주 쓰는 거래" }));
+
+      expect(onFavoriteTransactionsClick).toHaveBeenCalledOnce();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    it("오프라인이면 자주 쓰는 거래 진입 버튼이 비활성화된다", async () => {
+      renderBottomNav("/dashboard", {
+        onFavoriteTransactionsClick: vi.fn(),
+        favoriteTransactionsDisabled: true
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "거래 등록 방식 선택" }));
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: /^자주 쓰는 거래/ })).toBeDisabled();
+      });
     });
   });
 

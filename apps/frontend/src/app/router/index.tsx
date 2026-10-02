@@ -1,7 +1,9 @@
 import React from "react";
-import { Navigate, Route, Routes, useLocation, useSearchParams } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuthStore } from "../../entities/auth/store/authStore";
 import { BottomNav } from "../../shared/ui/BottomNav";
+import { FavoriteTransactionPickerSheet } from "../../features/favorite-transactions/FavoriteTransactionPickerSheet";
+import { usePwaStore } from "../../pwa/state/pwa.store";
 import DashboardPage from "../../pages/dashboard";
 import TransactionsPage from "../../pages/transactions";
 import TransactionNewPage from "../../pages/transactions/new";
@@ -50,7 +52,10 @@ const RootRedirect: React.FC = () => {
 
 const NavLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const scrollRef = React.useRef<HTMLDivElement>(null);
+  const isOffline = usePwaStore((state) => state.networkStatus) === "offline";
+  const [isFavoritePickerOpen, setIsFavoritePickerOpen] = React.useState(false);
   React.useLayoutEffect(() => {
     // these pages manage their own scroll restoration
     if (
@@ -65,7 +70,19 @@ const NavLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       <div ref={scrollRef} className="scrollbar-hide flex-1 overflow-y-auto">
         {children}
       </div>
-      <BottomNav />
+      <BottomNav
+        onFavoriteTransactionsClick={() => setIsFavoritePickerOpen(true)}
+        favoriteTransactionsDisabled={isOffline}
+      />
+      {isFavoritePickerOpen && (
+        <FavoriteTransactionPickerSheet
+          onClose={() => setIsFavoritePickerOpen(false)}
+          onRegistered={(transactionDate) => {
+            setIsFavoritePickerOpen(false);
+            navigate("/transactions", { state: { highlightDate: transactionDate } });
+          }}
+        />
+      )}
     </div>
   );
 };

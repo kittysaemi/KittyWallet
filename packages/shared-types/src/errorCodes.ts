@@ -66,7 +66,8 @@ export const PUBLIC_ERROR_CODES = {
   transferSameAccount: "F0001",
   transferInvalidAmount: "F0002",
   transferPairMissing: "F0003",
-  transferPairCorrupted: "F0004"
+  transferPairCorrupted: "F0004",
+  favoriteTransactionMissing: "Q0001"
 } as const;
 
 const internalToPublicCode: Record<string, string> = {
@@ -128,7 +129,8 @@ const internalToPublicCode: Record<string, string> = {
   TRANSFER_001: PUBLIC_ERROR_CODES.transferSameAccount,
   TRANSFER_002: PUBLIC_ERROR_CODES.transferInvalidAmount,
   TRANSFER_003: PUBLIC_ERROR_CODES.transferPairMissing,
-  TRANSFER_004: PUBLIC_ERROR_CODES.transferPairCorrupted
+  TRANSFER_004: PUBLIC_ERROR_CODES.transferPairCorrupted,
+  FAVORITE_001: PUBLIC_ERROR_CODES.favoriteTransactionMissing
 };
 
 export function toPublicErrorCode(internalCode?: string): string {
