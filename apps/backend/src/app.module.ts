@@ -19,6 +19,7 @@ import { ManifestModule } from "./modules/manifest/manifest.module";
 import { ReceiptAnalysisModule } from "./modules/receipt-analysis/receipt-analysis.module";
 import { TextParsingModule } from "./modules/text-parsing/text-parsing.module";
 import { FixedExpenseModule } from "./modules/fixed-expense/fixed-expense.module";
+import { FavoriteTransactionsModule } from "./modules/favorite-transactions/favorite-transactions.module";
 import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
 import { ApiResponseInterceptor } from "./common/interceptors/api-response.interceptor";
 
@@ -45,6 +46,7 @@ import { ApiResponseInterceptor } from "./common/interceptors/api-response.inter
     TextParsingModule,
     ScheduleModule.forRoot(),
     FixedExpenseModule,
+    FavoriteTransactionsModule,
   ],
   providers: [
     {

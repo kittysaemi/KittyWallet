@@ -1,9 +1,19 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeftRight, BarChart2, Camera, ClipboardPaste, FileImage, Home, PenLine, Plus, Search, Settings2, X } from "lucide-react";
+import { ArrowLeftRight, BarChart2, Camera, ClipboardPaste, FileImage, Home, PenLine, Plus, Search, Settings2, Star, X } from "lucide-react";
 import { FilePickerReceiptImageSource, WebCameraReceiptImageSource } from "../receipt/receiptImageSource";
 
-export const BottomNav: React.FC = () => {
+interface BottomNavProps {
+  /** 거래 등록 방식 선택 시트의 "자주 쓰는 거래" 선택 시 호출(선택 목록은 app 계층에서 연다). */
+  onFavoriteTransactionsClick?: () => void;
+  /** 오프라인 등으로 "자주 쓰는 거래" 버튼을 비활성화한다. */
+  favoriteTransactionsDisabled?: boolean;
+}
+
+export const BottomNav: React.FC<BottomNavProps> = ({
+  onFavoriteTransactionsClick,
+  favoriteTransactionsDisabled = false
+}) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isEntrySheetOpen, setIsEntrySheetOpen] = React.useState(false);
@@ -42,6 +52,11 @@ export const BottomNav: React.FC = () => {
   const startTransfer = () => {
     setIsEntrySheetOpen(false);
     navigate("/transfer/new");
+  };
+
+  const startFavoriteTransactions = () => {
+    setIsEntrySheetOpen(false);
+    onFavoriteTransactionsClick?.();
   };
 
   const handleCameraClick = async () => {
@@ -159,6 +174,20 @@ export const BottomNav: React.FC = () => {
                 <ArrowLeftRight size={20} className="text-[var(--color-primary)]" />
                 <span className="text-sm font-semibold text-[var(--color-text-primary)]">계좌이동</span>
               </button>
+              {onFavoriteTransactionsClick && (
+                <button
+                  type="button"
+                  onClick={startFavoriteTransactions}
+                  disabled={favoriteTransactionsDisabled}
+                  className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-[var(--color-border-primary)] px-4 text-left hover:bg-[var(--color-bg-secondary)] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Star size={20} className="text-[var(--color-primary)]" />
+                  <span className="text-sm font-semibold text-[var(--color-text-primary)]">자주 쓰는 거래</span>
+                  {favoriteTransactionsDisabled && (
+                    <span className="ml-auto text-xs text-[var(--color-text-caption)]">오프라인</span>
+                  )}
+                </button>
+              )}
             </div>
             <button
               type="button"
