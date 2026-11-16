@@ -380,7 +380,7 @@ export const BudgetCalculatorModal: React.FC<{ onClose: () => void }> = ({ onClo
             ) : snapshot ? (
               <ol className="flex flex-col gap-2" aria-label="계산 결과">
                 <ResultCard
-                  title="차액"
+                  title="남는 금액"
                   amount={snapshot.result.difference}
                   details={[
                     `계산 기간 ${snapshot.startDate} ~ ${snapshot.endDate}`,
@@ -390,7 +390,7 @@ export const BudgetCalculatorModal: React.FC<{ onClose: () => void }> = ({ onClo
                   note={snapshot.result.difference >= 0 ? "남는 돈" : "모자라는 돈"}
                 />
                 <ResultCard
-                  title="필요 금액"
+                  title="추가로 필요한 금액"
                   amount={snapshot.result.requiredAmount}
                   details={[
                     `지출 ${fmt(snapshot.result.breakdown.expense)}원`,
@@ -398,11 +398,11 @@ export const BudgetCalculatorModal: React.FC<{ onClose: () => void }> = ({ onClo
                   ]}
                 />
                 <ResultCard
-                  title="최소 유지금액 부족"
+                  title={`${fmt(snapshot.minimumBalance)}원을 유지하기 위해 필요한 금액`}
                   amount={snapshot.result.minimumBalanceShortfall}
                   details={[
                     `최소 유지금액 ${fmt(snapshot.minimumBalance)}원`,
-                    `차액 ${fmt(snapshot.result.difference)}원`
+                    `남는 금액 ${fmt(snapshot.result.difference)}원`
                   ]}
                 />
               </ol>

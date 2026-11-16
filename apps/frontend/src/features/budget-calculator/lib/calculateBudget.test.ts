@@ -28,7 +28,7 @@ describe("calculateBudget", () => {
     });
   });
 
-  it("1번 차액은 예산 - 지출이며, 남으면 양수·모자라면 마이너스 그대로다", () => {
+  it("1번 남는 금액은 예산 - 지출이며, 남으면 양수·모자라면 마이너스 그대로다", () => {
     // 3,500,000 - 1,220,000
     expect(
       calculateBudget(source, { ...base, expectedIncome: 500_000, cashFixedExpense: 200_000 })?.difference
@@ -39,7 +39,7 @@ describe("calculateBudget", () => {
     ).toBe(-1_120_000);
   });
 
-  it("2번 필요 금액은 max(0, 지출 - 예산)이다", () => {
+  it("2번 추가로 필요한 금액은 max(0, 지출 - 예산)이다", () => {
     expect(
       calculateBudget(source, { ...base, baseAccountId: 2, cashFixedExpense: 300_000 })?.requiredAmount
     ).toBe(1_120_000);
@@ -47,15 +47,15 @@ describe("calculateBudget", () => {
     expect(calculateBudget(source, base)?.requiredAmount).toBe(0);
   });
 
-  it("3번 최소 유지금액 부족은 max(0, 최소 유지금액 - 차액)이다", () => {
-    // 차액: 3,000,000 - 1,020,000 = 1,980,000
+  it("3번 최소 유지금액을 유지하기 위해 필요한 금액은 max(0, 최소 유지금액 - 남는 금액)이다", () => {
+    // 남는 금액: 3,000,000 - 1,020,000 = 1,980,000
     expect(calculateBudget(source, { ...base, minimumBalance: 2_500_000 })?.minimumBalanceShortfall).toBe(520_000);
     expect(calculateBudget(source, { ...base, minimumBalance: 1_980_000 })?.minimumBalanceShortfall).toBe(0);
     expect(calculateBudget(source, { ...base, minimumBalance: 1_000_000 })?.minimumBalanceShortfall).toBe(0);
   });
 
-  it("차액이 음수이면 3번은 필요 금액에 최소 유지금액을 더한 값이다", () => {
-    // 차액: 200,000 - 1,020,000 = -820,000
+  it("남는 금액이 음수이면 3번은 추가로 필요한 금액에 최소 유지금액을 더한 값이다", () => {
+    // 남는 금액: 200,000 - 1,020,000 = -820,000
     const result = calculateBudget(source, { ...base, baseAccountId: 2, minimumBalance: 500_000 });
 
     expect(result?.difference).toBe(-820_000);
