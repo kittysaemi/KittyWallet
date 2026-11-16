@@ -1,3 +1,11 @@
+# [1.55.0](https://github.com/kittysaemi/KittyWallet/compare/v1.54.0...v1.55.0) (2026-11-16)
+
+
+### Features
+
+* **dashboard:** 예산 계산기 기간 입력·차액 계산 결과 화면으로 변경 ([d0030d8](https://github.com/kittysaemi/KittyWallet/commit/d0030d8fd8183677e262799c3af6d46b9fd3a8f5)), closes [#451](https://github.com/kittysaemi/KittyWallet/issues/451) [#452](https://github.com/kittysaemi/KittyWallet/issues/452) [#453](https://github.com/kittysaemi/KittyWallet/issues/453) [#451](https://github.com/kittysaemi/KittyWallet/issues/451)
+* **dashboard:** 예산 계산기 원본 조회를 기간 지정·카드 사용액 기준으로 변경 ([d25017c](https://github.com/kittysaemi/KittyWallet/commit/d25017cad75b93c91041e4b8a1ed81a3d2db8e54)), closes [#451](https://github.com/kittysaemi/KittyWallet/issues/451) [#452](https://github.com/kittysaemi/KittyWallet/issues/452) [#451](https://github.com/kittysaemi/KittyWallet/issues/451)
+
 # [1.54.0](https://github.com/kittysaemi/KittyWallet/compare/v1.53.0...v1.54.0) (2026-10-02)
 
 
