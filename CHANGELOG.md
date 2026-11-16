@@ -1,3 +1,10 @@
+## [1.55.1](https://github.com/kittysaemi/KittyWallet/compare/v1.55.0...v1.55.1) (2026-11-16)
+
+
+### Bug Fixes
+
+* **dashboard:** 예산 계산기 결과 표시명을 남는 금액·추가로 필요한 금액으로 변경 ([4a6d473](https://github.com/kittysaemi/KittyWallet/commit/4a6d4732c4af065dc76a923c7d931fb1cf71c296)), closes [#454](https://github.com/kittysaemi/KittyWallet/issues/454) [#453](https://github.com/kittysaemi/KittyWallet/issues/453) [#451](https://github.com/kittysaemi/KittyWallet/issues/451)
+
 # [1.55.0](https://github.com/kittysaemi/KittyWallet/compare/v1.54.0...v1.55.0) (2026-11-16)
 
 
