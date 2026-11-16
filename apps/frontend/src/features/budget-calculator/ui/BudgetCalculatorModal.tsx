@@ -1,6 +1,6 @@
 import React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Calculator, ChevronDown, ChevronLeft, ChevronRight, Loader2, RefreshCw, WifiOff, X } from "lucide-react";
+import { Calculator, ChevronDown, Loader2, RefreshCw, WifiOff, X } from "lucide-react";
 import { budgetCalculatorApi } from "../../../entities/dashboard/api/budgetCalculatorApi";
 import type { BudgetCalculatorSource } from "../../../entities/dashboard/model/budgetCalculator.types";
 import { accountApi } from "../../../entities/account/api/accountApi";
@@ -12,12 +12,12 @@ import { Input } from "../../../shared/ui/Input";
 import { getMonthInTimezone, getTodayInTimezone } from "../../../shared/utils/date";
 import {
   calculateBudget,
-  formatMonthLabel,
-  shiftMonth,
+  getMonthRange,
+  validateBudgetPeriod,
   type BudgetCalculationResult
 } from "../lib/calculateBudget";
 
-// 월간 예산 계산기(화면정의.md "예산 계산기 버튼과 팝업 정책", 예산계산기정책.md).
+// 예산 계산기(화면정의.md "예산 계산기 버튼과 팝업 정책", 예산계산기정책.md).
 // 입력값·결과는 이 컴포넌트의 local state로만 두고, 팝업을 닫으면 모두 폐기한다.
 // Zustand·URL·설정·localStorage·IndexedDB·Cache Storage·Sync Queue에 저장하지 않는다.
 
@@ -61,19 +61,17 @@ export const BudgetCalculatorButton: React.FC<{ disabled: boolean; onClick: () =
 
 interface CalculationSnapshot {
   result: BudgetCalculationResult;
-  accountName: string;
-  baseMonthLabel: string;
+  startDate: string;
+  endDate: string;
   balanceDate: string;
-  nextMonthLabel: string;
   minimumBalance: number;
-  nextMonthIncome: number;
 }
 
 interface FieldErrors {
-  baseDate?: string;
   account?: string;
+  expectedIncome?: string;
+  cashFixedExpense?: string;
   minimumBalance?: string;
-  nextMonthIncome?: string;
 }
 
 const ResultCard: React.FC<{
@@ -102,16 +100,18 @@ export const BudgetCalculatorModal: React.FC<{ onClose: () => void }> = ({ onClo
   const numericFieldProps = useNumericFieldProps();
   const isOffline = usePwaStore((state) => state.networkStatus) === "offline";
 
-  const currentMonth = getMonthInTimezone(timezone);
-  const lastMonth = shiftMonth(currentMonth, -1);
   const today = getTodayInTimezone(timezone);
-  // 기준 월은 이번 달·지난달만 선택하며, 처음 열면 이번 달을 선택한다.
-  const [baseMonth, setBaseMonth] = React.useState(currentMonth);
-  // 잔액 기준일: 지난달일 때만 입력한다. 이번 달이면 서버가 오늘 기준 잔액을 쓴다.
-  const [baseDate, setBaseDate] = React.useState("");
+  // 계산 기간 기본값은 이번 달 1일~말일이다. 사용자가 바꾸기 전에는 시간대 설정이 늦게 로드되어도
+  // 항상 현재 시간대의 이번 달을 따른다.
+  const defaultRange = getMonthRange(getMonthInTimezone(timezone));
+  const [startInput, setStartInput] = React.useState<string | null>(null);
+  const [endInput, setEndInput] = React.useState<string | null>(null);
+  const startDate = startInput ?? defaultRange.startDate;
+  const endDate = endInput ?? defaultRange.endDate;
   const [baseAccountId, setBaseAccountId] = React.useState(0);
+  const [expectedIncomeStr, setExpectedIncomeStr] = React.useState("");
+  const [cashFixedExpenseStr, setCashFixedExpenseStr] = React.useState("");
   const [minimumBalanceStr, setMinimumBalanceStr] = React.useState("");
-  const [nextMonthIncomeStr, setNextMonthIncomeStr] = React.useState("");
   const [errors, setErrors] = React.useState<FieldErrors>({});
   const [snapshot, setSnapshot] = React.useState<CalculationSnapshot | null>(null);
 
@@ -136,16 +136,15 @@ export const BudgetCalculatorModal: React.FC<{ onClose: () => void }> = ({ onClo
     };
   }, [queryClient]);
 
-  const isLastMonth = baseMonth !== currentMonth;
-  const requestBaseDate = isLastMonth ? baseDate : undefined;
-  // 지난달이면 오늘 이전(오늘 포함) 잔액 기준일이 있어야 조회한다.
-  const isBaseDateReady = !isLastMonth || (!!baseDate && baseDate <= today);
+  // 계산 기간이 유효할 때만 원본을 조회한다(시작일은 오늘까지, 시작일 ≤ 종료일).
+  const periodError = validateBudgetPeriod(startDate, endDate, today);
+  const isPeriodReady = !periodError;
 
   const sourceQuery = useQuery({
-    queryKey: [...BUDGET_CALCULATOR_SOURCE_QUERY_KEY, baseMonth, requestBaseDate ?? ""],
-    queryFn: () => budgetCalculatorApi.getSource(baseMonth, requestBaseDate),
+    queryKey: [...BUDGET_CALCULATOR_SOURCE_QUERY_KEY, startDate, endDate],
+    queryFn: () => budgetCalculatorApi.getSource(startDate, endDate),
     // 오프라인이면 캐시로 계산하지 않도록 조회하지 않는다.
-    enabled: !isOffline && isBaseDateReady,
+    enabled: !isOffline && isPeriodReady,
     staleTime: 0,
     gcTime: 0,
     retry: false
@@ -159,8 +158,9 @@ export const BudgetCalculatorModal: React.FC<{ onClose: () => void }> = ({ onClo
 
   const source: BudgetCalculatorSource | undefined =
     sourceQuery.data?.success && sourceQuery.data.data ? sourceQuery.data.data : undefined;
-  const isSourceLoading = !isOffline && sourceQuery.isFetching && !source;
-  const isSourceError = !isOffline && !isSourceLoading && !source && (sourceQuery.isError || !!sourceQuery.data);
+  const isSourceLoading = !isOffline && isPeriodReady && sourceQuery.isFetching && !source;
+  const isSourceError =
+    !isOffline && isPeriodReady && !isSourceLoading && !source && (sourceQuery.isError || !!sourceQuery.data);
 
   const currentBalanceMap = React.useMemo(() => {
     const map = new Map<number, number | null>();
@@ -168,68 +168,52 @@ export const BudgetCalculatorModal: React.FC<{ onClose: () => void }> = ({ onClo
     return map;
   }, [accountsQuery.data]);
 
-  function changeMonth(delta: number) {
-    const next = shiftMonth(baseMonth, delta);
-    if (next > currentMonth || next < lastMonth) return;
-    setBaseMonth(next);
-    setErrors((prev) => ({ ...prev, baseDate: undefined }));
-  }
-
-  function changeBaseDate(value: string) {
-    setBaseDate(value);
-    setErrors((prev) => ({
-      ...prev,
-      baseDate: value > today ? "오늘 이후 날짜는 잔액 기준일로 선택할 수 없습니다." : undefined
-    }));
-  }
-
   function handleCalculate() {
     if (isOffline) return;
-    if (!isBaseDateReady) {
-      setErrors((prev) => ({
-        ...prev,
-        baseDate: baseDate
-          ? "오늘 이후 날짜는 잔액 기준일로 선택할 수 없습니다."
-          : "잔액 기준일을 입력해 주세요."
-      }));
-      return;
-    }
-    if (!source) return;
+    // 기간 오류는 입력 영역에 이미 표시되어 있으므로 계산하지 않는다.
+    if (!isPeriodReady || !source) return;
     const nextErrors: FieldErrors = {};
+    const expectedIncome = parseAmount(expectedIncomeStr);
+    const cashFixedExpense = parseAmount(cashFixedExpenseStr);
     const minimumBalance = parseAmount(minimumBalanceStr);
-    const nextMonthIncome = parseAmount(nextMonthIncomeStr);
     const account = source.accounts.find((a) => a.account_id === baseAccountId);
 
     if (!baseAccountId) nextErrors.account = "기준 계좌를 선택해 주세요.";
     else if (!account) nextErrors.account = "선택한 계좌를 사용할 수 없습니다. 계좌를 다시 선택해 주세요.";
+    if (expectedIncome === null) nextErrors.expectedIncome = "예상 수입을 입력해 주세요.";
+    if (cashFixedExpense === null) nextErrors.cashFixedExpense = "현금 고정지출을 입력해 주세요.";
     if (minimumBalance === null) nextErrors.minimumBalance = "최소 유지금액을 입력해 주세요.";
-    if (nextMonthIncome === null) nextErrors.nextMonthIncome = "다음 달 예상 수입을 입력해 주세요.";
 
     setErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0 || !account || minimumBalance === null || nextMonthIncome === null) {
+    if (
+      Object.keys(nextErrors).length > 0 ||
+      !account ||
+      expectedIncome === null ||
+      cashFixedExpense === null ||
+      minimumBalance === null
+    ) {
       return;
     }
 
     const result = calculateBudget(source, {
       baseAccountId,
-      minimumBalance,
-      nextMonthIncome
+      expectedIncome,
+      cashFixedExpense,
+      minimumBalance
     });
     if (!result) return;
     // 재계산하면 기존 결과를 저장하지 않고 새 결과로 교체한다.
     setSnapshot({
       result,
-      accountName: account.account_name,
-      baseMonthLabel: formatMonthLabel(baseMonth),
+      startDate: source.period.start_date,
+      endDate: source.period.end_date,
       balanceDate: source.balance_date,
-      nextMonthLabel: `${source.next_period.year}년 ${source.next_period.month}월`,
-      minimumBalance,
-      nextMonthIncome
+      minimumBalance
     });
   }
 
-  // 지난달에 잔액 기준일이 없으면 계산하기에서 입력 안내를 표시한다.
-  const canCalculate = !isOffline && (!!source || !isBaseDateReady);
+  // 기간이 유효하지 않으면 계산하기에서 입력 안내를 보여 주므로 버튼은 막지 않는다.
+  const canCalculate = !isOffline && (!!source || !isPeriodReady);
 
   return (
     <div
@@ -260,44 +244,29 @@ export const BudgetCalculatorModal: React.FC<{ onClose: () => void }> = ({ onClo
         <div className="flex-1 overflow-y-auto px-4 pb-4">
           {/* ── 입력 영역 ── */}
           <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1">
-              <p className="text-sm font-medium text-[var(--color-text-secondary)]">계산 기준 월</p>
-              <div className="flex min-h-11 items-center justify-between rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-input)] px-1">
-                <button
-                  type="button"
-                  aria-label="이전 달"
-                  onClick={() => changeMonth(-1)}
-                  disabled={baseMonth <= lastMonth}
-                  className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)] disabled:cursor-not-allowed disabled:opacity-30"
-                >
-                  <ChevronLeft size={18} />
-                </button>
-                <span className="text-base font-semibold text-[var(--color-text-primary)]" aria-live="polite">
-                  {formatMonthLabel(baseMonth)}
-                </span>
-                <button
-                  type="button"
-                  aria-label="다음 달"
-                  onClick={() => changeMonth(1)}
-                  disabled={baseMonth >= currentMonth}
-                  className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)] disabled:cursor-not-allowed disabled:opacity-30"
-                >
-                  <ChevronRight size={18} />
-                </button>
+            <div role="group" aria-labelledby="budget-period-label" className="flex flex-col gap-1">
+              <p id="budget-period-label" className="text-sm font-medium text-[var(--color-text-secondary)]">
+                계산 기간
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  label="시작일"
+                  name="budget-start-date"
+                  type="date"
+                  value={startDate}
+                  max={today}
+                  onChange={(e) => setStartInput(e.target.value)}
+                />
+                <Input
+                  label="종료일"
+                  name="budget-end-date"
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndInput(e.target.value)}
+                />
               </div>
+              {periodError && <p className="text-xs text-[var(--color-danger)]">{periodError}</p>}
             </div>
-
-            {isLastMonth && (
-              <Input
-                label="잔액 기준일"
-                name="budget-base-date"
-                type="date"
-                value={baseDate}
-                max={today}
-                onChange={(e) => changeBaseDate(e.target.value)}
-                error={errors.baseDate}
-              />
-            )}
 
             <div className="flex flex-col gap-1">
               <label htmlFor="budget-base-account" className="text-sm font-medium text-[var(--color-text-secondary)]">
@@ -335,6 +304,34 @@ export const BudgetCalculatorModal: React.FC<{ onClose: () => void }> = ({ onClo
             </div>
 
             <Input
+              label="예상 수입"
+              name="budget-expected-income"
+              type="text"
+              placeholder="0"
+              value={expectedIncomeStr}
+              onChange={(e) => {
+                setExpectedIncomeStr(formatAmountInput(e.target.value));
+                setErrors((prev) => ({ ...prev, expectedIncome: undefined }));
+              }}
+              error={errors.expectedIncome}
+              {...numericFieldProps}
+            />
+
+            <Input
+              label="현금 고정지출"
+              name="budget-cash-fixed-expense"
+              type="text"
+              placeholder="0"
+              value={cashFixedExpenseStr}
+              onChange={(e) => {
+                setCashFixedExpenseStr(formatAmountInput(e.target.value));
+                setErrors((prev) => ({ ...prev, cashFixedExpense: undefined }));
+              }}
+              error={errors.cashFixedExpense}
+              {...numericFieldProps}
+            />
+
+            <Input
               label="최소 유지금액"
               name="budget-minimum-balance"
               type="text"
@@ -345,20 +342,6 @@ export const BudgetCalculatorModal: React.FC<{ onClose: () => void }> = ({ onClo
                 setErrors((prev) => ({ ...prev, minimumBalance: undefined }));
               }}
               error={errors.minimumBalance}
-              {...numericFieldProps}
-            />
-
-            <Input
-              label="다음 달 예상 수입"
-              name="budget-next-month-income"
-              type="text"
-              placeholder="0"
-              value={nextMonthIncomeStr}
-              onChange={(e) => {
-                setNextMonthIncomeStr(formatAmountInput(e.target.value));
-                setErrors((prev) => ({ ...prev, nextMonthIncome: undefined }));
-              }}
-              error={errors.nextMonthIncome}
               {...numericFieldProps}
             />
           </div>
@@ -397,33 +380,29 @@ export const BudgetCalculatorModal: React.FC<{ onClose: () => void }> = ({ onClo
             ) : snapshot ? (
               <ol className="flex flex-col gap-2" aria-label="계산 결과">
                 <ResultCard
-                  title={`다음 달 수입 전 ${snapshot.accountName} 예상 잔여금`}
-                  amount={snapshot.result.remainingBalance}
+                  title="차액"
+                  amount={snapshot.result.difference}
                   details={[
-                    `기준 월 ${snapshot.baseMonthLabel}`,
-                    `기준 잔액(${snapshot.balanceDate}) ${fmt(snapshot.result.breakdown.baseBalance)}원`,
-                    `현금 동일 사용 ${fmt(snapshot.result.breakdown.cashSameUseExpense)}원`,
-                    `카드 사용액 ${fmt(snapshot.result.breakdown.baseCardExpense)}원`
+                    `계산 기간 ${snapshot.startDate} ~ ${snapshot.endDate}`,
+                    `예산 ${fmt(snapshot.result.breakdown.budget)}원 (기준 잔액(${snapshot.balanceDate}) ${fmt(snapshot.result.breakdown.baseBalance)}원 + 예상 수입 ${fmt(snapshot.result.breakdown.expectedIncome)}원)`,
+                    `지출 ${fmt(snapshot.result.breakdown.expense)}원 (카드 사용액 ${fmt(snapshot.result.breakdown.cardExpense)}원 + 현금 고정지출 ${fmt(snapshot.result.breakdown.cashFixedExpense)}원)`
                   ]}
-                  note="다른 계좌의 현금 동일 사용 지출도 기준 계좌 재원으로 충당한다고 가정한 추정값입니다."
+                  note={snapshot.result.difference >= 0 ? "남는 돈" : "모자라는 돈"}
                 />
                 <ResultCard
-                  title="최소 유지금액을 지키기 위해 필요한 추가 예상 수입"
-                  amount={snapshot.result.requiredAdditionalIncome}
+                  title="필요 금액"
+                  amount={snapshot.result.requiredAmount}
+                  details={[
+                    `지출 ${fmt(snapshot.result.breakdown.expense)}원`,
+                    `예산 ${fmt(snapshot.result.breakdown.budget)}원`
+                  ]}
+                />
+                <ResultCard
+                  title="최소 유지금액 부족"
+                  amount={snapshot.result.minimumBalanceShortfall}
                   details={[
                     `최소 유지금액 ${fmt(snapshot.minimumBalance)}원`,
-                    `1번 결과 ${fmt(snapshot.result.remainingBalance)}원`
-                  ]}
-                />
-                <ResultCard
-                  title="다음 달 추가 카드 사용 여유"
-                  amount={snapshot.result.nextMonthCardAllowance}
-                  details={[
-                    `다음 달 ${snapshot.nextMonthLabel}`,
-                    `예상 수입 ${fmt(snapshot.nextMonthIncome)}원`,
-                    `현금 동일 사용 ${fmt(snapshot.result.breakdown.cashSameUseExpense)}원`,
-                    `다음 달 할부 ${fmt(snapshot.result.breakdown.nextInstallment)}원`,
-                    `카드 고정지출 ${fmt(snapshot.result.breakdown.cardFixedExpense)}원`
+                    `차액 ${fmt(snapshot.result.difference)}원`
                   ]}
                 />
               </ol>

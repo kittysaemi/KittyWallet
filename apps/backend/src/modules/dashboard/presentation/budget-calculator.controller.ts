@@ -12,8 +12,8 @@ export class BudgetCalculatorController {
   getSource(@CurrentUser() user: JwtPayload, @Query() query: BudgetCalculatorSourceQueryDto) {
     return this.getBudgetCalculatorSource.execute(
       BigInt(user.sub),
-      query.base_month,
-      query.base_date
+      query.start_date,
+      query.end_date
     );
   }
 }

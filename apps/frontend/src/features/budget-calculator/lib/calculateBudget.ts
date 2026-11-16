@@ -4,27 +4,31 @@ import type { BudgetCalculatorSource } from "../../../entities/dashboard/model/b
 
 export interface BudgetCalculatorInput {
   baseAccountId: number;
+  /** 예상 수입 */
+  expectedIncome: number;
+  /** 현금 고정지출(사용자 직접 입력) */
+  cashFixedExpense: number;
   minimumBalance: number;
-  nextMonthIncome: number;
 }
 
 export interface BudgetCalculationResult {
-  /** 1번: 다음 달 수입 전 기준 계좌 예상 잔여금 (음수 가능) */
-  remainingBalance: number;
-  /** 2번: 최소 유지금액을 지키기 위해 필요한 추가 예상 수입 */
-  requiredAdditionalIncome: number;
-  /** 3번: 다음 달 추가 카드 사용 여유 */
-  nextMonthCardAllowance: number;
+  /** 1번: 차액 = 예산 - 지출 (음수 가능) */
+  difference: number;
+  /** 2번: 필요 금액 = max(0, 지출 - 예산) */
+  requiredAmount: number;
+  /** 3번: 최소 유지금액 부족 = max(0, 최소 유지금액 - 차액) */
+  minimumBalanceShortfall: number;
   breakdown: {
     baseBalance: number;
-    cashSameUseExpense: number;
-    baseCardExpense: number;
-    nextInstallment: number;
-    cardFixedExpense: number;
+    expectedIncome: number;
+    /** 예산 = 기준 잔액 + 예상 수입 */
+    budget: number;
+    cardExpense: number;
+    cashFixedExpense: number;
+    /** 지출 = 카드 사용액 + 현금 고정지출 */
+    expense: number;
   };
 }
-
-const sum = (values: number[]) => values.reduce((total, value) => total + value, 0);
 
 export function calculateBudget(
   source: BudgetCalculatorSource,
@@ -33,46 +37,49 @@ export function calculateBudget(
   const account = source.accounts.find((a) => a.account_id === input.baseAccountId);
   if (!account) return null;
 
-  // 현금 동일 사용 지출은 1번과 3번에 같은 값을 쓴다.
-  const cashSameUseExpense = sum(source.cash_same_use_expenses.map((e) => e.amount));
-  const baseCardExpense = sum(source.base_period_card_expenses.map((e) => e.total_amount));
-  const nextInstallment = sum(source.next_period_installments.map((i) => i.total_amount));
-  const cardFixedExpense = sum(source.card_fixed_expenses.map((e) => e.total_amount));
+  const budget = account.balance + input.expectedIncome;
+  const expense = source.card_total_amount + input.cashFixedExpense;
 
-  // 1번: 잔액 기준일 잔액 - 현금 동일 사용 지출 - 기준 월 카드 사용액(마이너스 그대로).
-  const remainingBalance = account.balance - cashSameUseExpense - baseCardExpense;
-
-  // 2번: 다음 달 예상 수입은 사용하지 않는다.
-  const requiredAdditionalIncome = Math.max(0, input.minimumBalance - remainingBalance);
-
-  // 3번: 최소 유지금액은 1·2번에서 판단하므로 다시 빼지 않는다.
-  const nextMonthCardAllowance = Math.max(
-    0,
-    input.nextMonthIncome - cashSameUseExpense - nextInstallment - cardFixedExpense
-  );
+  // 1번: 예산 - 지출(마이너스 그대로).
+  const difference = budget - expense;
+  // 2번: 예산이 모자랄 때 필요한 금액.
+  const requiredAmount = Math.max(0, expense - budget);
+  // 3번: 최소 유지금액은 1·2번 계산에 사용하지 않는다.
+  const minimumBalanceShortfall = Math.max(0, input.minimumBalance - difference);
 
   return {
-    remainingBalance,
-    requiredAdditionalIncome,
-    nextMonthCardAllowance,
+    difference,
+    requiredAmount,
+    minimumBalanceShortfall,
     breakdown: {
       baseBalance: account.balance,
-      cashSameUseExpense,
-      baseCardExpense,
-      nextInstallment,
-      cardFixedExpense
+      expectedIncome: input.expectedIncome,
+      budget,
+      cardExpense: source.card_total_amount,
+      cashFixedExpense: input.cashFixedExpense,
+      expense
     }
   };
 }
 
-/** "YYYY-MM"에서 개월을 더하거나 뺀다. */
-export function shiftMonth(month: string, delta: number): string {
+/** "YYYY-MM"의 1일~말일(예산 계산기 계산 기간 기본값). */
+export function getMonthRange(month: string): { startDate: string; endDate: string } {
   const [year, monthNumber] = month.split("-").map(Number);
-  const date = new Date(Date.UTC(year, monthNumber - 1 + delta, 1));
-  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+  const lastDay = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
+  return { startDate: `${month}-01`, endDate: `${month}-${String(lastDay).padStart(2, "0")}` };
 }
 
-export function formatMonthLabel(month: string): string {
-  const [year, monthNumber] = month.split("-").map(Number);
-  return `${year}년 ${monthNumber}월`;
+/**
+ * 계산 기간 검증(예산계산기정책.md 3.1, 예외처리.md 9.1). 오류 문구를 반환하며 유효하면 undefined.
+ * 시작일은 오늘 이후를 막고, 종료일의 미래 날짜는 허용한다.
+ */
+export function validateBudgetPeriod(
+  startDate: string,
+  endDate: string,
+  today: string
+): string | undefined {
+  if (!startDate || !endDate) return "계산 기간을 입력해 주세요.";
+  if (startDate > today) return "시작일은 오늘 이후 날짜로 선택할 수 없습니다.";
+  if (startDate > endDate) return "시작일은 종료일보다 늦을 수 없습니다.";
+  return undefined;
 }
