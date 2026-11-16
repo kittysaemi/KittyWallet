@@ -12,11 +12,11 @@ export interface BudgetCalculatorInput {
 }
 
 export interface BudgetCalculationResult {
-  /** 1번: 차액 = 예산 - 지출 (음수 가능) */
+  /** 1번: 남는 금액 = 예산 - 지출 (음수 가능) */
   difference: number;
-  /** 2번: 필요 금액 = max(0, 지출 - 예산) */
+  /** 2번: 추가로 필요한 금액 = max(0, 지출 - 예산) */
   requiredAmount: number;
-  /** 3번: 최소 유지금액 부족 = max(0, 최소 유지금액 - 차액) */
+  /** 3번: {최소 유지금액}원을 유지하기 위해 필요한 금액 = max(0, 최소 유지금액 - 남는 금액) */
   minimumBalanceShortfall: number;
   breakdown: {
     baseBalance: number;

@@ -194,8 +194,8 @@ describe("BudgetCalculatorModal", () => {
 
     const cards = resultCards();
     expect(cards).toHaveLength(3);
-    // 예산 3,000,000 + 1,000,000 = 4,000,000 / 지출 500,000 + 300,000 = 800,000 / 차액 3,200,000
-    expect(cards[0]).toHaveTextContent("차액");
+    // 예산 3,000,000 + 1,000,000 = 4,000,000 / 지출 500,000 + 300,000 = 800,000 / 남는 금액 3,200,000
+    expect(within(cards[0]).getByText("남는 금액")).toBeInTheDocument();
     expect(cards[0]).toHaveTextContent("3,200,000원");
     expect(cards[0]).toHaveTextContent("계산 기간 2026-09-01 ~ 2026-09-30");
     expect(cards[0]).toHaveTextContent("예산 4,000,000원");
@@ -206,16 +206,17 @@ describe("BudgetCalculatorModal", () => {
     expect(cards[0]).toHaveTextContent("현금 고정지출 300,000원");
     expect(cards[0]).toHaveTextContent("남는 돈");
     // 2번: max(0, 800,000 - 4,000,000) = 0
-    expect(cards[1]).toHaveTextContent("필요 금액");
+    expect(within(cards[1]).getByText("추가로 필요한 금액")).toBeInTheDocument();
     expect(within(cards[1]).getByText("0원")).toBeInTheDocument();
     // 3번: max(0, 4,000,000 - 3,200,000)
-    expect(cards[2]).toHaveTextContent("최소 유지금액 부족");
+    // 제목에 입력한 최소 유지금액이 들어간다.
+    expect(within(cards[2]).getByText("4,000,000원을 유지하기 위해 필요한 금액")).toBeInTheDocument();
     expect(within(cards[2]).getByText("800,000원")).toBeInTheDocument();
     expect(cards[2]).toHaveTextContent("최소 유지금액 4,000,000원");
-    expect(cards[2]).toHaveTextContent("차액 3,200,000원");
+    expect(cards[2]).toHaveTextContent("남는 금액 3,200,000원");
   });
 
-  it("예산이 모자라면 차액을 마이너스 그대로 표시하고 필요 금액을 보여 준다", async () => {
+  it("예산이 모자라면 남는 금액을 마이너스 그대로 표시하고 추가로 필요한 금액을 보여 준다", async () => {
     const user = userEvent.setup();
     renderModal();
     await fillInputs(user, { account: "2", income: "0", cash: "0", minimum: "0" });
@@ -223,11 +224,12 @@ describe("BudgetCalculatorModal", () => {
     await user.click(screen.getByRole("button", { name: "계산하기" }));
 
     const cards = resultCards();
-    // 예산 100,000 / 지출 500,000 / 차액 -400,000
+    // 예산 100,000 / 지출 500,000 / 남는 금액 -400,000
     expect(within(cards[0]).getByText("-400,000원")).toBeInTheDocument();
     expect(cards[0]).toHaveTextContent("모자라는 돈");
     expect(within(cards[1]).getByText("400,000원")).toBeInTheDocument();
-    // 3번: max(0, 0 - (-400,000))
+    // 3번: max(0, 0 - (-400,000)), 최소 유지금액 0원이 제목에 들어간다.
+    expect(within(cards[2]).getByText("0원을 유지하기 위해 필요한 금액")).toBeInTheDocument();
     expect(within(cards[2]).getByText("400,000원")).toBeInTheDocument();
   });
 
