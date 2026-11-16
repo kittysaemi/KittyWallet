@@ -25,26 +25,14 @@ const mockedAccountApi = vi.mocked(accountApi);
 const mockedSettingsApi = vi.mocked(settingsApi);
 
 const source: BudgetCalculatorSource = {
-  base_period: { year: 2026, month: 9, start_date: "2026-09-01", end_date: "2026-09-30" },
-  next_period: { year: 2026, month: 10, start_date: "2026-10-01", end_date: "2026-10-31" },
+  period: { start_date: "2026-09-01", end_date: "2026-09-30" },
   balance_date: "2026-09-20",
   accounts: [
     { account_id: 1, account_name: "CMA_RP", balance: 3_000_000 },
     { account_id: 2, account_name: "생활비 통장", balance: 100_000 }
   ],
-  cards: [{ card_id: 5, card_name: "신한카드" }],
-  cash_same_use_expenses: [
-    { transaction_id: 1, account_id: 2, account_name: "생활비 통장", category_name: "관리비", memo: null, transaction_date: "2026-09-10", amount: 300_000 }
-  ],
-  base_period_card_expenses: [
-    { transaction_id: 2, card_id: 5, category_name: "쇼핑", memo: null, transaction_date: "2026-09-18", amount: 500_000, interest: 0, total_amount: 500_000 }
-  ],
-  next_period_installments: [
-    { item_id: "installment-20-4", card_id: 5, category_name: "가전", memo: "냉장고", transaction_date: "2026-10-10", installment_seq: 4, total_amount: 100_000 }
-  ],
-  card_fixed_expenses: [
-    { transaction_id: 3, card_id: 5, category_name: "통신", memo: null, transaction_date: "2026-09-25", total_amount: 50_000 }
-  ]
+  card_total_amount: 500_000,
+  card_transaction_count: 3
 };
 
 let queryClient: QueryClient;
@@ -61,12 +49,20 @@ function renderModal(onClose = vi.fn()) {
   return { ...utils, onClose };
 }
 
-async function fillInputs(user: ReturnType<typeof userEvent.setup>, income = "3000000") {
+type User = ReturnType<typeof userEvent.setup>;
+
+async function fillInputs(
+  user: User,
+  { income = "1000000", cash = "300000", minimum = "4000000", account = "1" } = {}
+) {
   await screen.findByRole("option", { name: /CMA_RP/ });
-  await user.selectOptions(screen.getByLabelText("기준 계좌"), "1");
-  await user.type(screen.getByLabelText("최소 유지금액"), "3000000");
-  await user.clear(screen.getByLabelText("다음 달 예상 수입"));
-  await user.type(screen.getByLabelText("다음 달 예상 수입"), income);
+  await user.selectOptions(screen.getByLabelText("기준 계좌"), account);
+  await user.clear(screen.getByLabelText("예상 수입"));
+  await user.type(screen.getByLabelText("예상 수입"), income);
+  await user.clear(screen.getByLabelText("현금 고정지출"));
+  await user.type(screen.getByLabelText("현금 고정지출"), cash);
+  await user.clear(screen.getByLabelText("최소 유지금액"));
+  await user.type(screen.getByLabelText("최소 유지금액"), minimum);
 }
 
 function resultCards() {
@@ -77,6 +73,7 @@ describe("BudgetCalculatorModal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers({ toFake: ["Date"] });
+    // 사용자 시간대(Asia/Seoul) 기준 오늘은 2026-09-20이다.
     vi.setSystemTime(new Date("2026-09-20T03:00:00.000Z"));
     usePwaStore.setState({ networkStatus: "online" });
     mockedSettingsApi.getSettings.mockResolvedValue({
@@ -101,51 +98,71 @@ describe("BudgetCalculatorModal", () => {
     vi.useRealTimers();
   });
 
-  it("처음 열면 이번 달을 선택하고 오늘 기준 잔액으로 조회하며, 다음 달로 이동할 수 없다", async () => {
+  it("처음 열면 계산 기간이 이번 달 1일~말일로 채워지고 그 기간으로 조회한다", async () => {
     renderModal();
 
     expect(screen.getByRole("dialog", { name: "예산 계산기" })).toBeInTheDocument();
-    expect(screen.getByText("2026년 9월")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "다음 달" })).toBeDisabled();
-    expect(screen.queryByLabelText("잔액 기준일")).not.toBeInTheDocument();
-    await waitFor(() => expect(mockedBudgetApi.getSource).toHaveBeenCalledWith("2026-09", undefined));
+    expect(screen.getByLabelText("시작일")).toHaveValue("2026-09-01");
+    expect(screen.getByLabelText("종료일")).toHaveValue("2026-09-30");
+    await waitFor(() =>
+      expect(mockedBudgetApi.getSource).toHaveBeenCalledWith("2026-09-01", "2026-09-30")
+    );
     // 원본을 불러온 뒤 처음 결과 영역에는 결과 대신 입력 안내만 표시한다.
     expect(await screen.findByText("입력 후 계산하기를 누르면 결과가 표시됩니다.")).toBeInTheDocument();
   });
 
-  it("지난달까지만 이동할 수 있고, 지난달이면 잔액 기준일을 입력해야 조회한다", async () => {
-    const user = userEvent.setup();
+  it("시작일은 오늘까지만 선택할 수 있고 종료일의 미래 날짜는 허용한다", async () => {
     renderModal();
     await waitFor(() => expect(mockedBudgetApi.getSource).toHaveBeenCalledTimes(1));
 
-    await user.click(screen.getByRole("button", { name: "이전 달" }));
-
-    expect(screen.getByText("2026년 8월")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "이전 달" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "다음 달" })).toBeEnabled();
-    const baseDateInput = screen.getByLabelText("잔액 기준일");
-    expect(baseDateInput).toHaveAttribute("max", "2026-09-20");
-    expect(mockedBudgetApi.getSource).toHaveBeenCalledTimes(1);
-
-    // 기준일 없이 계산하기를 누르면 입력 안내를 표시한다.
-    await user.click(screen.getByRole("button", { name: "계산하기" }));
-    expect(screen.getByText("잔액 기준일을 입력해 주세요.")).toBeInTheDocument();
-
-    fireEvent.change(baseDateInput, { target: { value: "2026-08-31" } });
-
-    await waitFor(() => expect(mockedBudgetApi.getSource).toHaveBeenCalledWith("2026-08", "2026-08-31"));
+    expect(screen.getByLabelText("시작일")).toHaveAttribute("max", "2026-09-20");
+    // 기본 종료일(2026-09-30)은 미래 날짜이지만 오류가 없다.
+    expect(screen.queryByText(/시작일은/)).not.toBeInTheDocument();
+    expect(screen.queryByText("계산 기간을 입력해 주세요.")).not.toBeInTheDocument();
   });
 
-  it("오늘 이후 잔액 기준일은 막고 조회하지 않는다", async () => {
-    const user = userEvent.setup();
+  it("시작일이 오늘 이후이면 오류를 표시하고 조회하지 않는다", async () => {
     renderModal();
     await waitFor(() => expect(mockedBudgetApi.getSource).toHaveBeenCalledTimes(1));
-    await user.click(screen.getByRole("button", { name: "이전 달" }));
 
-    fireEvent.change(screen.getByLabelText("잔액 기준일"), { target: { value: "2026-09-21" } });
+    fireEvent.change(screen.getByLabelText("시작일"), { target: { value: "2026-09-21" } });
 
-    expect(screen.getByText("오늘 이후 날짜는 잔액 기준일로 선택할 수 없습니다.")).toBeInTheDocument();
+    expect(screen.getByText("시작일은 오늘 이후 날짜로 선택할 수 없습니다.")).toBeInTheDocument();
     expect(mockedBudgetApi.getSource).toHaveBeenCalledTimes(1);
+  });
+
+  it("시작일이 종료일보다 늦으면 오류를 표시하고 조회하지 않는다", async () => {
+    renderModal();
+    await waitFor(() => expect(mockedBudgetApi.getSource).toHaveBeenCalledTimes(1));
+
+    fireEvent.change(screen.getByLabelText("종료일"), { target: { value: "2026-08-31" } });
+
+    expect(screen.getByText("시작일은 종료일보다 늦을 수 없습니다.")).toBeInTheDocument();
+    expect(mockedBudgetApi.getSource).toHaveBeenCalledTimes(1);
+  });
+
+  it("기간을 비우면 입력 안내를 표시하고, 기간이 유효하지 않으면 계산하지 않는다", async () => {
+    const user = userEvent.setup();
+    renderModal();
+    await fillInputs(user);
+
+    fireEvent.change(screen.getByLabelText("시작일"), { target: { value: "" } });
+    expect(screen.getByText("계산 기간을 입력해 주세요.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "계산하기" }));
+
+    expect(screen.queryByRole("list", { name: "계산 결과" })).not.toBeInTheDocument();
+  });
+
+  it("기간을 바꾸면 바뀐 기간으로 다시 조회한다", async () => {
+    renderModal();
+    await waitFor(() => expect(mockedBudgetApi.getSource).toHaveBeenCalledTimes(1));
+
+    fireEvent.change(screen.getByLabelText("종료일"), { target: { value: "2026-12-31" } });
+    fireEvent.change(screen.getByLabelText("시작일"), { target: { value: "2026-08-15" } });
+
+    await waitFor(() =>
+      expect(mockedBudgetApi.getSource).toHaveBeenCalledWith("2026-08-15", "2026-12-31")
+    );
   });
 
   it("기준 계좌 목록에 계좌명과 현재 잔액을 함께 표시한다", async () => {
@@ -162,8 +179,9 @@ describe("BudgetCalculatorModal", () => {
     await user.click(screen.getByRole("button", { name: "계산하기" }));
 
     expect(screen.getByText("기준 계좌를 선택해 주세요.")).toBeInTheDocument();
+    expect(screen.getByText("예상 수입을 입력해 주세요.")).toBeInTheDocument();
+    expect(screen.getByText("현금 고정지출을 입력해 주세요.")).toBeInTheDocument();
     expect(screen.getByText("최소 유지금액을 입력해 주세요.")).toBeInTheDocument();
-    expect(screen.getByText("다음 달 예상 수입을 입력해 주세요.")).toBeInTheDocument();
     expect(screen.queryByRole("list", { name: "계산 결과" })).not.toBeInTheDocument();
   });
 
@@ -175,35 +193,42 @@ describe("BudgetCalculatorModal", () => {
     await user.click(screen.getByRole("button", { name: "계산하기" }));
 
     const cards = resultCards();
-    // 1번: 3,000,000 - 300,000 - 500,000
-    expect(cards[0]).toHaveTextContent("다음 달 수입 전 CMA_RP 예상 잔여금");
-    expect(cards[0]).toHaveTextContent("2,200,000원");
+    expect(cards).toHaveLength(3);
+    // 예산 3,000,000 + 1,000,000 = 4,000,000 / 지출 500,000 + 300,000 = 800,000 / 차액 3,200,000
+    expect(cards[0]).toHaveTextContent("차액");
+    expect(cards[0]).toHaveTextContent("3,200,000원");
+    expect(cards[0]).toHaveTextContent("계산 기간 2026-09-01 ~ 2026-09-30");
+    expect(cards[0]).toHaveTextContent("예산 4,000,000원");
     expect(cards[0]).toHaveTextContent("기준 잔액(2026-09-20) 3,000,000원");
-    expect(cards[0]).toHaveTextContent("현금 동일 사용 300,000원");
+    expect(cards[0]).toHaveTextContent("예상 수입 1,000,000원");
+    expect(cards[0]).toHaveTextContent("지출 800,000원");
     expect(cards[0]).toHaveTextContent("카드 사용액 500,000원");
-    expect(cards[0]).toHaveTextContent("기준 계좌 재원으로 충당한다고 가정한 추정값");
-    // 2번: max(0, 3,000,000 - 2,200,000)
-    expect(cards[1]).toHaveTextContent("최소 유지금액을 지키기 위해 필요한 추가 예상 수입");
-    expect(cards[1]).toHaveTextContent("800,000원");
-    // 3번: max(0, 3,000,000 - 300,000 - 100,000 - 50,000) — 최소 유지금액을 빼지 않는다
-    expect(cards[2]).toHaveTextContent("다음 달 추가 카드 사용 여유");
-    expect(cards[2]).toHaveTextContent("2,550,000원");
-    expect(cards[2]).toHaveTextContent("다음 달 할부 100,000원");
-    expect(cards[2]).toHaveTextContent("카드 고정지출 50,000원");
+    expect(cards[0]).toHaveTextContent("현금 고정지출 300,000원");
+    expect(cards[0]).toHaveTextContent("남는 돈");
+    // 2번: max(0, 800,000 - 4,000,000) = 0
+    expect(cards[1]).toHaveTextContent("필요 금액");
+    expect(within(cards[1]).getByText("0원")).toBeInTheDocument();
+    // 3번: max(0, 4,000,000 - 3,200,000)
+    expect(cards[2]).toHaveTextContent("최소 유지금액 부족");
+    expect(within(cards[2]).getByText("800,000원")).toBeInTheDocument();
+    expect(cards[2]).toHaveTextContent("최소 유지금액 4,000,000원");
+    expect(cards[2]).toHaveTextContent("차액 3,200,000원");
   });
 
-  it("1번이 마이너스이면 마이너스 그대로 표시한다", async () => {
+  it("예산이 모자라면 차액을 마이너스 그대로 표시하고 필요 금액을 보여 준다", async () => {
     const user = userEvent.setup();
     renderModal();
-    await screen.findByRole("option", { name: /생활비 통장/ });
-    await user.selectOptions(screen.getByLabelText("기준 계좌"), "2");
-    await user.type(screen.getByLabelText("최소 유지금액"), "0");
-    await user.type(screen.getByLabelText("다음 달 예상 수입"), "0");
+    await fillInputs(user, { account: "2", income: "0", cash: "0", minimum: "0" });
 
     await user.click(screen.getByRole("button", { name: "계산하기" }));
 
-    // 100,000 - 300,000 - 500,000
-    expect(resultCards()[0]).toHaveTextContent("-700,000원");
+    const cards = resultCards();
+    // 예산 100,000 / 지출 500,000 / 차액 -400,000
+    expect(within(cards[0]).getByText("-400,000원")).toBeInTheDocument();
+    expect(cards[0]).toHaveTextContent("모자라는 돈");
+    expect(within(cards[1]).getByText("400,000원")).toBeInTheDocument();
+    // 3번: max(0, 0 - (-400,000))
+    expect(within(cards[2]).getByText("400,000원")).toBeInTheDocument();
   });
 
   it("예상 수입을 바꾼 뒤 다시 계산하면 팝업을 닫지 않고 결과를 교체한다", async () => {
@@ -211,19 +236,19 @@ describe("BudgetCalculatorModal", () => {
     const { onClose } = renderModal();
     await fillInputs(user);
     await user.click(screen.getByRole("button", { name: "계산하기" }));
+    expect(within(resultCards()[0]).getByText("3,200,000원")).toBeInTheDocument();
 
-    await user.clear(screen.getByLabelText("다음 달 예상 수입"));
-    await user.type(screen.getByLabelText("다음 달 예상 수입"), "2000000");
+    await user.clear(screen.getByLabelText("예상 수입"));
+    await user.type(screen.getByLabelText("예상 수입"), "0");
     // 계산하기를 다시 누르기 전에는 결과가 바뀌지 않는다.
-    expect(resultCards()[2]).toHaveTextContent("2,550,000원");
+    expect(within(resultCards()[0]).getByText("3,200,000원")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "계산하기" }));
 
     const cards = resultCards();
     expect(cards).toHaveLength(3);
-    // 2,000,000 - 300,000 - 100,000 - 50,000
-    expect(cards[2]).toHaveTextContent("1,550,000원");
-    expect(cards[0]).toHaveTextContent("2,200,000원");
+    // 예산 3,000,000 - 지출 800,000
+    expect(within(cards[0]).getByText("2,200,000원")).toBeInTheDocument();
     expect(onClose).not.toHaveBeenCalled();
   });
 
